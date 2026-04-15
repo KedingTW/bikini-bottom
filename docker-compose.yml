@@ -1,0 +1,67 @@
+version: "3.8"
+
+# 🏝️ 比奇堡開發團隊
+# 啟動: docker compose up -d --build
+# 停止: docker compose down
+# 看 logs: docker compose logs -f bob
+# 更新 OpenAB: docker compose build --pull && docker compose up -d
+
+services:
+  # ─── AI 角色 ─────────────────────────────────────────
+  bob:
+    build: .
+    container_name: bob
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_BOB}
+      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
+      - KIRO_USAGE_CHANNEL_ID=${KIRO_USAGE_CHANNEL_ID}
+      - GIT_AUTHOR_NAME=海綿寶寶 (SpongeBob)
+      - GIT_COMMITTER_NAME=海綿寶寶 (SpongeBob)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+    volumes:
+      - ./agents/bob/config.toml:/etc/openab/config.toml:ro
+      - ./agents/bob:/home/agent
+
+  patrick:
+    build: .
+    container_name: patrick
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_PATRICK}
+      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
+      - GIT_AUTHOR_NAME=派大星 (Patrick)
+      - GIT_COMMITTER_NAME=派大星 (Patrick)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+    volumes:
+      - ./agents/patrick/config.toml:/etc/openab/config.toml:ro
+      - ./agents/patrick:/home/agent
+
+  # gary (OpenAB AI 模式) — 未來啟用
+  # gary:
+  #   build: .
+  #   container_name: gary
+  #   restart: unless-stopped
+  #   environment:
+  #     - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_GARY}
+  #     - CHANNEL_GENERAL=${CHANNEL_GENERAL}
+  #   volumes:
+  #     - ./agents/gary/config.toml:/etc/openab/config.toml:ro
+  #     - ./agents/gary:/home/agent
+
+  # ─── 獨立服務 ───────────────────────────────────────
+  slash-bot:
+    build: ./services/slash-bot
+    container_name: slash-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_GARY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=us-east-1

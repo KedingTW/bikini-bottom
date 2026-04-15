@@ -1,0 +1,28 @@
+# 環境變數（含 token、密鑰）
+.env
+
+# 角色的工作產出（clone 的 repo、AI 產生的檔案）
+agents/*/projects/
+agents/*/.cache/
+agents/*/.conda/
+agents/*/.config/
+agents/*/.local/
+agents/*/.semantic_search/
+agents/*/miniconda3/
+agents/*/data/
+agents/*/.bash_history
+agents/*/.gitconfig
+
+# kiro-cli session 資料
+agents/*/.kiro/sessions/
+agents/*/.kiro/settings/
+
+# 動態記憶（每個環境不同）
+agents/*/.kiro/steering/memory.md
+
+# 舊的 steering 目錄（已搬到 agents/）
+steering-*/
+
+# Python
+__pycache__/
+*.pyc
