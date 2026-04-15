@@ -22,7 +22,6 @@ services:
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     volumes:
       - ./agents/bob/config.toml:/etc/openab/config.toml:ro
       - ./agents/bob:/home/agent
@@ -65,5 +64,4 @@ services:
       - SLASH_BOT_CHANNEL_ID=${SLASH_BOT_CHANNEL_ID}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - AWS_DEFAULT_REGION=us-east-1
