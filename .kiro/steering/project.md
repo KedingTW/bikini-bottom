@@ -57,3 +57,36 @@ bikini-bottom/
 - 每個角色的 `agents/<name>/` 整個目錄會掛載為容器的 `/home/agent`
 - 角色工作產出在 `agents/<name>/projects/`（被 gitignore）
 - `memory.md` 是動態記憶，每個環境不同（被 gitignore）
+
+## 角色目錄結構
+
+每個角色的目錄 `agents/<alias>/` 會整個掛載為容器內的 `/home/agent/`。
+以下是完整的目錄結構與各目錄用途：
+
+```
+agents/<alias>/                     ← 掛載為容器的 /home/agent/
+├── config.toml                     ← OpenAB 設定（另掛載為 /etc/openab/config.toml:ro）
+├── .kiro/                          ← Kiro User Level 設定（全域，所有專案共用）
+│   ├── settings/
+│   │   ├── mcp.json                ← MCP server 連線設定
+│   │   └── cli.json                ← kiro-cli 設定（自動產生）
+│   ├── steering/                   ← 角色的 steering 規則
+│   │   ├── personality.md          ← 角色個性、口頭禪、回答風格
+│   │   ├── workflow.md             ← 工作流程規範
+│   │   └── memory.md              ← 動態記憶（gitignore）
+│   ├── skills/                     ← 角色的 skills（未來擴充）
+│   └── sessions/                   ← kiro-cli session 資料（自動產生，gitignore）
+└── projects/                       ← kiro-cli 的工作目錄（working_dir）
+    └── <專案名稱>/                  ← 各專案獨立目錄
+        └── .kiro/                  ← Kiro Workspace Level 設定（僅該專案使用）
+            ├── settings/
+            │   └── mcp.json        ← 專案層級 MCP 設定（覆蓋 User Level）
+            ├── steering/           ← 專案層級 steering 規則
+            └── skills/             ← 專案層級 skills
+```
+
+重要規則：
+- User Level（`~/.kiro/`）= 全域設定，所有專案共用
+- Workspace Level（`projects/<專案>/.kiro/`）= 專案層級，僅該專案使用，會覆蓋 User Level
+- 不要在 `projects/` 根目錄放 `.kiro/`，`projects/` 本身不是 workspace
+- `steering/`、`skills/`、`settings/` 在兩個層級都可以存在，各有各的作用範圍
