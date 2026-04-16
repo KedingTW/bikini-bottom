@@ -1,12 +1,12 @@
 # Git Flow 標準作業流程
 
-> 適用於 Redmine 任務涉及程式碼修改時的完整流程。
-> Agent 和人類開發者都遵循此流程。
+> 所有涉及程式碼修改的工作都遵循此流程，無論來源是 Redmine issue、Discord 口頭交辦、或 hotfix 需求。
+> Agent 和人類開發者都適用。
 
 ## 流程總覽
 
 ```
-Redmine issue 指派
+收到需求（任何來源）
   ↓
 開分支（從 master）
   ↓
@@ -14,17 +14,11 @@ Redmine issue 指派
   ↓
 push + 開 PR
   ↓
-Redmine 狀態 → review
-  ↓
 Code review（人類審查）
   ↓
 修正 review 意見（如有）
   ↓
 PR 合併
-  ↓
-Redmine 狀態 → 測試中（由驗收方觸發）
-  ↓
-Redmine 狀態 → 已完成（由驗收方觸發）
 ```
 
 ## 一、分支命名規則
@@ -33,11 +27,12 @@ Redmine 狀態 → 已完成（由驗收方觸發）
 
 - 角色別名：`bob`、`patrick` 等
 - 日期：開分支當天
-- 簡短描述：英文小寫，多個單字用 `-` 連接，對應 Redmine issue 的任務內容
+- 簡短描述：英文小寫，多個單字用 `-` 連接，描述這次修改的內容
 
 範例：
 - `bob_20260416_add-login-api`
 - `patrick_20260416_fix-db-connection`
+- `bob_20260416_hotfix-null-check`
 
 > 注意：Kiro IDE 的分支命名格式為 `kiro_<YYYYMMDD>_<描述>`，
 > Agent 的分支命名格式為 `<角色別名>_<YYYYMMDD>_<描述>`，兩者不同。
@@ -53,7 +48,7 @@ git checkout -b <分支名稱>
 ```
 
 - 一律從 `master` 最新版本開分支
-- 一個 Redmine issue 對應一個分支
+- 一個任務對應一個分支
 
 ### 步驟 2：開發與 commit
 
@@ -71,13 +66,12 @@ git commit -m "feat: 簡短描述"
 
 ```bash
 git push origin <分支名稱>
-gh pr create --title "簡短描述" --body "相關 Redmine issue: #<issue編號>"
+gh pr create --title "簡短描述" --body "說明這次修改的內容和原因"
 ```
 
 - PR 標題使用繁體中文
-- PR 描述中附上 Redmine issue 編號
-- 開完 PR 後，將 Redmine issue 狀態改為「review」（status_id: 9），完成百分比 90%
-- 在 Redmine issue 留言附上 PR 連結
+- PR 描述說明修改內容和原因
+- 如果有對應的 Redmine issue，在描述中附上編號（非必要）
 
 ### 步驟 4：Code Review
 
@@ -90,27 +84,16 @@ gh pr create --title "簡短描述" --body "相關 Redmine issue: #<issue編號>
 - PR 通過後由 reviewer 合併（或 Agent 自行合併，視團隊約定）
 - 合併後分支自動刪除（GitHub 設定）
 
-### 步驟 6：後續狀態更新
-
-- 「測試中」和「已完成」由驗收方觸發，Agent 不自行更新
-- Agent 的責任到 PR 開出 + Redmine 狀態改為 review 為止
-
 ## 三、特殊情況
-
-### 不涉及程式碼的任務
-
-- 純研究、文件撰寫、數學計算等不需要開分支
-- 直接在 Redmine 上回報結果即可
-- 狀態流轉依 redmine-sop 規範
 
 ### 衝突處理
 
 - push 前先 `git pull origin master --rebase`
 - 如果有衝突無法自行解決，在 Discord 中回報，不要強制 push
 
-### 多人協作同一 issue
+### 多人協作同一任務
 
-- 原則上一個 issue 一個人負責
+- 原則上一個任務一個人負責
 - 如果需要多人協作，各自開分支，先合併的人負責處理衝突
 
 ## 四、工具需求
@@ -118,7 +101,7 @@ gh pr create --title "簡短描述" --body "相關 Redmine issue: #<issue編號>
 | 工具 | 用途 | 安裝狀態 |
 |------|------|----------|
 | `git` | 版本控制 | ✅ 已安裝（Dockerfile） |
-| `gh` | GitHub CLI（開 PR、管理 PR） | ⬜ 需安裝（Dockerfile 更新） |
+| `gh` | GitHub CLI（開 PR、管理 PR） | ✅ 已安裝（Dockerfile） |
 
 ### gh 認證
 
@@ -130,13 +113,10 @@ docker exec -it <容器名稱> gh auth login
 
 選擇 GitHub.com → HTTPS → 用 browser 認證。
 
-## 五、Redmine 狀態與 Git Flow 對應
+## 五、與 Redmine 的搭配（選用）
 
-| Git Flow 階段 | Redmine 狀態 | 完成百分比 |
-|---------------|-------------|-----------|
-| 開分支、開發中 | 開發中 | 10–80% |
-| push + 開 PR | review | 90% |
-| Code review 進行中 | review | 90% |
-| PR 合併後 | （由驗收方更新） | — |
-| 部署測試環境 | 測試中 | 90% |
-| 部署正式環境 | 已完成 | 100% |
+當任務來自 Redmine issue 時，Git Flow 結束後額外做：
+- 在 Redmine issue 留言附上 PR 連結
+- 更新 Redmine issue 狀態為 review
+
+這部分由 Redmine SOP 規範，不屬於 Git Flow 本身的範疇。

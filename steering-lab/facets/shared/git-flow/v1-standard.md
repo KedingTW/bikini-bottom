@@ -2,13 +2,13 @@
 
 ## 一、適用時機
 
-- 當 Redmine 任務涉及程式碼修改時，必須走 Git Flow
-- 純研究、文件撰寫、數學計算等不涉及程式碼的任務，不需要走 Git Flow
+- 所有涉及程式碼修改的工作都必須走 Git Flow，無論來源是 Redmine issue、Discord 口頭交辦、或 hotfix
+- 不涉及程式碼的工作（研究、文件撰寫、計算等）不需要走 Git Flow
 
 ## 二、分支規則
 
 - 一律從 master 最新版本開分支
-- 一個 Redmine issue 對應一個分支
+- 一個任務對應一個分支
 - 分支命名格式：`<你的角色別名>_<YYYYMMDD>_<簡短描述>`
   - 角色別名就是你的英文名字小寫（例如 bob、patrick）
   - 日期是開分支當天
@@ -32,14 +32,10 @@ git checkout -b <分支名稱>
 ### push 並開 PR
 ```bash
 git push origin <分支名稱>
-gh pr create --title "簡短描述" --body "Redmine issue #<編號>"
+gh pr create --title "簡短描述" --body "說明修改內容和原因"
 ```
 - PR 標題使用繁體中文
-- PR 描述附上 Redmine issue 編號
-
-### 開完 PR 後
-- Redmine issue 狀態改為 review（status_id: 9），完成百分比 90%
-- 在 Redmine issue 留言附上 PR 連結（純文字，例如「PR 已開：https://github.com/...」）
+- PR 描述說明修改內容和原因
 
 ## 四、Code Review 回應
 
@@ -55,7 +51,6 @@ gh pr create --title "簡短描述" --body "Redmine issue #<編號>"
 ## 六、你不需要做的事
 
 - 不要自行合併 PR（除非被明確授權）
-- 不要自行將 Redmine 狀態改為「測試中」或「已完成」
 - 不要在 master 上直接 commit
 - 不要用 `git push --force`
 
