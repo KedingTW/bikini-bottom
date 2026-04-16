@@ -217,10 +217,16 @@ Docker 容器間連線會被 `421 Invalid Host header` 擋住。
 
 ### 下一個 POC：Git Flow
 8. **Git Flow SOP** — Redmine 任務涉及程式碼修改時的完整流程：
-   - 開分支 → coding → push → 開 PR → code review → 修正 → PR 合併
-   - PR 通過後才能回報 Redmine 狀態為 review/測試中
-   - 將開另一個分支進行 POC
+   - [x] 撰寫 Git Flow SOP 文件：`docs/git-flow-sop.md`
+   - [x] 建立 git-flow steering facet：`steering-lab/facets/shared/git-flow/v1-standard.md`
+   - [x] 建立整合 workflow facet：`steering-lab/facets/bob/workflow/exp-git-flow.md`
+   - [x] 建立實驗組合 profile：`steering-lab/profiles/bob/exp-git-flow.txt`
+   - [x] Dockerfile 加入 `gh`（GitHub CLI）
+   - [ ] 重建 image 並測試 `gh` 可用
+   - [ ] Agent 容器執行 `gh auth login`
+   - [ ] 套用 exp-git-flow 組合並測試
 9. **Redmine + Git 整合** — Redmine issue 狀態轉換與 git flow 階段的對應關係
+   - [x] 已在 `docs/git-flow-sop.md` 第五節定義對應表
 
 ### 未來規劃
 10. **Redmine 升級 6.1 評估** — OAuth2 支援，解決多帳號需多 instance 的問題
