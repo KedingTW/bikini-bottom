@@ -202,6 +202,40 @@ Docker 容器間連線會被 `421 Invalid Host header` 擋住。
 
 ---
 
+## 🔴 目前未完成項目（截至 2026-04-16 下午）
+
+### 需要你（人類）處理
+1. ~~**提供 Redmine 開發流程 SOP**~~ ✅ 已提供，已轉為 steering facet
+2. **開 PR 合併** — 分支 `kiro_20260416_redmine-mcp-poc` 已推，待 review 後合併
+3. **請工程師部署 Redmine MCP 到 MCP 服務器** — 依 `docs/mcp-redmine-deploy.md`
+4. **決定多 instance 部署方案** — 海綿寶寶和派大星各自一組 API Key，需各自一個 MCP instance
+
+### 需要 Kiro 處理
+5. ~~**EXP-001 調教**~~ ✅ 已完成多輪測試迭代：加入 redmine-sop、錯誤處理、狀態 ID 對照、確認理解流程、Discord 回覆精簡、Redmine 留言專業化、steering token 優化
+6. **MCP server 遠端部署後更新 mcp.json** — 工程師部署完成後，改用正式環境的內網 IP，移除 extra_hosts
+7. **派大星的 Redmine 帳號 + MCP config** — 待派大星帳號建立後設定
+
+### 下一個 POC：Git Flow
+8. **Git Flow SOP** — Redmine 任務涉及程式碼修改時的完整流程：
+   - 開分支 → coding → push → 開 PR → code review → 修正 → PR 合併
+   - PR 通過後才能回報 Redmine 狀態為 review/測試中
+   - 將開另一個分支進行 POC
+9. **Redmine + Git 整合** — Redmine issue 狀態轉換與 git flow 階段的對應關係
+
+### 未來規劃
+10. **Redmine 升級 6.1 評估** — OAuth2 支援，解決多帳號需多 instance 的問題
+11. **多角色協作** — 蟹老闆分配 issue、海綿寶寶前端、派大星後端（仍在探索階段）
+12. **更新 README.md** — 加入 Redmine MCP 相關說明
+13. **Discord Channel 情境切換** — 利用 channel ID 作為 Agent 的工作場景切換機制：
+    - 不同 channel 對應不同專案/情境，Agent 自動套用對應規範
+    - 需建立 channel ID → 專案的對照表（寫在 steering 裡）
+    - 可搭配 Redmine 專案 ID、git repo、coding style 等專案級設定
+    - 多角色在同一 channel 時可自然協作（共享專案上下文）
+    - 限制：Agent 只能看到 channel ID，看不到名稱；新增 channel 需同步更新 steering 和 config.toml
+10. **更新 README.md** — 加入 Redmine MCP 相關說明
+
+---
+
 ## 進度追蹤
 
 | 日期 | 完成項目 | 備註 |

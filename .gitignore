@@ -35,3 +35,6 @@ tmp/
 
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/
+
+# kiro-cli 自動產生的 agent config 範例
+agents/*/.kiro/agents/
