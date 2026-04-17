@@ -202,18 +202,53 @@ Docker 容器間連線會被 `421 Invalid Host header` 擋住。
 
 ---
 
-## 🔴 目前未完成項目（截至 2026-04-16 下午）
+## 🔴 目前未完成項目（截至 2026-04-17 下午）
 
-### 需要你（人類）處理
-1. ~~**提供 Redmine 開發流程 SOP**~~ ✅ 已提供，已轉為 steering facet
-2. **開 PR 合併** — 分支 `kiro_20260416_redmine-mcp-poc` 已推，待 review 後合併
-3. **請工程師部署 Redmine MCP 到 MCP 服務器** — 依 `docs/mcp-redmine-deploy.md`
-4. **決定多 instance 部署方案** — 海綿寶寶和派大星各自一組 API Key，需各自一個 MCP instance
+### 當前分支：`kiro_20260416_git-flow-sop`（未合併）
+
+本分支包含 Git Flow SOP 的所有文件和設定變更，尚未測試驗證。
+
+### 已完成（本分支）
+1. ✅ `docs/git-flow-sop.md` — 團隊 Git Flow SOP（master/develop 分支策略、AI Code Review 3 輪機制、hotfix 流程）
+2. ✅ `steering-lab/facets/shared/git-flow/v1-standard.md` — Agent 用 git-flow steering
+3. ✅ `steering-lab/facets/bob/workflow/exp-git-flow.md` — 整合 git flow 的 workflow（含 Redmine 任務和非 Redmine 交辦兩條路徑）
+4. ✅ `steering-lab/profiles/bob/exp-git-flow.txt` — EXP-002 實驗組合
+5. ✅ Dockerfile 加入 `gh`（GitHub CLI）
+6. ✅ docker-compose + .env.example 加入 `GH_TOKEN`（共用 PAT，方案 B）
+7. ✅ conventions.md 更新分支策略和命名規則
+8. ✅ new-agent-sop.md 加入 GH_TOKEN，移除手動 gh auth login
+9. ✅ 人類已提供 GitHub PAT，已填入 `.env`
+
+### 待測試驗證（下週一繼續）
+需要先跟人類討論確認再執行：
+
+**前置準備：**
+- 決定測試用的 repo（用 KedingOpenAB 還是另建測試 repo？）
+- 確認 AI Code Review 標籤機制是否已在目標 repo 設定好
+- 重建 image：`docker compose build --pull`
+- 套用 exp-git-flow 組合：`./steering-lab/apply.sh bob exp-git-flow`
+- 重啟容器，確認 `gh auth status` 正常
+
+**測試場景 A — Discord 直接交辦（純 Git Flow）：**
+- 在 Discord 跟海綿寶寶說修改某個檔案
+- 驗證：確認理解 → 從 develop 開分支 → 開發 → commit → push → 開 PR → 加 ai code review 標籤 → 回報 PR 連結
+
+**測試場景 B — Redmine issue 交辦（Git Flow + Redmine）：**
+- 在 Redmine 建涉及程式碼修改的 issue
+- 驗證：讀取 issue → 確認理解 → 更新 Redmine 狀態 → 走 Git Flow → Redmine 留言附 PR 連結 → 更新為 review
+
+**AI Code Review 互動測試：**
+- 如果標籤機制已設定：驗證 3 輪修正 + 標籤切換流程
+- 如果尚未設定：先跳過，只驗證到「加標籤」這步
+
+### 需要人類處理
+- 開 PR 合併分支 `kiro_20260416_redmine-mcp-poc`（上一輪的 PR，仍待 review）
+- 請工程師部署 Redmine MCP 到 MCP 服務器
+- 決定多 instance 部署方案（海綿寶寶和派大星各自一組 API Key）
 
 ### 需要 Kiro 處理
-5. ~~**EXP-001 調教**~~ ✅ 已完成多輪測試迭代：加入 redmine-sop、錯誤處理、狀態 ID 對照、確認理解流程、Discord 回覆精簡、Redmine 留言專業化、steering token 優化
-6. **MCP server 遠端部署後更新 mcp.json** — 工程師部署完成後，改用正式環境的內網 IP，移除 extra_hosts
-7. **派大星的 Redmine 帳號 + MCP config** — 待派大星帳號建立後設定
+- MCP server 遠端部署後更新 mcp.json
+- 派大星的 Redmine 帳號 + MCP config（待帳號建立後）
 
 ### 下一個 POC：Git Flow
 8. **Git Flow SOP** — 所有涉及程式碼修改的完整流程（獨立於 Redmine）：
@@ -258,4 +293,5 @@ Docker 容器間連線會被 `421 Invalid Host header` 擋住。
 | 2026/04/16 | 海綿寶寶 Redmine MCP 連線成功 | 透過 host.docker.internal 連上 redmine-mcp-server，成功讀取 issue #1221 並回覆留言 |
 | 2026/04/16 | 建立 steering-lab 實驗框架 | facets + profiles 管理 steering 版本，apply.sh 切換組合 |
 | 2026/04/16 | 建立 Redmine MCP 部署文件 | `docs/mcp-redmine-deploy.md` |
+| 2026/04/16–17 | Git Flow SOP + steering (EXP-002) | 分支 `kiro_20260416_git-flow-sop`，含 SOP 文件、steering facet、Dockerfile 加 gh、GH_TOKEN 環境變數、conventions 更新 |
 | | | |
