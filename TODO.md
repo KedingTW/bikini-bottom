@@ -294,4 +294,5 @@ Docker 容器間連線會被 `421 Invalid Host header` 擋住。
 | 2026/04/16 | 建立 steering-lab 實驗框架 | facets + profiles 管理 steering 版本，apply.sh 切換組合 |
 | 2026/04/16 | 建立 Redmine MCP 部署文件 | `docs/mcp-redmine-deploy.md` |
 | 2026/04/16–17 | Git Flow SOP + steering (EXP-002) | 分支 `kiro_20260416_git-flow-sop`，含 SOP 文件、steering facet、Dockerfile 加 gh、GH_TOKEN 環境變數、conventions 更新 |
+| 2026/05/12 | 泡芙老師 Code Review Agent 完成 | 分支 `kiro_20260512_puff-agent`：解決 kiro-cli 2.2.0 env 不繼承問題（inherit_env）、統一多 bot 協作配置（multibot-mentions + allow_bot_messages=mentions）、完整 review 流程測試通過 |
 | | | |
