@@ -1,7 +1,7 @@
 # REVIEW_CONTEXT.md 範本
 
-> 將此檔案放在各 repo 的 `.github/REVIEW_CONTEXT.md`，泡芙阿姨會在審閱時自動讀取。
-> 如果 repo 沒有此檔案，泡芙阿姨只使用通用審查規則。
+> 將此檔案放在各 repo 的 `.github/REVIEW_CONTEXT.md`，泡芙老師會在審閱時自動讀取。
+> 如果 repo 沒有此檔案，泡芙老師只使用通用審查規則。
 
 ---
 

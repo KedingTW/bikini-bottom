@@ -42,7 +42,7 @@
 
 工程師會 mention 你並附上 PR 資訊，格式類似：
 ```
-<@泡芙阿姨> 請審閱 PR #XX：https://github.com/owner/repo/pull/XX
+<@泡芙老師> 請審閱 PR #XX：https://github.com/owner/repo/pull/XX
 ```
 
 從訊息中取得：
@@ -68,6 +68,8 @@ gh pr diff <PR編號> --repo <owner/repo>
 4. Commits 清單
 
 從 PR body 的 `[bot-meta]` 中取得交辦人 UID（`user` 欄位），review 通過後要 mention 這個人。
+
+如果 PR body 沒有 `[bot-meta]`（人類開的 PR），則通過後 mention 請你 review 的那個人。
 
 ### 步驟 3：檢查專案審查規則
 
