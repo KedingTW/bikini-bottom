@@ -39,3 +39,24 @@
   - 數學題不需要走 review 狀態 → 已加入狀態判斷邏輯（非程式碼任務不走 review）
   - 沒有先釐清需求就直接開始 → 數學題太明確所以影響不大，但流程上應先確認
 - **SOP 調整**：新增第七節（錯誤處理）、第八節（狀態判斷邏輯）、修改第五節（留言純文字）
+
+---
+
+## EXP-002 — 海綿寶寶 Git Flow 整合
+
+- **日期**：2026-04-16
+- **角色**：bob
+- **組合**：`exp-git-flow`
+- **面向變更**：
+  - `workflow`: exp-redmine-auto → exp-git-flow（整合 git flow 步驟到任務處理流程）
+  - `git-flow`: 新增 shared/git-flow/v1-standard.md（Git Flow 作業規範）
+  - `mcp-tools`: v2-redmine（不變）
+  - `redmine-sop`: v1-standard（不變）
+  - `personality`: v1-base（不變）
+- **目的**：驗證海綿寶寶能否在處理涉及程式碼的 Redmine 任務時，自動走 Git Flow（開分支 → 開發 → push → 開 PR → 回報 Redmine）
+- **前置條件**：
+  - Dockerfile 需加入 `gh`（GitHub CLI）
+  - Agent 容器需執行 `gh auth login`
+- **測試方式**：在 Discord 指派一個涉及程式碼修改的 Redmine issue，觀察海綿寶寶是否正確走 Git Flow
+- **結果**：⬜ 待測試
+- **待改善**：⬜ 待測試後記錄

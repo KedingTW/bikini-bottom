@@ -1,0 +1,9 @@
+# 實驗組合：Git Flow 整合 (EXP-002)
+# 基於 EXP-001 (exp-redmine)，加入 git-flow 規範
+# 變更：workflow 換成 exp-git-flow，新增 git-flow steering
+
+personality.md <- bob/personality/v1-base.md
+workflow.md <- bob/workflow/exp-git-flow.md
+mcp-tools.md <- shared/mcp-tools/v2-redmine.md
+redmine-sop.md <- shared/redmine-sop/v1-standard.md
+git-flow.md <- shared/git-flow/v1-standard.md
