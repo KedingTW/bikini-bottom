@@ -1,5 +1,5 @@
 [discord]
-bot_token = "${DISCORD_BOT_TOKEN_PUFF}"
+bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["${CHANNEL_GENERAL}"]
 allow_bot_messages = "mentions"
 
