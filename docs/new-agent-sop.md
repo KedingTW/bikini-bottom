@@ -31,11 +31,14 @@ mkdir -p agents/krabs/.kiro/steering
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["${CHANNEL_GENERAL}"]
+allow_bot_messages = "mentions"
+allow_user_messages = "multibot-mentions"
 
 [agent]
 command = "kiro-cli"
 args = ["acp", "--trust-all-tools"]
 working_dir = "/home/agent/projects"
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"]
 
 [pool]
 max_sessions = 10
@@ -126,6 +129,8 @@ cp agents/bob/.kiro/steering/workflow.md agents/krabs/.kiro/steering/workflow.md
 DISCORD_BOT_TOKEN_KRABS=你的token
 ```
 
+注意：`GH_TOKEN` 是所有角色共用的，不需要為每個角色新增。
+
 ## 更新 docker-compose.yml
 
 在 `services` 區塊新增：
@@ -142,12 +147,21 @@ DISCORD_BOT_TOKEN_KRABS=你的token
       - GIT_COMMITTER_NAME=蟹老闆 (Mr. Krabs)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - GH_TOKEN=${GH_TOKEN}
     volumes:
       - ./agents/krabs/config.toml:/etc/openab/config.toml:ro
       - ./agents/krabs:/home/agent
 ```
 
 需要的環境變數都要列在 `environment` 裡，確保 config.toml 中的 `${VAR}` 都有對應。
+
+**重要：** 如果 agent 的 shell session 需要使用某個環境變數（如 `GH_TOKEN`），
+必須在 `config.toml` 的 `[agent]` 區塊的 `inherit_env` 列表中明確列出。
+kiro-cli 2.2.0+ 不會自動繼承容器環境變數，只有 `inherit_env` 中列出的才會傳入。
+
+標準 `inherit_env` 配置：
+- 所有角色：`["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"]`
+- 需要 AWS 的角色：額外加上 `"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"`
 
 ## 啟動
 
@@ -161,12 +175,12 @@ docker compose up -d --build
 # kiro-cli 登入
 docker exec -it krabs kiro-cli login --use-device-flow
 
-# gh 登入（如果需要 git 操作）
-docker exec -it krabs gh auth login
-
 # 重啟讓登入生效
 docker compose restart krabs
 ```
+
+注意：`gh` 認證透過 `GH_TOKEN` 環境變數自動完成，不需要手動登入。
+環境變數傳遞由 config.toml 的 `inherit_env` 設定控制，確保列出所有需要的變數。
 
 ## 驗證
 
@@ -189,5 +203,4 @@ docker compose logs krabs --tail 20
 - [ ] `.env` 已新增 token
 - [ ] `docker-compose.yml` 已新增 service
 - [ ] `kiro-cli login` 已完成
-- [ ] `gh auth login` 已完成（如需要）
 - [ ] Discord 測試 `@` 有回應
