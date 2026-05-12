@@ -16,6 +16,14 @@ agents/*/.gitconfig
 # kiro-cli session 資料
 agents/*/.kiro/sessions/
 agents/*/.kiro/settings/
+agents/*/.kiro/.cli_bash_history
+
+# 容器 runtime 產生的檔案（含 secrets）
+agents/*/.bashrc
+agents/*/.profile
+
+# OpenAB thread map（runtime state）
+agents/*/.openab/
 
 # 動態記憶（每個環境不同）
 agents/*/.kiro/steering/memory.md
@@ -32,6 +40,12 @@ tmp/
 
 # Kiro IDE workspace 層級設定（含 MCP 連線，每個環境不同）
 .kiro/settings/
+
+# VS Code workspace settings
+.vscode/
+
+# refs（submodule references）
+refs/
 
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比奇堡 AI 開發團隊 — 使用指南</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            line-height: 1.7;
+            color: #2d3748;
+            background: #f7fafc;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 60px;
+        }
+        h1 {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #1a202c;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 1.1em;
+            margin-bottom: 48px;
+        }
+        h2 {
+            font-size: 1.4em;
+            color: #2b6cb0;
+            margin-top: 48px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #bee3f8;
+        }
+        h3 {
+            font-size: 1.1em;
+            color: #2d3748;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        /* 團隊成員卡片 */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .team-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .team-card .emoji {
+            font-size: 2.5em;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .team-card .name {
+            font-weight: 700;
+            font-size: 1.1em;
+            margin-bottom: 4px;
+        }
+        .team-card .role {
+            color: #718096;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .team-card .tech {
+            font-size: 0.8em;
+            color: #4a5568;
+            background: #edf2f7;
+            border-radius: 4px;
+            padding: 4px 8px;
+            display: inline-block;
+        }
+
+        /* 一句話版本 */
+        .highlight-box {
+            background: linear-gradient(135deg, #ebf8ff, #e6fffa);
+            border-left: 4px solid #3182ce;
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin: 24px 0;
+            font-size: 1.05em;
+        }
+
+        /* 流程步驟 */
+        .steps {
+            margin: 24px 0;
+        }
+        .step {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            align-items: flex-start;
+        }
+        .step-number {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            background: #3182ce;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-title {
+            font-weight: 700;
+            font-size: 1.05em;
+            margin-bottom: 4px;
+        }
+        .step-desc {
+            color: #4a5568;
+        }
+
+        /* 範例對話 */
+        .chat-example {
+            background: #1a202c;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 0.9em;
+            color: #e2e8f0;
+        }
+        .chat-example .user {
+            color: #90cdf4;
+        }
+        .chat-example .bot {
+            color: #9ae6b4;
+        }
+
+        /* 流程圖 */
+        .flow-diagram {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            text-align: center;
+        }
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .flow-box {
+            background: white;
+            border: 2px solid #3182ce;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .flow-box.you { border-color: #805ad5; background: #faf5ff; }
+        .flow-box.engineer { border-color: #38a169; background: #f0fff4; }
+        .flow-box.reviewer { border-color: #d69e2e; background: #fffff0; }
+        .flow-box.auto { border-color: #718096; background: #f7fafc; font-style: italic; }
+        .flow-arrow {
+            color: #a0aec0;
+            font-size: 1.5em;
+        }
+
+        /* 注意事項 */
+        .notes {
+            margin: 24px 0;
+        }
+        .note-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+        .note-icon {
+            flex-shrink: 0;
+            font-size: 1.2em;
+        }
+
+        /* FAQ */
+        .faq-item {
+            margin-bottom: 20px;
+        }
+        .faq-q {
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        .faq-a {
+            color: #4a5568;
+            padding-left: 20px;
+        }
+
+        /* 頁尾 */
+        .footer {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 0.85em;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏝️ 比奇堡 AI 開發團隊</h1>
+        <p class="subtitle">使用指南 v1.0</p>
+
+        <!-- 團隊成員 -->
+        <h2>👥 團隊成員</h2>
+        <div class="team-grid">
+            <div class="team-card">
+                <span class="emoji">🧽</span>
+                <div class="name">海綿寶寶</div>
+                <div class="role">前端工程師</div>
+                <div class="tech">Vue 2/3 · JavaScript</div>
+            </div>
+            <div class="team-card">
+                <span class="emoji">⭐</span>
+                <div class="name">派大星</div>
+                <div class="role">後端工程師</div>
+                <div class="tech">PHP Laravel · Python</div>
+            </div>
+            <div class="team-card">
+                <span class="emoji">🐡</span>
+                <div class="name">泡芙老師</div>
+                <div class="role">Code Reviewer</div>
+                <div class="tech">自動審核（不需呼叫）</div>
+            </div>
+        </div>
+
+        <!-- 任務來源 -->
+        <h2>📥 任務來源</h2>
+        <div class="team-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="team-card">
+                <span class="emoji">💬</span>
+                <div class="name">Discord 對話</div>
+                <div class="role">直接 @mention 工程師交辦</div>
+                <div class="tech">適合臨時需求、快速修改</div>
+            </div>
+            <div class="team-card">
+                <span class="emoji">📋</span>
+                <div class="name">Redmine Issue</div>
+                <div class="role">在 Redmine 建立 Issue 並指派</div>
+                <div class="tech">適合正式需求、有追蹤紀錄</div>
+            </div>
+        </div>
+
+        <!-- 一句話版本 -->
+        <h2>⚡ 一句話版本</h2>
+        <div class="highlight-box">
+            <strong>方式 A（Discord）：</strong>在 Discord 跟工程師說你要做什麼 → 自動開發 → 自動審核 → 通知你合併。<br><br>
+            <strong>方式 B（Redmine）：</strong>在 Redmine 建 Issue 指派給工程師 → 在 Discord 通知他 → 自動開發 → 自動審核 → 通知你合併。
+        </div>
+
+        <!-- 流程圖 -->
+        <h2>🔄 完整流程</h2>
+
+        <h3>方式 A：Discord 直接交辦</h3>
+        <div class="flow-diagram">
+            <div class="flow-row">
+                <div class="flow-box you">你交辦任務</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box engineer">工程師開發</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box engineer">開 PR</div>
+            </div>
+            <div class="flow-row">
+                <span class="flow-arrow" style="transform: rotate(90deg);">→</span>
+            </div>
+            <div class="flow-row">
+                <div class="flow-box you">你合併 PR</div>
+                <span class="flow-arrow">←</span>
+                <div class="flow-box you">通知你通過</div>
+                <span class="flow-arrow">←</span>
+                <div class="flow-box reviewer">泡芙老師審核</div>
+            </div>
+            <div style="margin-top: 12px; color: #718096; font-size: 0.85em;">
+                ※ 審核不通過時，工程師會自動修正再送審，你不需要介入
+            </div>
+        </div>
+
+        <h3>方式 B：Redmine Issue 交辦</h3>
+        <div class="flow-diagram">
+            <div class="flow-row">
+                <div class="flow-box you">Redmine 建 Issue</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box you">Discord 通知工程師</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box engineer">讀取 Issue</div>
+            </div>
+            <div class="flow-row">
+                <span class="flow-arrow" style="transform: rotate(90deg);">→</span>
+            </div>
+            <div class="flow-row">
+                <div class="flow-box engineer">開發 + 開 PR</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box reviewer">泡芙老師審核</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box you">通知你合併</div>
+            </div>
+            <div style="margin-top: 12px; color: #718096; font-size: 0.85em;">
+                ※ 工程師會自動更新 Redmine Issue 狀態（開發中 → Review → 已完成）
+            </div>
+        </div>
+
+        <!-- 步驟說明 -->
+        <h2>📋 步驟說明</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">交辦任務</div>
+                    <div class="step-desc">在 Discord #general 頻道 @mention 對應的工程師，描述你要的功能。</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">等待開發</div>
+                    <div class="step-desc">工程師會確認需求、寫程式碼、開 PR、呼叫泡芙老師審核。你不需要做任何事。</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">自動審核</div>
+                    <div class="step-desc">泡芙老師檢查程式碼品質。有問題會通知工程師修正（最多 3 輪），全自動。</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">收到通知</div>
+                    <div class="step-desc">審核通過後，泡芙老師會在 Discord @mention 你，附上 PR 連結。</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <div class="step-title">合併 PR</div>
+                    <div class="step-desc">點開連結確認沒問題，按 Merge 按鈕。完成！</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 範例 -->
+        <h2>💬 交辦範例</h2>
+
+        <h3>方式 A：Discord 直接交辦</h3>
+        <div class="chat-example">
+            <span class="user">你：</span><br>
+            @海綿寶寶 在 krusty-krab-website 新增一個「聯絡我們」頁面，<br>
+            要有表單（姓名、Email、訊息），送出後顯示感謝訊息。<br><br>
+            <span class="bot">海綿寶寶：</span><br>
+            收到！我來確認一下需求...<br>
+            （接著自動開發 → 開 PR → 呼叫泡芙老師）
+        </div>
+
+        <h3>方式 B：Redmine Issue 交辦</h3>
+        <div class="chat-example">
+            <span class="user">你（在 Redmine 建好 Issue #1234 後）：</span><br>
+            @海綿寶寶 請處理 Redmine Issue #1234<br><br>
+            <span class="bot">海綿寶寶：</span><br>
+            收到！讓我讀取 Issue 內容...<br>
+            （讀取 Issue → 更新狀態為「開發中」→ 開發 → 開 PR → 審核 → 更新狀態為「已完成」）
+        </div>
+
+        <h3>交辦 Tips</h3>
+        <div class="notes">
+            <div class="note-item">
+                <span class="note-icon">✅</span>
+                <span>說清楚是哪個專案（repo 名稱）</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">✅</span>
+                <span>描述你要的功能，越具體越好</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">✅</span>
+                <span>前端找海綿寶寶，後端找派大星</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">❌</span>
+                <span>不需要告訴他怎麼寫程式碼</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">❌</span>
+                <span>不需要跟泡芙老師說話（她自動工作）</span>
+            </div>
+        </div>
+
+        <!-- 注意事項 -->
+        <h2>⚠️ 注意事項</h2>
+        <div class="notes">
+            <div class="note-item">
+                <span class="note-icon">1️⃣</span>
+                <span><strong>一次一個任務</strong> — 等上一個 PR 合併後再交辦下一個</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">2️⃣</span>
+                <span><strong>指定專案</strong> — 告訴工程師是哪個 repo</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">3️⃣</span>
+                <span><strong>合併由你操作</strong> — AI 不會自己合併 PR，最終決定權在你</span>
+            </div>
+            <div class="note-item">
+                <span class="note-icon">4️⃣</span>
+                <span><strong>3 輪上限</strong> — 修了 3 輪還沒通過，泡芙老師會通知你來決定</span>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <h2>❓ 常見問題</h2>
+        <div class="faq-item">
+            <div class="faq-q">Q: 工程師沒回應怎麼辦？</div>
+            <div class="faq-a">等 30 秒看有沒有 👀 反應。沒有的話再 mention 一次。</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Q: 我想改需求怎麼辦？</div>
+            <div class="faq-a">直接在同一個 thread 裡跟工程師說，他會調整。</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Q: 泡芙老師太嚴格了？</div>
+            <div class="faq-a">她只會擋有 bug 或安全問題的程式碼。建議和備註不會擋通過。</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Q: 可以同時交辦給兩個工程師嗎？</div>
+            <div class="faq-a">可以，但建議是不同專案的任務。同一個專案同時改容易衝突。</div>
+        </div>
+
+        <div class="footer">
+            比奇堡 AI 開發團隊 · 科定企業 · 2026
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# 實驗組合：Git Flow 整合
+# 與海綿寶寶共用 workflow、git-flow、mcp-tools、redmine-sop
+# 只有 personality 不同
+
+personality.md <- patrick/personality/v1-base.md
+workflow.md <- shared/workflow/v1-git-flow.md
+mcp-tools.md <- shared/mcp-tools/v2-redmine.md
+redmine-sop.md <- shared/redmine-sop/v1-standard.md
+git-flow.md <- shared/git-flow/v1-standard.md
