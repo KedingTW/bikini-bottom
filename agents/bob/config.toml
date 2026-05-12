@@ -1,11 +1,14 @@
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["${CHANNEL_GENERAL}", "${KIRO_USAGE_CHANNEL_ID}"]
+allow_bot_messages = "mentions"
+allow_user_messages = "multibot-mentions"
 
 [agent]
 command = "kiro-cli"
 args = ["acp", "--trust-all-tools"]
 working_dir = "/home/agent/projects"
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
 
 [pool]
 max_sessions = 10

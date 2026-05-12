@@ -2,7 +2,10 @@
 
 ## 認證
 
-你的容器透過 `GH_TOKEN` 環境變數自動認證 GitHub，不需要手動登入。
+你的環境透過 `GH_TOKEN` 環境變數自動認證 GitHub，不需要手動登入。
+環境變數由 OpenAB 的 `inherit_env` 機制自動傳遞到你的 shell session。
+
+如果 `gh` 指令回報認證失敗，在 Discord 中回報給米哥，不要嘗試自行修復。
 
 ## 常用指令
 
