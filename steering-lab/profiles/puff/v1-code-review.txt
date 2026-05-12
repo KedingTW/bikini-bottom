@@ -1,0 +1,4 @@
+personality: puff/personality/v1-base
+workflow: puff/workflow/v1-code-review
+git-tools: shared/git-tools/v1-review
+code-review: shared/code-review/v1-rules

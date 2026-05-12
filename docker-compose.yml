@@ -48,6 +48,23 @@ services:
       - ./agents/patrick/config.toml:/etc/openab/config.toml:ro
       - ./agents/patrick:/home/agent
 
+  puff:
+    build: .
+    container_name: puff
+    restart: unless-stopped
+    <<: *extra-hosts
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_PUFF}
+      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
+      - GIT_AUTHOR_NAME=泡芙阿姨 (Mrs. Puff)
+      - GIT_COMMITTER_NAME=泡芙阿姨 (Mrs. Puff)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - GH_TOKEN=${GH_TOKEN}
+    volumes:
+      - ./agents/puff/config.toml:/etc/openab/config.toml:ro
+      - ./agents/puff:/home/agent
+
   # gary (OpenAB AI 模式) — 未來啟用
   # gary:
   #   build: .
