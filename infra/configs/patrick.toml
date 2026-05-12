@@ -1,0 +1,28 @@
+[discord]
+bot_token = "${DISCORD_BOT_TOKEN}"
+allowed_channels = ["${CHANNEL_GENERAL}"]
+allow_bot_messages = "mentions"
+allow_user_messages = "multibot-mentions"
+
+[agent]
+command = "kiro-cli"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent/projects"
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"]
+
+[pool]
+max_sessions = 3
+session_ttl_hours = 1
+
+[reactions]
+enabled = true
+remove_after_reply = false
+
+[reactions.emojis]
+queued = "👀"
+thinking = "🤔"
+tool = "🔥"
+coding = "⭐"
+web = "⚡"
+done = "🆗"
+error = "😱"

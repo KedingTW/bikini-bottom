@@ -147,7 +147,7 @@ IGW_ID=$IGW_ID
 EOF
 }
 
-# ─── Phase 2: ECR + Build ─────────────────────────────
+# ─── Phase 2: ECR + Build + Upload Configs ────────────
 deploy_ecr() {
   log "Setting up ECR..."
 
@@ -173,7 +173,17 @@ deploy_ecr() {
   docker build -t ${ECR_URI}/${ECR_REPO_SLASH}:latest ./services/slash-bot/
   docker push ${ECR_URI}/${ECR_REPO_SLASH}:latest
 
-  log "ECR done!"
+  # Upload config files to S3
+  S3_BUCKET="${S3_BUCKET_PREFIX}-${ACCOUNT_ID}"
+  log "Uploading config files to S3..."
+  for agent in "${AGENTS[@]}"; do
+    if [ -f "infra/configs/${agent}.toml" ]; then
+      aws s3 cp "infra/configs/${agent}.toml" "s3://${S3_BUCKET}/configs/${agent}.toml" --region $REGION
+      log "  Uploaded config: ${agent}.toml"
+    fi
+  done
+
+  log "ECR + configs done!"
 }
 
 # ─── Phase 3: IAM Roles ───────────────────────────────
@@ -273,12 +283,28 @@ deploy_agent() {
 
   S3_BUCKET="${S3_BUCKET_PREFIX}-${ACCOUNT_ID}"
   IMAGE="${ECR_URI}/${ECR_REPO_NAME}:latest"
-  CONFIG_URL=$(aws ssm get-parameter --name "/bikini-bottom/${AGENT_NAME}/config-url" \
-    --region $REGION --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+  CONFIG_S3="s3://${S3_BUCKET}/configs/${AGENT_NAME}.toml"
 
-  if [ -z "$CONFIG_URL" ]; then
-    err "SSM parameter /bikini-bottom/${AGENT_NAME}/config-url not set. Run: aws ssm put-parameter --name '/bikini-bottom/${AGENT_NAME}/config-url' --value 'YOUR_GIST_RAW_URL' --type String --region $REGION"
+  # 確認 config 存在
+  aws s3 ls "$CONFIG_S3" --region $REGION >/dev/null 2>&1 || \
+    err "Config not found: ${CONFIG_S3}. Run 'deploy.sh ecr' first to upload configs."
+
+  # 額外 secrets（bob 有 AWS credentials 和 KIRO_USAGE_CHANNEL_ID）
+  EXTRA_SECRETS=""
+  if [ "$AGENT_NAME" = "bob" ]; then
+    EXTRA_SECRETS=',
+        {"name": "KIRO_USAGE_CHANNEL_ID", "valueFrom": "arn:aws:ssm:'${REGION}':'${ACCOUNT_ID}':parameter/bikini-bottom/shared/kiro-usage-channel"},
+        {"name": "AWS_ACCESS_KEY_ID", "valueFrom": "arn:aws:ssm:'${REGION}':'${ACCOUNT_ID}':parameter/bikini-bottom/shared/aws-access-key-id"},
+        {"name": "AWS_SECRET_ACCESS_KEY", "valueFrom": "arn:aws:ssm:'${REGION}':'${ACCOUNT_ID}':parameter/bikini-bottom/shared/aws-secret-access-key"}'
   fi
+
+  # Git identity per agent
+  case $AGENT_NAME in
+    bob)     GIT_NAME="海綿寶寶 (SpongeBob)" ;;
+    patrick) GIT_NAME="派大星 (Patrick)" ;;
+    puff)    GIT_NAME="泡芙老師 (Mrs. Puff)" ;;
+    *)       GIT_NAME="$AGENT_NAME" ;;
+  esac
 
   # 產生 task definition
   cat > /tmp/td-${AGENT_NAME}.json << TASKDEF
@@ -295,11 +321,11 @@ deploy_agent() {
       "name": "s3-restore",
       "image": "amazon/aws-cli",
       "essential": false,
-      "command": ["sh", "-c", "aws s3 cp s3://${S3_BUCKET}/${AGENT_NAME}/ /data/ --recursive 2>/dev/null || true; [ -f /data/data.sqlite3 ] && chown 1000:1000 /data/data.sqlite3; exit 0"],
+      "command": ["sh", "-c", "aws s3 cp s3://${S3_BUCKET}/${AGENT_NAME}/auth/ /data/auth/ --recursive 2>/dev/null || true; aws s3 cp s3://${S3_BUCKET}/configs/${AGENT_NAME}.toml /data/config.toml 2>/dev/null || true; [ -f /data/auth/data.sqlite3 ] && chown 1000:1000 /data/auth/data.sqlite3; exit 0"],
       "mountPoints": [{"sourceVolume": "agent-data", "containerPath": "/data"}],
       "logConfiguration": {
         "logDriver": "awslogs",
-        "options": {"awslogs-group": "${LOG_GROUP}", "awslogs-region": "${REGION}", "awslogs-stream-prefix": "${AGENT_NAME}-restore"}
+        "options": {"awslogs-group": "${LOG_GROUP}", "awslogs-region": "${REGION}", "awslogs-stream-prefix": "${AGENT_NAME}-init"}
       }
     },
     {
@@ -308,15 +334,18 @@ deploy_agent() {
       "essential": true,
       "dependsOn": [{"containerName": "s3-restore", "condition": "SUCCESS"}],
       "entryPoint": ["sh", "-c"],
-      "command": ["[ -f /data/data.sqlite3 ] && cp /data/data.sqlite3 /home/agent/.local/share/kiro-cli/data.sqlite3; exec tini -- openab run -c \${CONFIG_URL}"],
+      "command": ["[ -f /data/auth/data.sqlite3 ] && cp /data/auth/data.sqlite3 /home/agent/.local/share/kiro-cli/data.sqlite3; exec tini -- openab run -c /data/config.toml"],
       "environment": [
         {"name": "HOME", "value": "/home/agent"},
-        {"name": "CONFIG_URL", "value": "${CONFIG_URL}"}
+        {"name": "GIT_AUTHOR_NAME", "value": "${GIT_NAME}"},
+        {"name": "GIT_COMMITTER_NAME", "value": "${GIT_NAME}"}
       ],
       "secrets": [
         {"name": "DISCORD_BOT_TOKEN", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/${AGENT_NAME}/discord-bot-token"},
         {"name": "GH_TOKEN", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/shared/gh-token"},
-        {"name": "CHANNEL_GENERAL", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/shared/channel-general"}
+        {"name": "CHANNEL_GENERAL", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/shared/channel-general"},
+        {"name": "GIT_AUTHOR_EMAIL", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/shared/git-email"},
+        {"name": "GIT_COMMITTER_EMAIL", "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT_ID}:parameter/bikini-bottom/shared/git-email"}${EXTRA_SECRETS}
       ],
       "mountPoints": [{"sourceVolume": "agent-data", "containerPath": "/data"}],
       "user": "1000:1000",
@@ -335,7 +364,7 @@ deploy_agent() {
       "image": "amazon/aws-cli",
       "essential": false,
       "dependsOn": [{"containerName": "openab", "condition": "START"}],
-      "command": ["sh", "-c", "while true; do sleep 300; cp /proc/1/root/home/agent/.local/share/kiro-cli/data.sqlite3 /data/data.sqlite3 2>/dev/null && aws s3 cp /data/data.sqlite3 s3://${S3_BUCKET}/${AGENT_NAME}/data.sqlite3 2>/dev/null; done"],
+      "command": ["sh", "-c", "while true; do sleep 300; cp /proc/1/root/home/agent/.local/share/kiro-cli/data.sqlite3 /data/auth/data.sqlite3 2>/dev/null && aws s3 cp /data/auth/data.sqlite3 s3://${S3_BUCKET}/${AGENT_NAME}/auth/data.sqlite3 2>/dev/null; done"],
       "mountPoints": [{"sourceVolume": "agent-data", "containerPath": "/data"}],
       "logConfiguration": {
         "logDriver": "awslogs",
@@ -458,14 +487,20 @@ case $TARGET in
     deploy_gary ;;
   all)
     deploy_vpc
-    deploy_ecr
     deploy_iam
     deploy_infra
+    deploy_ecr
     for agent in "${AGENTS[@]}"; do
       deploy_agent $agent
     done
     deploy_gary
+    log ""
     log "🎉 All services deployed!"
+    log ""
+    log "Next: run first-time auth for each OAB agent:"
+    log "  ./infra/login-agent.sh bob"
+    log "  ./infra/login-agent.sh patrick"
+    log "  ./infra/login-agent.sh puff"
     ;;
   *)
     echo "Usage: $0 [vpc|ecr|iam|infra|bob|patrick|puff|gary|all]"
