@@ -1,0 +1,134 @@
+# 新增 Bot SOP
+
+## 一、目錄結構
+
+```
+agents/<bot-name>/
+├── config.toml                    # Bot 啟動設定
+├── .gitconfig                     # Git 身份
+├── .kiro/
+│   └── steering/                  # Steering 檔案（精簡為原則）
+│       ├── personality.md         # 角色設定 + 工作環境（≤30 行）
+│       ├── workflow.md            # 工作流程（≤40 行）
+│       ├── git-flow.md            # Git 規範（開發者角色才需要）
+│       ├── mcp-tools.md           # MCP 工具（有用到才加）
+│       └── redmine-sop.md         # Redmine 規範（有用到才加）
+└── projects/                      # 工作目錄
+    ├── _projects.md               # 專案對應表（開發者角色）
+    │                              # 或 _status.md（非專案角色如泡芙）
+    └── <project-group>/           # 按專案分群組
+        ├── specs/                 # 規格文件（read-only 或 read-write）
+        └── <repo-name>/          # Git repo + _status.md
+```
+
+## 二、config.toml 模板
+
+```toml
+[discord]
+bot_token = "${DISCORD_BOT_TOKEN_<NAME>}"
+allowed_channels = ["${CHANNEL_GENERAL}"]
+allow_bot_messages = "mentions"
+allow_user_messages = "multibot-mentions"
+
+[agent]
+command = "kiro-cli"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent/projects"
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"]
+
+[pool]
+max_sessions = 10
+session_ttl_hours = 24
+
+[reactions]
+enabled = true
+remove_after_reply = false
+
+[reactions.emojis]
+queued = "👀"
+thinking = "🤔"
+tool = "🔥"
+coding = "🧽"
+web = "⚡"
+done = "🆗"
+error = "😱"
+
+[reactions.timing]
+debounce_ms = 700
+stall_soft_ms = 10000
+stall_hard_ms = 30000
+done_hold_ms = 1500
+error_hold_ms = 2500
+```
+
+## 三、Steering 撰寫原則
+
+### Token 預算
+
+| 檔案 | 目標行數 | 說明 |
+|------|----------|------|
+| personality.md | ≤ 30 行 | 身份、個性、口頭禪、工作環境 |
+| workflow.md | ≤ 40 行 | 核心流程，不含細節 SOP |
+| git-flow.md | ≤ 80 行 | 分支策略、PR 流程 |
+| mcp-tools.md | ≤ 20 行 | 工具清單 + 關鍵注意事項 |
+| redmine-sop.md | ≤ 60 行 | 狀態對照 + 操作規則 |
+| **合計** | **≤ 230 行** | 約 2000 tokens |
+
+### 精簡原則
+
+- 不寫範例（bot 會自己推斷）
+- 不重複（多個檔案不要說同一件事）
+- 用表格取代長段落
+- 只寫「必須遵守」的規則，不寫「最好這樣做」的建議
+
+## 四、`_projects.md` 模板
+
+```markdown
+# 我負責的專案
+
+| 專案 | 路徑 | Repos | Specs 路徑 | 關鍵字 |
+|------|------|-------|-----------|--------|
+
+## 使用方式
+
+1. 收到任務時，先讀這個檔案
+2. 從訊息內容比對「關鍵字」欄位，確定是哪個專案
+3. 進入該專案的路徑，讀 specs/ 和各 repo 的 _status.md
+4. 如果比對不到任何專案 → 問對方是哪個專案
+5. 如果是全新專案 → clone repo 後，在這裡新增一筆紀錄
+```
+
+## 五、`_status.md` 模板
+
+```markdown
+# <repo-name> 開發狀態
+
+## 進行中
+（無）
+
+## 最近完成（最多 5 筆）
+
+## 待確認
+
+## 封存
+超過 5 筆的完成紀錄在 _archive.md
+```
+
+## 六、新增 Bot 步驟
+
+1. 在 `.env` 加入 `DISCORD_BOT_TOKEN_<NAME>=...`
+2. 建立 `agents/<bot-name>/` 目錄結構（參考第一節）
+3. 撰寫 `config.toml`（參考第二節模板）
+4. 撰寫 `.gitconfig`
+5. 撰寫 steering 檔案（遵守第三節預算）
+6. 建立 `projects/` 初始結構
+7. 在 Discord 建立 Bot Application + 取得 Token
+8. 部署/重啟 OpenAB
+
+## 七、角色類型對照
+
+| 角色類型 | 需要的 steering | projects 結構 |
+|---------|----------------|---------------|
+| 開發者（bob, patrick） | personality + workflow + git-flow + mcp-tools + redmine-sop | _projects.md + 專案群組/repos |
+| Reviewer（puff） | personality + workflow + review-rules + git-tools | _status.md（無專案群組） |
+| PM（squidward） | personality + workflow + mcp-tools + redmine-sop | _projects.md + 專案群組/specs |

@@ -1,130 +1,57 @@
-# Git Flow 作業規範
+# Git Flow
 
-## 一、適用時機
+## 分支策略
 
-- 所有涉及程式碼修改的工作都必須走 Git Flow，無論來源
-- 不涉及程式碼的工作（研究、文件撰寫、計算等）不需要走 Git Flow
+- `master`：正式環境 / `develop`：開發分支
+- 一般：從 develop 開分支，PR 目標 develop
+- hotfix：從 master 開分支，同時對 master 和 develop 各開一個 PR
+- 是否 hotfix 由交辦人告知
 
-## 二、分支策略
+## 分支命名
 
-- `master`：正式環境分支
-- `develop`：開發分支
-- 一般開發：從 `develop` 開分支，PR 目標為 `develop`
-- hotfix：從 `master` 開分支，同時對 `master` 和 `develop` 各開一個 PR
-- 是否為 hotfix 由交辦人明確告知，你不需要自行判斷
+格式：`<角色>_<YYYYMMDD>_<描述>`（英文小寫，底線連接）
+範例：`bob_20260416_add_login_api`
 
-## 三、分支命名
+## 開發流程
 
-- 格式：`<你的角色別名>_<YYYYMMDD>_<簡短描述>`
-- 角色別名就是你的英文名字小寫（例如 bob、patrick）
-- 日期是開分支當天
-- 簡短描述用英文小寫，多個單字用 `_` 連接
-- 範例：`bob_20260416_add_login_api`
-
-## 四、開發流程
-
-### 開分支（一般）
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b <分支名稱>
+# 一般
+git checkout develop && git pull origin develop && git checkout -b <分支>
+
+# hotfix
+git checkout master && git pull origin master && git checkout -b <分支>
 ```
 
-### 開分支（hotfix）
-```bash
-git checkout master
-git pull origin master
-git checkout -b <分支名稱>
-```
+- commit message 繁體中文，格式：`feat/fix/chore/docs: 簡短描述`
+- push 前先 rebase：`git pull origin develop --rebase`
 
-### commit
-- commit message 使用繁體中文
-- 格式：`feat/fix/chore/docs: 簡短描述`
-- 開發過程中可以多次 commit
+## PR
 
-### push 並開 PR
-
-PR body 開頭必須包含 `[bot-meta]` 區塊，提供 CI 通知所需的 Discord 資訊：
+PR body 開頭必須包含：
 ```
 [bot-meta]
 discord: <當前討論串ID>
-user: <交辦人的Discord UID>
-bot: <你自己的Discord UID>
+user: <交辦人UID>
+bot: <你的UID>
 
-說明修改內容和原因...
+修改說明...
 ```
-- `discord`：你目前所在的 Discord channel/thread ID
-- `user`：交辦這個任務給你的人的 Discord user ID
-- `bot`：你自己的 Discord user ID
-- `[bot-meta]` 區塊和正文之間用一個空行隔開
-- 這些資訊用於 AI Code Review 完成後，CI 自動通知到正確的 Discord 討論串
 
-一般：
 ```bash
-git push origin <分支名稱>
-gh pr create --base develop --title "<分支名稱>" --body "[bot-meta]
-discord: <討論串ID>
-user: <交辦人UID>
-bot: <你的UID>
-
-說明修改內容和原因"
+git push origin <分支>
+gh pr create --base develop --title "<分支名>" --body "<上述格式>"
 ```
 
-hotfix（開兩個 PR）：
-```bash
-git push origin <分支名稱>
-gh pr create --base master --title "<分支名稱>" --body "[bot-meta]
-discord: <討論串ID>
-user: <交辦人UID>
-bot: <你的UID>
+## Code Review（泡芙老師）
 
-hotfix: 說明修改內容和原因"
-gh pr create --base develop --title "<分支名稱>" --body "[bot-meta]
-discord: <討論串ID>
-user: <交辦人UID>
-bot: <你的UID>
+1. PR 開好後 mention：`<@1503574146117013555> 請審閱 PR #XX：<連結>`
+2. 收到 review → 認同就修，不認同在 PR 留言說明
+3. 修完再 mention 泡芙老師
+4. 最多 3 輪
 
-hotfix: 說明修改內容和原因"
-```
+## 禁止事項
 
-## 五、Code Review 流程（泡芙老師）
-
-1. PR 開好後，在 Discord mention 泡芙老師請求 review：
-   `<@1503574146117013555> 請審閱 PR #XX：<PR連結>`
-2. 等待泡芙老師在 PR 留下 review comment
-3. 查看結果並處理：
-   - 認同意見 → 修正程式碼，commit + push
-   - 不認同 → 在 PR conversation 留言說明理由，不修改該項
-4. 修正完成後，再次 mention 泡芙老師請求再次審閱：
-   `<@1503574146117013555> 已修正，請再次審閱 PR #XX：<PR連結>`
-5. 最多進行 3 輪修正
-6. 泡芙老師通過後會 mention 交辦人，你不需要自行切換標籤
-7. 如果 3 輪後仍有未解決的意見，泡芙老師會 mention 交辦人決定後續處理
-8. hotfix 的兩個 PR 都要走這個流程
-
-## 六、CI 錯誤處理
-
-- PR 觸發 CI 且失敗時，查看錯誤訊息並嘗試修正
-- CI 修正也算在 3 輪修正次數內
-- 無法解決的 CI 錯誤，在 PR 留言說明，交給主管處理
-
-## 七、衝突處理
-
-- push 前先 rebase：
-  - 一般：`git pull origin develop --rebase`
-  - hotfix：`git pull origin master --rebase`
-- 如果有衝突無法自行解決，在 Discord 中回報，不要用 `git push --force`
-
-## 八、你不需要做的事
-
-- 不要自行合併 PR，一律由主管合併
-- 不要自行判斷是否為 hotfix，由交辦人告知
-- 不要在 master 或 develop 上直接 commit
-- 不要用 `git push --force`
-- `develop` → `master` 的合併不關你的事
-
-## 九、錯誤處理
-
-- `gh` 指令失敗時，最多重試 2 次
-- 如果 `gh auth` 未設定或過期，在 Discord 中回報，不要嘗試自行登入
-- `git push` 被拒絕時，先嘗試 rebase，rebase 失敗就在 Discord 中回報
+- 不自行合併 PR
+- 不在 master/develop 直接 commit
+- 不用 `git push --force`
+- `gh` 失敗最多重試 2 次，仍失敗就在 Discord 回報
