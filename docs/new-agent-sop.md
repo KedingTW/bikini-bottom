@@ -30,7 +30,7 @@ mkdir -p agents/krabs/.kiro/steering
 ```toml
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
-allowed_channels = ["${CHANNEL_GENERAL}"]
+allowed_channels = ["${CHANNEL_KRUSTY_KRAB}"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
 
@@ -142,7 +142,7 @@ DISCORD_BOT_TOKEN_KRABS=你的token
     restart: unless-stopped
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_KRABS}
-      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
+      - CHANNEL_KRUSTY_KRAB=${CHANNEL_KRUSTY_KRAB}
       - GIT_AUTHOR_NAME=蟹老闆 (Mr. Krabs)
       - GIT_COMMITTER_NAME=蟹老闆 (Mr. Krabs)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}

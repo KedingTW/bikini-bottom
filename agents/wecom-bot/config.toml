@@ -1,0 +1,17 @@
+# WeCom Bot — 企業微信機器人
+# 透過 OpenAB Gateway 的 WeCom adapter 接收/發送訊息
+
+[gateway]
+url = "ws://gateway:8080/ws"
+platform = "wecom"
+
+[agent]
+command = "kiro-cli"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent/projects"
+env = { KIRO_API_KEY = "${KIRO_API_KEY}" }
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL", "KIRO_API_KEY"]
+
+[pool]
+max_sessions = 10
+session_ttl_hours = 24

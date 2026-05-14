@@ -1,8 +1,8 @@
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
-allowed_channels = ["1492090122257170526", "1503702750771281920"]
+allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_PLAZA}"]
 allow_bot_messages = "mentions"
-allow_user_messages = "involved"
+allow_user_messages = "multibot-mentions"
 
 [agent]
 command = "kiro-cli"

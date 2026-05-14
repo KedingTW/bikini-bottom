@@ -57,7 +57,7 @@
 
 #### Step 1：交辦任務
 
-在 Discord `#general` 頻道 mention 對應的工程師：
+在 Discord `#蟹堡王` 頻道 mention 對應的工程師：
 
 ```
 @海綿寶寶 在 krusty-krab-website 專案新增一個聯絡我們頁面，
@@ -104,6 +104,35 @@ https://github.com/KedingTW/krusty-krab-website/pull/XX
 #### Step 5：合併 PR
 
 點開 PR 連結，確認沒問題後按 **Merge**。完成！
+
+---
+
+## @mention 規則（何時需要 tag？）
+
+所有 bot 使用 `multibot-mentions` 模式，規則如下：
+
+| 情境 | 是否需要 @mention | 說明 |
+|------|:-----------------:|------|
+| 開新 thread | ✅ 需要 | 第一次呼叫必須 @mention 對應的 bot |
+| 一對一 thread（只有你和一個 bot） | ❌ 不需要 | 直接打字，bot 會自動回應 |
+| 一對多 thread（有多個 bot 參與過） | ✅ 需要 | 必須 @mention 你要對話的 bot |
+
+**範例：**
+
+```
+# 情境 1：一對一（你 + 海綿寶寶）
+你：@海綿寶寶 幫我改首頁標題        ← 開 thread，需要 mention
+你：改成「歡迎光臨蟹堡王」          ← 不需要 mention，海綿寶寶會回
+
+# 情境 2：一對多（你 + 海綿寶寶 + 派大星）
+你：@海綿寶寶 @派大星 討論一下 API   ← 開 thread
+你：@海綿寶寶 前端怎麼接？           ← 需要 mention，因為有多個 bot
+你：@派大星 後端 endpoint 是什麼？    ← 需要 mention
+```
+
+**為什麼這樣設計？**
+- 避免多個 bot 搶答同一則訊息
+- 一對一時保持自然對話體驗，不用每次都 tag
 
 ---
 

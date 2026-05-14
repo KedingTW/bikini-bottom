@@ -5,8 +5,6 @@
 # 更新 OpenAB: docker compose build --pull && docker compose up -d
 
 # ─── 共用設定 ──────────────────────────────────────────
-# host.docker.internal 讓容器能連到 host 上的服務（如本機部署的 MCP server）
-# POC 階段使用，未來 MCP server 部署到遠端主機後，角色改用內網 IP 連線，此設定可移除
 x-extra-hosts: &extra-hosts
   extra_hosts:
     - "host.docker.internal:host-gateway"
@@ -18,19 +16,14 @@ services:
     container_name: bob
     restart: unless-stopped
     <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_BOB}
-      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
-      - CHANNEL_KRUSTY_KRAB=${CHANNEL_KRUSTY_KRAB}
-      - KIRO_USAGE_CHANNEL_ID=${KIRO_USAGE_CHANNEL_ID}
+      - KIRO_API_KEY=${KIRO_API_KEY_BOB}
       - GIT_AUTHOR_NAME=海綿寶寶 (SpongeBob)
       - GIT_COMMITTER_NAME=海綿寶寶 (SpongeBob)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
-      - GH_TOKEN=${GH_TOKEN}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - KIRO_API_KEY=${KIRO_API_KEY_BOB}
     volumes:
       - ./agents/bob/config.toml:/etc/openab/config.toml:ro
       - ./agents/bob:/home/agent
@@ -40,16 +33,14 @@ services:
     container_name: patrick
     restart: unless-stopped
     <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_PATRICK}
-      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
-      - CHANNEL_KRUSTY_KRAB=${CHANNEL_KRUSTY_KRAB}
+      - KIRO_API_KEY=${KIRO_API_KEY_PATRICK}
       - GIT_AUTHOR_NAME=派大星 (Patrick)
       - GIT_COMMITTER_NAME=派大星 (Patrick)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
-      - GH_TOKEN=${GH_TOKEN}
-      - KIRO_API_KEY=${KIRO_API_KEY_PATRICK}
     volumes:
       - ./agents/patrick/config.toml:/etc/openab/config.toml:ro
       - ./agents/patrick:/home/agent
@@ -59,53 +50,80 @@ services:
     container_name: puff
     restart: unless-stopped
     <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_PUFF}
-      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
-      - CHANNEL_KRUSTY_KRAB=${CHANNEL_KRUSTY_KRAB}
+      - KIRO_API_KEY=${KIRO_API_KEY_PUFF}
       - GIT_AUTHOR_NAME=泡芙老師 (Mrs. Puff)
       - GIT_COMMITTER_NAME=泡芙老師 (Mrs. Puff)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
-      - GH_TOKEN=${GH_TOKEN}
-      - KIRO_API_KEY=${KIRO_API_KEY_PUFF}
     volumes:
       - ./agents/puff/config.toml:/etc/openab/config.toml:ro
       - ./agents/puff:/home/agent
-
-  # gary (OpenAB AI 模式) — 未來啟用
-  # gary:
-  #   build: .
-  #   container_name: gary
-  #   restart: unless-stopped
-  #   <<: *extra-hosts
-  #   environment:
-  #     - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_GARY}
-  #     - CHANNEL_GENERAL=${CHANNEL_GENERAL}
-  #     - KIRO_API_KEY=${KIRO_API_KEY_GARY}
-  #   volumes:
-  #     - ./agents/gary/config.toml:/etc/openab/config.toml:ro
-  #     - ./agents/gary:/home/agent
 
   squidward:
     build: .
     container_name: squidward
     restart: unless-stopped
     <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_SQUIDWARD}
-      - CHANNEL_GENERAL=${CHANNEL_GENERAL}
-      - CHANNEL_MEETING=${CHANNEL_MEETING}
-      - CHANNEL_REPORT=${CHANNEL_REPORT}
+      - KIRO_API_KEY=${KIRO_API_KEY_SQUIDWARD}
       - GIT_AUTHOR_NAME=章魚哥 (Squidward)
       - GIT_COMMITTER_NAME=章魚哥 (Squidward)
       - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
       - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
-      - GH_TOKEN=${GH_TOKEN}
-      - KIRO_API_KEY=${KIRO_API_KEY_SQUIDWARD}
     volumes:
       - ./agents/squidward/config.toml:/etc/openab/config.toml:ro
       - ./agents/squidward:/home/agent
+
+  sandy:
+    build: .
+    container_name: sandy
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_SANDY}
+      - KIRO_API_KEY=${KIRO_API_KEY_SANDY}
+      - GIT_AUTHOR_NAME=珊迪 (Sandy)
+      - GIT_COMMITTER_NAME=珊迪 (Sandy)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - RUST_LOG=openab=debug
+    volumes:
+      - ./agents/sandy/config.toml:/etc/openab/config.toml:ro
+      - ./agents/sandy:/home/agent
+
+  # ─── WeCom Bot（透過 Gateway 連接企業微信）─────────────
+  wecom-bot:
+    build: .
+    container_name: wecom-bot
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
+    environment:
+      - KIRO_API_KEY=${KIRO_API_KEY_WECOM_BOT}
+      - GIT_AUTHOR_NAME=WeCom Bot
+      - GIT_COMMITTER_NAME=WeCom Bot
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+    volumes:
+      - ./agents/wecom-bot/config.toml:/etc/openab/config.toml:ro
+      - ./agents/wecom-bot:/home/agent
+    depends_on:
+      - gateway
+
+  # ─── OpenAB Gateway（WeCom webhook 接收器）──────────
+  gateway:
+    image: ghcr.io/openabdev/openab-gateway:latest
+    container_name: gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
 
   # ─── 獨立服務 ───────────────────────────────────────
   slash-bot:

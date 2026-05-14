@@ -56,7 +56,7 @@ inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_
 ### 命名規則
 
 - Bot token：`DISCORD_BOT_TOKEN_<ALIAS>`（例如 `DISCORD_BOT_TOKEN_BOB`）
-- Channel ID：`CHANNEL_<NAME>`（例如 `CHANNEL_GENERAL`）
+- Channel ID：`CHANNEL_<NAME>`（例如 `CHANNEL_KRUSTY_KRAB`）
 - 新增變數時同步更新 `.env.example`
 
 ## Git

@@ -1,6 +1,6 @@
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
-allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_PLAZA}", "${CHANNEL_LAB}"]
+allowed_channels = ["1492090122257170526", "1503940169252999198", "1503703338800382002", "1503704375074361424"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
 
@@ -23,7 +23,7 @@ remove_after_reply = false
 queued = "👀"
 thinking = "🤔"
 tool = "🔥"
-coding = "⭐"
+coding = "🐿️"
 web = "⚡"
 done = "🆗"
 error = "😱"
