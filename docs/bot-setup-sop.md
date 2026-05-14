@@ -10,6 +10,7 @@ agents/<bot-name>/
 │   └── steering/                  # Steering 檔案（精簡為原則）
 │       ├── personality.md         # 角色設定 + 工作環境（≤30 行）
 │       ├── workflow.md            # 工作流程（≤40 行）
+│       ├── shared-drive.md        # 共享檔案交換區規則（所有角色）
 │       ├── git-flow.md            # Git 規範（開發者角色才需要）
 │       ├── mcp-tools.md           # MCP 工具（有用到才加）
 │       └── redmine-sop.md         # Redmine 規範（有用到才加）
@@ -121,9 +122,11 @@ error_hold_ms = 2500
 3. 撰寫 `config.toml`（參考第二節模板）
 4. 撰寫 `.gitconfig`
 5. 撰寫 steering 檔案（遵守第三節預算）
-6. 建立 `projects/` 初始結構
-7. 在 Discord 建立 Bot Application + 取得 Token
-8. 部署/重啟 OpenAB
+6. 加入 `shared-drive.md` steering（參考第八節）
+7. 在 `docker-compose.yml` 加入 `- ./shared:/shared` volume
+8. 建立 `projects/` 初始結構
+9. 在 Discord 建立 Bot Application + 取得 Token
+10. 部署/重啟 OpenAB
 
 ## 七、角色類型對照
 
