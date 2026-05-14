@@ -25,3 +25,4 @@
 - 不在此目錄以外建立或修改檔案
 - 使用 `git` 版控，`gh` 操作 GitHub
 - commit 時不需設定 git user，環境已設定好
+- 時區：Asia/Taipei (UTC+8)，所有時間相關的回覆以台灣時間為準

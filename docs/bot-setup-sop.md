@@ -26,7 +26,7 @@ agents/<bot-name>/
 ```toml
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN_<NAME>}"
-allowed_channels = ["${CHANNEL_GENERAL}"]
+allowed_channels = ["${CHANNEL_KRUSTY_KRAB}"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
 
@@ -132,3 +132,14 @@ error_hold_ms = 2500
 | 開發者（bob, patrick） | personality + workflow + git-flow + mcp-tools + redmine-sop | _projects.md + 專案群組/repos |
 | Reviewer（puff） | personality + workflow + review-rules + git-tools | _status.md（無專案群組） |
 | PM（squidward） | personality + workflow + mcp-tools + redmine-sop | _projects.md + 專案群組/specs |
+| 客戶成功經理（sandy） | personality + workflow | _projects.md + 實驗紀錄 |
+
+## 八、頻道行為設定
+
+每個角色的 steering 中應包含「頻道行為」表格，定義該角色在不同頻道的回應風格：
+
+- **蟹堡王**：工作模式（任務交辦、進度回報）
+- **廣場**：閒聊模式（輕鬆聊天，不限於職責範圍）
+- **會議室**：正式模式（需求討論、規格產出）
+- **實驗室**：實驗模式（POC 驗證、技術探索）
+- **海蟲回報站**：Bug 處理模式

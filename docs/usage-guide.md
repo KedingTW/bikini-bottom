@@ -57,7 +57,7 @@
 
 #### Step 1：交辦任務
 
-在 Discord `#general` 頻道 mention 對應的工程師：
+在 Discord `#蟹堡王` 頻道 mention 對應的工程師：
 
 ```
 @海綿寶寶 在 krusty-krab-website 專案新增一個聯絡我們頁面，
