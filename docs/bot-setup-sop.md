@@ -10,6 +10,7 @@ agents/<bot-name>/
 │   └── steering/                  # Steering 檔案（精簡為原則）
 │       ├── personality.md         # 角色設定 + 工作環境（≤30 行）
 │       ├── workflow.md            # 工作流程（≤40 行）
+│       ├── shared-drive.md        # 共享檔案交換區規則（所有角色）
 │       ├── git-flow.md            # Git 規範（開發者角色才需要）
 │       ├── mcp-tools.md           # MCP 工具（有用到才加）
 │       └── redmine-sop.md         # Redmine 規範（有用到才加）
@@ -121,9 +122,11 @@ error_hold_ms = 2500
 3. 撰寫 `config.toml`（參考第二節模板）
 4. 撰寫 `.gitconfig`
 5. 撰寫 steering 檔案（遵守第三節預算）
-6. 建立 `projects/` 初始結構
-7. 在 Discord 建立 Bot Application + 取得 Token
-8. 部署/重啟 OpenAB
+6. 加入 `shared-drive.md` steering（參考第八節）
+7. 在 `docker-compose.yml` 加入 `- ./shared:/shared` volume
+8. 建立 `projects/` 初始結構
+9. 在 Discord 建立 Bot Application + 取得 Token
+10. 部署/重啟 OpenAB
 
 ## 七、角色類型對照
 
@@ -134,7 +137,34 @@ error_hold_ms = 2500
 | PM（squidward） | personality + workflow + mcp-tools + redmine-sop | _projects.md + 專案群組/specs |
 | 客戶成功經理（sandy） | personality + workflow | _projects.md + 實驗紀錄 |
 
-## 八、頻道行為設定
+## 八、共享檔案交換區
+
+所有 bot（wecom-bot 除外）掛載 `./shared:/shared`，用於 bot 之間交換檔案。
+
+### 結構
+```
+/shared/
+├── README.md    # 說明文件
+└── drop/        # 扁平交換區，每日自動清空
+```
+
+### 檔名格式
+```
+<寄件人>_<簡述>_v<版本號>.<副檔名>
+```
+
+### 管理機制
+- 每日定時清空 `drop/` 目錄
+- 版本號遞增避免覆蓋（v1 → v2 → v3）
+- 每個 bot 的 steering 中有 `shared-drive.md` 說明使用規則
+
+### 新增 bot 時
+- 在 docker-compose 加入 `- ./shared:/shared` volume
+- 在 steering 目錄加入 `shared-drive.md`
+
+---
+
+## 九、頻道行為設定
 
 每個角色的 steering 中應包含「頻道行為」表格，定義該角色在不同頻道的回應風格：
 

@@ -33,6 +33,10 @@ tmp/
 # Kiro IDE workspace 層級設定（含 MCP 連線，每個環境不同）
 .kiro/settings/
 
+# 共享檔案交換區（每日清空，暫存檔不進 git）
+shared/drop/*
+!shared/drop/.gitkeep
+
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/
 
