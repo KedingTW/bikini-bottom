@@ -134,7 +134,34 @@ error_hold_ms = 2500
 | PM（squidward） | personality + workflow + mcp-tools + redmine-sop | _projects.md + 專案群組/specs |
 | 客戶成功經理（sandy） | personality + workflow | _projects.md + 實驗紀錄 |
 
-## 八、頻道行為設定
+## 八、共享檔案交換區
+
+所有 bot（wecom-bot 除外）掛載 `./shared:/shared`，用於 bot 之間交換檔案。
+
+### 結構
+```
+/shared/
+├── README.md    # 說明文件
+└── drop/        # 扁平交換區，每日自動清空
+```
+
+### 檔名格式
+```
+<寄件人>_<簡述>_v<版本號>.<副檔名>
+```
+
+### 管理機制
+- 每日定時清空 `drop/` 目錄
+- 版本號遞增避免覆蓋（v1 → v2 → v3）
+- 每個 bot 的 steering 中有 `shared-drive.md` 說明使用規則
+
+### 新增 bot 時
+- 在 docker-compose 加入 `- ./shared:/shared` volume
+- 在 steering 目錄加入 `shared-drive.md`
+
+---
+
+## 九、頻道行為設定
 
 每個角色的 steering 中應包含「頻道行為」表格，定義該角色在不同頻道的回應風格：
 

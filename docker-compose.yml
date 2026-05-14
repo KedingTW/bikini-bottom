@@ -27,6 +27,7 @@ services:
     volumes:
       - ./agents/bob/config.toml:/etc/openab/config.toml:ro
       - ./agents/bob:/home/agent
+      - ./shared:/shared
 
   patrick:
     build: .
@@ -44,6 +45,7 @@ services:
     volumes:
       - ./agents/patrick/config.toml:/etc/openab/config.toml:ro
       - ./agents/patrick:/home/agent
+      - ./shared:/shared
 
   puff:
     build: .
@@ -61,6 +63,7 @@ services:
     volumes:
       - ./agents/puff/config.toml:/etc/openab/config.toml:ro
       - ./agents/puff:/home/agent
+      - ./shared:/shared
 
   squidward:
     build: .
@@ -78,6 +81,7 @@ services:
     volumes:
       - ./agents/squidward/config.toml:/etc/openab/config.toml:ro
       - ./agents/squidward:/home/agent
+      - ./shared:/shared
 
   sandy:
     build: .
@@ -96,6 +100,7 @@ services:
     volumes:
       - ./agents/sandy/config.toml:/etc/openab/config.toml:ro
       - ./agents/sandy:/home/agent
+      - ./shared:/shared
 
   # ─── WeCom Bot（透過 Gateway 連接企業微信）─────────────
   wecom-bot:
