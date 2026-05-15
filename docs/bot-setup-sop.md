@@ -30,6 +30,7 @@ bot_token = "${DISCORD_BOT_TOKEN_<NAME>}"
 allowed_channels = ["${CHANNEL_KRUSTY_KRAB}"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
+max_bot_turns = 100
 
 [agent]
 command = "kiro-cli"
