@@ -42,3 +42,22 @@ mcp-redmine/
 
 # kiro-cli 自動產生的 agent config 範例
 agents/*/.kiro/agents/
+
+# OpenAB runtime 資料（thread_map、session 等）
+agents/*/.openab/
+
+# 容器內自動產生的 shell 設定
+agents/*/.profile
+agents/*/.zshrc
+agents/*/.bashrc
+agents/*/.npm/
+agents/*/.kiro/.cli_bash_history
+
+# IDE 個人設定
+.vscode/
+
+# 參考用 clone repo（有自己的 .git）
+refs/
+
+# 客訴專案暫存（正式文件在其他地方管理）
+customer-complaint/
