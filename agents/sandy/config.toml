@@ -3,6 +3,7 @@ bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["1492090122257170526", "1503940169252999198", "1503703338800382002", "1503704375074361424"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
+max_bot_turns = 100
 
 [agent]
 command = "kiro-cli"
@@ -34,3 +35,7 @@ stall_soft_ms = 10000
 stall_hard_ms = 30000
 done_hold_ms = 1500
 error_hold_ms = 2500
+
+[cron]
+usercron_enabled = true
+usercron_path = "cronjob.toml"
