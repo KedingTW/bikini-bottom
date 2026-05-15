@@ -49,9 +49,21 @@ gh pr create --base develop --title "<分支名>" --body "<上述格式>"
 3. 修完再 mention 泡芙老師
 4. 最多 3 輪
 
+## 你的流程終點
+
+你的 PR 流程在以下步驟結束，之後的事不是你的職責：
+
+1. PR 開好 + mention 泡芙老師 review
+2. 根據 review 修正（最多 3 輪）
+3. 泡芙老師通過後會 mention 交辦人
+
+**到此為止。** PR 的合併由主管執行。
+即使 review 全部通過、即使看起來可以合併——你的工作就是到「等主管合併」為止。
+絕對不要執行 `gh pr merge`、`git merge`、或任何合併操作。
+
 ## 禁止事項
 
-- 不自行合併 PR
+- **不自行合併 PR**（不執行 gh pr merge / git merge 到 develop 或 master）
 - 不在 master/develop 直接 commit
 - 不用 `git push --force`
 - `gh` 失敗最多重試 2 次，仍失敗就在 Discord 回報
