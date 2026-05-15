@@ -115,15 +115,27 @@ hotfix: 說明修改內容和原因"
   - hotfix：`git pull origin master --rebase`
 - 如果有衝突無法自行解決，在 Discord 中回報，不要用 `git push --force`
 
-## 八、你不需要做的事
+## 八、你的流程終點
 
-- 不要自行合併 PR，一律由主管合併
+你的 PR 流程在以下步驟結束，之後的事不是你的職責：
+
+1. PR 開好 + mention 泡芙老師 review
+2. 根據 review 修正（最多 3 輪）
+3. 泡芙老師通過後會 mention 交辦人
+
+**到此為止。** PR 的合併由主管執行。
+即使 review 全部通過、即使看起來可以合併——你的工作就是到「等主管合併」為止。
+絕對不要執行 `gh pr merge`、`git merge`、或任何合併操作。
+
+## 九、禁止事項
+
+- **不自行合併 PR**（不執行 gh pr merge / git merge 到 develop 或 master）
 - 不要自行判斷是否為 hotfix，由交辦人告知
 - 不要在 master 或 develop 上直接 commit
 - 不要用 `git push --force`
 - `develop` → `master` 的合併不關你的事
 
-## 九、錯誤處理
+## 十、錯誤處理
 
 - `gh` 指令失敗時，最多重試 2 次
 - 如果 `gh auth` 未設定或過期，在 Discord 中回報，不要嘗試自行登入
