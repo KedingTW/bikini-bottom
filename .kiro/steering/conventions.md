@@ -19,6 +19,14 @@ inclusion: manual
 - 所有 bot 的 Discord 配置統一設定：
   - `allow_bot_messages = "mentions"` — bot 之間只回應被直接 @mention 的訊息（支援 bot 互相呼叫）
   - `allow_user_messages = "multibot-mentions"` — 多 bot thread 中只回應被人類直接 @mention 的訊息（避免搶答）
+  - `max_bot_turns = 100` — bot-to-bot 連續回合上限（人類訊息重置計數器）
+
+## OpenAB 設定參考
+
+- 官方文件：https://github.com/openabdev/openab
+- 設定參考：https://github.com/openabdev/openab/blob/main/docs/config-reference.md
+- 多 Agent 協作：https://github.com/openabdev/openab/blob/main/docs/multi-agent.md
+- **遇到 OpenAB 設定問題時，先查官方文件再動手改**
 
 ## Docker
 

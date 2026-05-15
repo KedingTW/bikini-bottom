@@ -3,6 +3,7 @@ bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_PLAZA}", "${CHANNEL_MEETING}", "${CHANNEL_REPORT}"]
 allow_bot_messages = "mentions"
 allow_user_messages = "multibot-mentions"
+max_bot_turns = 100
 
 [agent]
 command = "kiro-cli"
@@ -34,3 +35,7 @@ stall_soft_ms = 10000
 stall_hard_ms = 30000
 done_hold_ms = 1500
 error_hold_ms = 2500
+
+[cron]
+usercron_enabled = true
+usercron_path = "cronjob.toml"
