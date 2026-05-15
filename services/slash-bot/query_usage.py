@@ -258,7 +258,8 @@ def _aggregate_usage(data: list[dict]) -> dict:
         u["credits"] += r["credits_used"]
         u["messages"] += r["total_messages"]
         u["conversations"] += r["chat_conversations"]
-        if r["tier"]:
+        # 資料已按 date DESC 排序，取最新的 tier 即可（第一次遇到有值就固定）
+        if r["tier"] and not u["tier"]:
             u["tier"] = r["tier"]
     return dict(by_user)
 
