@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Check Handoff Mention",
+  "description": "After a spec task is completed, remind the agent to check if it needs to mention someone for handoff based on the 交棒規則 in workflow.md",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "任務完成了。請檢查交棒規則：這個任務完成後，流程是否會停住等別人動作？如果是，你必須 mention 對方（使用 <@UID> 格式）。參考 workflow.md 的交棒規則表格。如果不需要交棒，忽略此提醒。"
+  }
+}
