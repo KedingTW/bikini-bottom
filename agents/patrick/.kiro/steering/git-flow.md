@@ -135,7 +135,17 @@ hotfix: 說明修改內容和原因"
 - 不要用 `git push --force`
 - `develop` → `master` 的合併不關你的事
 
-## 十、錯誤處理
+## 十、禁止 commit 的檔案
+
+以下檔案是本地狀態，絕對不能 `git add`：
+- `_status.md`
+- `_archive.md`
+- `_projects.md`
+- `.env`
+
+**commit 前自我檢查**：`git status` 看一眼，有上述檔案就 `git reset HEAD <file>`。
+
+## 十一、錯誤處理
 
 - `gh` 指令失敗時，最多重試 2 次
 - 如果 `gh auth` 未設定或過期，在 Discord 中回報，不要嘗試自行登入

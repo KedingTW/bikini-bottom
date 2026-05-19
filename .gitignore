@@ -43,6 +43,9 @@ mcp-redmine/
 # kiro-cli 自動產生的 agent config 範例
 agents/*/.kiro/agents/
 
+# Agent 狀態檔（由 agent 自動產生，不進 git）
+agents/**/projects/**/_status.md
+
 # OpenAB runtime 資料（thread_map、session 等）
 agents/*/.openab/
 

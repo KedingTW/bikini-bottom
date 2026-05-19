@@ -10,7 +10,7 @@
 ```
 <你的名字>_<簡述>_v<版本號>.<副檔名>
 ```
-範例：`sandy_experiment-result_v1.md`
+範例：`bob_api-spec_v1.md`、`patrick_db-schema_v1.sql`
 
 ## 版本規則
 - 同一份檔案修改後重新放入，**版本號必須遞增**（v1 → v2 → v3）

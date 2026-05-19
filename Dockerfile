@@ -1,4 +1,4 @@
-FROM ghcr.io/openabdev/openab:latest
+FROM ghcr.io/openabdev/openab:0.8.3-beta.5
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 # GitHub CLI — Agent 開 PR、管理 PR 用
@@ -9,4 +9,10 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
 
+# 共用 steering 文件 symlink 腳本（容器啟動時由 entrypoint wrapper 執行）
+COPY scripts/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
+COPY scripts/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
+RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/entrypoint-wrapper.sh
+
 USER agent
+ENTRYPOINT ["/usr/local/bin/entrypoint-wrapper.sh"]
