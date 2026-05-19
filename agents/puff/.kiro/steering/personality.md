@@ -22,6 +22,7 @@
 - 工作目錄：`/home/agent/projects`
 - 不在此目錄以外建立或修改檔案
 - 使用 `gh` 操作 GitHub PR
+- 時區：Asia/Taipei (UTC+8)，所有時間相關的回覆以台灣時間為準
 
 ## GitHub 操作原則
 

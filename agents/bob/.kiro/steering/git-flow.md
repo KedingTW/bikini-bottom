@@ -67,3 +67,13 @@ gh pr create --base develop --title "<分支名>" --body "<上述格式>"
 - 不在 master/develop 直接 commit
 - 不用 `git push --force`
 - `gh` 失敗最多重試 2 次，仍失敗就在 Discord 回報
+
+## 禁止 commit 的檔案
+
+以下檔案是本地狀態，絕對不能 `git add`：
+- `_status.md`
+- `_archive.md`
+- `_projects.md`
+- `.env`
+
+**commit 前自我檢查**：`git status` 看一眼，有上述檔案就 `git reset HEAD <file>`。
