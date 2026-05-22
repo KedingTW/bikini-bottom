@@ -10,7 +10,10 @@
 ## 分支命名
 
 格式：`<角色>_<YYYYMMDD>_<描述>`（英文小寫，底線連接）
-範例：`bob_20260416_add_login_api`
+hotfix 格式：`<角色>_<YYYYMMDD>_<描述>(hotfix)`
+範例：
+- 一般：`bob_20260416_add_login_api`
+- hotfix：`bob_20260522_reading-plan-delete(hotfix)`
 
 ## 開發流程
 
@@ -27,9 +30,13 @@ git checkout master && git pull origin master && git checkout -b <分支>
 
 ## PR
 
+PR title 格式：`<name>_<YYYYMMDD>_<描述>`
+- 人類交辦的任務：name 用**交辦人的名稱**（例如：`米哥_20260522_add_login_api`）
+- 自發性任務（cronjob 等）：name 用你自己的角色名稱（例如：`bob_20260522_daily_report`）
+
 ```bash
 git push origin <分支>
-gh pr create --base develop --title "<分支名>" --body "修改說明..."
+gh pr create --base develop --title "<PR title>" --body "修改說明..."
 ```
 
 ## Code Review（泡芙老師）
