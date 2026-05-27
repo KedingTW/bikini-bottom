@@ -81,6 +81,7 @@ bikini-bottom/
 │   ├── squidward/            ← 🦑 章魚哥（PM）
 │   ├── sandy/                ← 🐿️ 珊迪（客戶成功經理）
 │   ├── puff/                 ← 🐡 泡芙老師（Code Review）
+│   ├── conch/                ← 🐚 神奇海螺（團隊神諭者）
 │   └── gary/                 ← 🐌 小蝸（維運助手，也是 slash-bot 的人格）
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
