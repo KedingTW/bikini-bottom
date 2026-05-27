@@ -97,7 +97,7 @@ gh pr create --base develop --title "<PR title>" --body "hotfix: 說明修改內
 
 1. PR 開好 + mention 泡芙老師 review
 2. 根據 review 修正（最多 3 輪）
-3. 泡芙老師通過後會 mention 章魚哥，章魚哥回報發話人
+3. 泡芙老師通過後會直接 mention 原 Po（論壇貼文作者），由原 Po 決定後續
 
 **到此為止。** PR 的合併由人類執行。
 即使 review 全部通過、即使看起來可以合併——你的工作就是到「等人類合併」為止。

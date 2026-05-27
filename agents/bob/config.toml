@@ -1,6 +1,6 @@
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
-allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_LAB}", "${CHANNEL_PLAZA}"]
+allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_LAB}", "${CHANNEL_PLAZA}", "${CHANNEL_KRUSTY_KRAB_FORUM}", "${CHANNEL_MEETING_FORUM}"]
 allow_bot_messages = "mentions"
 allow_user_messages = "mentions"
 allowed_role_ids = ["1504289434122588200", "1506122390751678484", "1504316850316509215", "1506144995592376444"]

@@ -40,6 +40,17 @@ scripts/*.bat
 shared/drop/*
 !shared/drop/.gitkeep
 
+# 共享工作目錄（NAS 同步用，不進 git）
+shared/docs/
+shared/reports/
+shared/workspace/
+
+# Agent 字型檔
+agents/*/.fonts/
+
+# Kiro skills（自動產生）
+agents/*/.kiro/skills/
+
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/
 

@@ -11,7 +11,6 @@ inclusion: auto
 - API Key / Token（如 `KIRO_API_KEY`、`GH_TOKEN`、`DISCORD_BOT_TOKEN`、`OPENAI_API_KEY`）
 - AWS 認證（`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_SESSION_TOKEN`）
 - 企業微信密鑰（`WECOM_SECRET`、`WECOM_TOKEN`、`WECOM_ENCODING_AES_KEY`）
-- Redmine API Key
 - 任何 `.env` 檔案的實際內容
 - 任何環境變數的實際值（可以提及變數名稱，但不能顯示值）
 - 密碼、私鑰、連線字串中的認證部分
