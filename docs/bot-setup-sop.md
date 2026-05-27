@@ -343,6 +343,7 @@ channel = "1492090122257170526"
 | 泡芙老師 / puff | puff | AI agent |
 | 珍珍 / pearl | pearl | AI agent |
 | 蝦霸 / larry | larry | AI agent |
+| 神奇海螺 / conch | conch | AI agent |
 | 小蝸 / gary | slash-bot | 工具 Bot |
 | 企微 / wecom | wecom-bot | AI agent |
 | gateway | gateway | 服務 |

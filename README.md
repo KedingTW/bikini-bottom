@@ -15,12 +15,11 @@ Discord Server: 比奇堡
 │   ├── 🦑 章魚哥（squidward） — 專案經理 / PM
 │   ├── 🐿️ 珊迪（sandy） — 客戶成功經理
 │   ├── 🐡 泡芙老師（puff） — Code Review
+│   ├── 🐚 神奇海螺（conch） — 團隊神諭者
 │   ├── 🐌 小蝸（gary） — 維運助手 / 查詢服務
-│   └── 🐚 神奇海螺（magic-conch） — 容器健康監控 & 生命管理
 │
 ├── 獨立服務
-│   ├── 🐌 slash-bot — 小蝸的查詢指令服務（/usage、/activity）
-│   └── 🐚 magic-conch — 神奇海螺（/conch-status、/conch-logs、/conch-heal）
+│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務
 │
 └── Discord 頻道
     ├── 🍔 蟹堡王 — 工作任務交辦
@@ -42,8 +41,8 @@ Discord Server: 比奇堡
 | 🦑 章魚哥 | `squidward` | OpenAB agent | 專案經理，任務分配與追蹤 |
 | 🐿️ 珊迪 | `sandy` | OpenAB agent | 客戶成功經理 |
 | 🐡 泡芙老師 | `puff` | OpenAB agent | Code Review |
-| 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 維運助手，提供 `/usage`、`/activity` 查詢指令 |
-| 🐚 神奇海螺 | `magic-conch` | 獨立服務（未來可升級為 agent） | 容器健康監控 & 重啟管理（`/conch-status`、`/conch-logs`、`/conch-heal`） |
+| 🐚 神奇海螺 | `conch` | OpenAB agent | 團隊神諭者，求助與流程導航 |
+| 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 維運助手，提供 `/usage`、`/activity`、`/status`、`/heal`、`/logs`、`/archive` 指令 |
 
 ## 快速開始
 
@@ -86,8 +85,7 @@ bikini-bottom/
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
 ├── services/                 ← 獨立服務
-│   ├── slash-bot/            ← 🐌 小蝸查詢指令（/usage、/activity）
-│   └── magic-conch/          ← 🐚 神奇海螺（容器監控 & 生命管理）
+│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理）
 └── docs/
     ├── usage-guide.md        ← 使用指南（給交辦人看）
     ├── new-agent-sop.md      ← 新增角色 SOP

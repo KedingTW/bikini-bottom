@@ -196,19 +196,26 @@ services:
     env_file: .env
 
   # ─── 獨立服務 ───────────────────────────────────────
-  magic-conch:
-    build: ./services/magic-conch
-    container_name: magic-conch
-    restart: always
+  conch:
+    build: .
+    container_name: conch
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_CONCH}
-      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
-      - CONCH_CHANNEL_ID=1505752303624392755
-      - CONCH_ADMIN_IDS=${CONCH_ADMIN_IDS}
-      - CONCH_OPERATOR_ROLE_IDS=${CONCH_OPERATOR_ROLE_IDS}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - KIRO_API_KEY=${KIRO_API_KEY_CONCH}
+      - GIT_AUTHOR_NAME=神奇海螺 (Magic Conch)
+      - GIT_COMMITTER_NAME=神奇海螺 (Magic Conch)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - AGENT_NAME=conch
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./agents/conch/config.toml:/etc/openab/config.toml:ro
+      - ./agents/conch:/home/agent
+      - nas:/nas
+      - ./shared/steering:/opt/steering:ro
+      - ./shared/skills:/opt/skills:ro
 
   slash-bot:
     build: ./services/slash-bot
@@ -221,6 +228,11 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=us-east-1
+      - CONCH_ADMIN_IDS=${CONCH_ADMIN_IDS}
+      - CONCH_OPERATOR_ROLE_IDS=${CONCH_OPERATOR_ROLE_IDS}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 # ─── NAS CIFS Volume（單一連線，掛載 88.BikiniBottom 根目錄）───
 # echo_interval=10：每 10 秒偵測連線（預設 60 太慢）
