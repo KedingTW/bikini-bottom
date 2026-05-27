@@ -94,12 +94,14 @@ usercron_path = "cronjob.toml"
 | 身分組名稱 | Role ID | 觸發對象 |
 |-----------|---------|---------|
 | 比奇堡小夥伴們 | `1504289434122588200` | 全員 |
-| 比奇堡開發組 | `1506122390751678484` | 海綿、派大星、泡芙、章魚哥 |
+| 比奇堡開發組 | `1506122390751678484` | 海綿、派大星、珍珍、蝦霸、泡芙、章魚哥 |
 | 比奇堡專案組 | `1506130693812391946` | 章魚哥、珊迪 |
-| 比奇堡前端組 | `1506144995592376444` | 海綿、泡芙 |
-| 比奇堡後端組 | `1506145234919096320` | 派大星、泡芙 |
+| 比奇堡前端組 | `1506144995592376444` | 海綿、珍珍、泡芙 |
+| 比奇堡後端組 | `1506145234919096320` | 派大星、蝦霸、泡芙 |
 | 海綿寶寶 | `1504316850316509215` | 海綿 |
 | 派大星 | `1496024872222986313` | 派大星 |
+| 珍珍 | `待建立` | 珍珍 |
+| 蝦霸 | `待建立` | 蝦霸 |
 | 泡芙老師 | `1503577722901893182` | 泡芙 |
 | 章魚哥 | `1503699904176853033` | 章魚哥 |
 | 珊迪 | `1504348022803402835` | 珊迪 |
@@ -277,21 +279,46 @@ channel = "1492090122257170526"
 
 ## 九、新增 Bot 步驟
 
+### Discord 設定
 1. 在 Discord Developer Portal 建立 Bot Application + 取得 Token
 2. 在 Discord 伺服器建立該 bot 的個人身分組，並加入相關群組身分組
 3. 確認身分組開啟「允許任何人 @mention」
-4. 在 `.env` 加入 `DISCORD_BOT_TOKEN_<NAME>=...` 和 `KIRO_API_KEY_<NAME>=...`
-5. 建立 `agents/<bot-name>/` 目錄結構（參考第一節）
-6. 撰寫 `config.toml`（參考第二節模板，設定 `allowed_role_ids`）
-7. 撰寫 `.gitconfig`
-8. 撰寫 steering 檔案（遵守第五節預算，personality.md 必須含時區）
-9. 在 `docker-compose.yml` 加入服務定義（含 skills volume）
-10. 如需 skills，加入 `AGENT_SKILLS=<skill1>,<skill2>` 環境變數
-11. 建立 `projects/` 初始結構
-12. 設定 Bot 頭像（在 Discord Developer Portal → Bot → 上傳 Avatar）
-13. 更新 `shared/steering/team-members.md`（加入新成員）
-14. 更新神奇海螺的容器對應（`services/magic-conch/bot.py` 的 `ROLE_MAP` + `MANAGED_CONTAINERS`）
-15. `docker compose build --pull && docker compose up -d`
+4. 設定 Bot 頭像（在 Discord Developer Portal → Bot → 上傳 Avatar）
+
+### 環境變數
+5. 在 `.env` 加入 `DISCORD_BOT_TOKEN_<NAME>=...` 和 `KIRO_API_KEY_<NAME>=...`
+6. 在 `.env.example` 加入對應的空值範本
+
+### Agent 目錄（本地 repo）
+7. 建立 `agents/<bot-name>/` 目錄結構（參考第一節）
+8. 撰寫 `config.toml`（參考第二節模板，設定 `allowed_role_ids`）
+9. 撰寫 `.gitconfig`（gh credential helper + `[core] filemode = false`）
+10. 建立 `.config/gh/hosts.yml`（GitHub 認證）
+11. 撰寫 steering 檔案（遵守第五節預算，personality.md 必須含時區）
+12. 建立 `.openab/cronjob.toml`（空設定即可）
+13. 建立 `.openab/thread_map.json`（空 `{}`）
+
+### NAS 目錄（⚠️ 必須在容器啟動前完成）
+14. 在 NAS 上建立 `agents/<bot-name>/projects/` 目錄
+    - 路徑：`Z:\18_各部門共享區\21_系統開發課\88.BikiniBottom\agents\<bot-name>\projects`
+    - 或更新 `scripts/init-nas-dirs.bat` 後執行
+    - **注意**：若容器已啟動但 NAS 目錄當時不存在，需重啟容器（`docker restart <bot-name>`）
+
+### Docker
+15. 在 `docker-compose.yml` 加入服務定義（含 skills volume）
+16. 如需 skills，加入 `AGENT_SKILLS=<skill1>,<skill2>` 環境變數
+17. `docker compose up -d --build <bot-name>`
+
+### 驗證啟動
+18. 檢查 log 確認成功：`docker logs <bot-name> --tail 20`
+    - ✅ 應看到：`discord bot connected user=<角色名>`
+    - ✅ 應看到：`[nas-link] /home/agent/projects -> /nas/agents/<bot-name>/projects`
+    - ❌ 若看到 `No such file or directory` → NAS 目錄不存在，建好後 `docker restart <bot-name>`
+
+### 整合更新
+19. 更新 `shared/steering/team-members.md`（加入新成員 mention 格式）
+20. 更新神奇海螺的容器對應（`services/magic-conch/bot.py` 的 `ROLE_MAP` + `MANAGED_CONTAINERS`）
+21. 更新相關角色的 workflow steering（如章魚哥的交棒規則）
 
 ## 九、角色類型對照
 
@@ -314,6 +341,8 @@ channel = "1492090122257170526"
 | 章魚哥 / squidward | squidward | AI agent |
 | 珊迪 / sandy | sandy | AI agent |
 | 泡芙老師 / puff | puff | AI agent |
+| 珍珍 / pearl | pearl | AI agent |
+| 蝦霸 / larry | larry | AI agent |
 | 小蝸 / gary | slash-bot | 工具 Bot |
 | 企微 / wecom | wecom-bot | AI agent |
 | gateway | gateway | 服務 |

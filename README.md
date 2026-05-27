@@ -10,6 +10,8 @@ Discord Server: 比奇堡
 ├── AI 角色（OpenAB + kiro-cli）
 │   ├── 🧽 海綿寶寶（bob） — 全端工程師
 │   ├── ⭐ 派大星（patrick） — 後端工程師
+│   ├── 🐋 珍珍（pearl） — 全端工程師
+│   ├── 🦞 蝦霸（larry） — 後端工程師
 │   ├── 🦑 章魚哥（squidward） — 專案經理 / PM
 │   ├── 🐿️ 珊迪（sandy） — 客戶成功經理
 │   ├── 🐡 泡芙老師（puff） — Code Review
@@ -35,6 +37,8 @@ Discord Server: 比奇堡
 |------|--------|------|------|
 | 🧽 海綿寶寶 | `bob` | OpenAB agent | 全端工程師，主力開發 |
 | ⭐ 派大星 | `patrick` | OpenAB agent | 後端工程師 |
+| 🐋 珍珍 | `pearl` | OpenAB agent | 全端工程師 |
+| 🦞 蝦霸 | `larry` | OpenAB agent | 後端工程師 |
 | 🦑 章魚哥 | `squidward` | OpenAB agent | 專案經理，任務分配與追蹤 |
 | 🐿️ 珊迪 | `sandy` | OpenAB agent | 客戶成功經理 |
 | 🐡 泡芙老師 | `puff` | OpenAB agent | Code Review |
@@ -73,6 +77,8 @@ bikini-bottom/
 ├── agents/                   ← AI 角色
 │   ├── bob/                  ← 🧽 海綿寶寶（全端工程師）
 │   ├── patrick/              ← ⭐ 派大星（後端工程師）
+│   ├── pearl/                ← 🐋 珍珍（全端工程師）
+│   ├── larry/                ← 🦞 蝦霸（後端工程師）
 │   ├── squidward/            ← 🦑 章魚哥（PM）
 │   ├── sandy/                ← 🐿️ 珊迪（客戶成功經理）
 │   ├── puff/                 ← 🐡 泡芙老師（Code Review）
