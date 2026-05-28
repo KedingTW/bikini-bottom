@@ -2,7 +2,8 @@
 .env
 
 # 角色的工作產出（clone 的 repo、AI 產生的檔案）
-agents/*/projects/
+agents/*/projects
+agents/*/work/
 agents/*/.cache/
 agents/*/.conda/
 agents/*/.config/
@@ -12,6 +13,9 @@ agents/*/miniconda3/
 agents/*/data/
 agents/*/.bash_history
 agents/*/.gitconfig
+
+# 容器內安裝的 runtime（node、python 等）
+agents/*/node-v*/
 
 # kiro-cli session 資料
 agents/*/.kiro/sessions/
@@ -33,6 +37,9 @@ tmp/
 # 本地工具腳本（含機器特定路徑）
 scripts/*.bat
 
+# NAS 測試用 compose（不進 git）
+docker-compose-nas-test.yml
+
 # Kiro IDE workspace 層級設定（含 MCP 連線，每個環境不同）
 .kiro/settings/
 
@@ -50,6 +57,16 @@ agents/*/.fonts/
 
 # Kiro skills（自動產生）
 agents/*/.kiro/skills/
+
+# 共用 steering symlink（容器啟動時由 link-shared-steering.sh 自動產生）
+agents/*/.kiro/steering/channel-handoff.md
+agents/*/.kiro/steering/cronjob.md
+agents/*/.kiro/steering/discord-roles.md
+agents/*/.kiro/steering/mcp-policy.md
+agents/*/.kiro/steering/rules.md
+agents/*/.kiro/steering/security.md
+agents/*/.kiro/steering/shared-drive.md
+agents/*/.kiro/steering/team-members.md
 
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/
