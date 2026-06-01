@@ -18,6 +18,9 @@ Discord Server: 比奇堡
 │   ├── 🐚 神奇海螺（conch） — 團隊神諭者
 │   ├── 🐌 小蝸（gary） — 維運助手 / 查詢服務
 │
+├── 系統服務（僅提供授權，不參與對話）
+│   └── 🖥️ 凱倫（karen） — Discord 授權 Token 持有者
+│
 ├── 獨立服務
 │   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務
 │
@@ -43,6 +46,7 @@ Discord Server: 比奇堡
 | 🐡 泡芙老師 | `puff` | OpenAB agent | Code Review |
 | 🐚 神奇海螺 | `conch` | OpenAB agent | 團隊神諭者，求助與流程導航 |
 | 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 維運助手，提供 `/usage`、`/activity`、`/status`、`/heal`、`/logs`、`/archive` 指令 |
+| 🖥️ 凱倫 | `karen` | 系統服務（非 agent） | 不參與對話，僅持有 Discord Bot Token 供 MCP Server 管理成員/身分組/頻道 |
 
 ## 快速開始
 
@@ -82,7 +86,8 @@ bikini-bottom/
 │   ├── sandy/                ← 🐿️ 珊迪（客戶成功經理）
 │   ├── puff/                 ← 🐡 泡芙老師（Code Review）
 │   ├── conch/                ← 🐚 神奇海螺（團隊神諭者）
-│   └── gary/                 ← 🐌 小蝸（維運助手，也是 slash-bot 的人格）
+│   ├── gary/                 ← 🐌 小蝸（維運助手，也是 slash-bot 的人格）
+│   └── karen/               ← 🖥️ 凱倫（系統服務，僅持有授權 Token）
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
 ├── services/                 ← 獨立服務
@@ -94,6 +99,21 @@ bikini-bottom/
     ├── discord-channels.md   ← Discord 頻道配置
     └── bot-setup-sop.md      ← Bot 建立 SOP
 ```
+
+## 共用 Skills
+
+所有角色共享的 skill 放在 `shared/skills/`，透過 `AGENT_SKILLS` 環境變數控制掛載。Skill 為按需載入，不會每次對話都佔用 context。
+
+| Skill | 用途 | 載入時機 |
+|-------|------|----------|
+| `xlsx` | 產生 Excel 試算表 | 被要求建立 .xlsx 檔案時 |
+| `pdf` | 產生 PDF 文件 | 被要求建立 .pdf 檔案時 |
+| `pptx` | 產生 PowerPoint 簡報 | 被要求建立 .pptx 檔案時 |
+| `docx` | 產生 Word 文件 | 被要求建立 .docx 檔案時 |
+| `doc-coauthoring` | 企業微信文檔協作 | 需要編輯企微文檔時 |
+| `company-kb` | 科定企業公司知識庫 | 被問到公司、產品、組織、文化等內部資訊時 |
+
+`company-kb` 來源：[KedingTW/company-knowledge-base](https://github.com/KedingTW/company-knowledge-base)，涵蓋公司概覽、全產品線、品號編碼、業務代號、K大、展示館、海外策略、價格異動、專有名詞等。
 
 ## 常用指令
 
