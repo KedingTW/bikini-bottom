@@ -48,8 +48,8 @@ git checkout -b <分支名稱>
 ### push 並開 PR
 
 PR title 格式：`<name>_<YYYYMMDD>_<描述>`
-- 人類交辦的任務：name 用**交辦人的名稱**（例如：`潔庭_20260522_add_login_api`）
-- 自發性任務（cronjob 等）：name 用你自己的角色名稱（例如：`patrick_20260522_daily_report`）
+- name 一律用**你自己的角色名稱**（即分支名稱的前綴），與分支命名保持一致
+- 範例：`patrick_20260522_add_login_api`
 
 ```bash
 git push origin <分支名稱>
