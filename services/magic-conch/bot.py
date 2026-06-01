@@ -43,6 +43,10 @@ ROLE_MAP = {
     "sandy": "sandy",
     "泡芙老師": "puff",
     "puff": "puff",
+    "珍珍": "pearl",
+    "pearl": "pearl",
+    "蝦霸": "larry",
+    "larry": "larry",
     "小蝸": "slash-bot",
     "gary": "slash-bot",
     "企微": "wecom-bot",
@@ -51,7 +55,7 @@ ROLE_MAP = {
 }
 
 # 管理的容器清單（agent 角色，不含企微 bot / gateway）
-MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "slash-bot"]
+MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "slash-bot"]
 
 
 def get_docker_client() -> docker.DockerClient:
@@ -115,6 +119,8 @@ def _display_name(container_name: str) -> str:
         "squidward": "章魚哥",
         "sandy": "珊迪",
         "puff": "泡芙老師",
+        "pearl": "珍珍",
+        "larry": "蝦霸",
         "slash-bot": "小蝸",
         "wecom-bot": "企微Bot",
         "gateway": "Gateway",

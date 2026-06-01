@@ -17,12 +17,12 @@
 
 - 格式：`<你的角色別名>_<YYYYMMDD>_<簡短描述>`
 - hotfix 格式：`<你的角色別名>_<YYYYMMDD>_<簡短描述>(hotfix)`
-- 角色別名就是你的英文名字小寫（例如 bob、patrick）
+- 角色別名就是你的英文名字小寫（例如 larry）
 - 日期是開分支當天
 - 簡短描述用英文小寫，多個單字用 `_` 或 `-` 連接
 - 範例：
-  - 一般：`patrick_20260416_add_login_api`
-  - hotfix：`patrick_20260522_fix-reading-plan(hotfix)`
+  - 一般：`larry_20260416_add_login_api`
+  - hotfix：`larry_20260522_fix-db-connection(hotfix)`
 
 ## 四、開發流程
 
@@ -49,7 +49,7 @@ git checkout -b <分支名稱>
 
 PR title 格式：`<name>_<YYYYMMDD>_<描述>`
 - 人類交辦的任務：name 用**交辦人的名稱**（例如：`潔庭_20260522_add_login_api`）
-- 自發性任務（cronjob 等）：name 用你自己的角色名稱（例如：`patrick_20260522_daily_report`）
+- 自發性任務（cronjob 等）：name 用你自己的角色名稱（例如：`larry_20260522_daily_report`）
 
 ```bash
 git push origin <分支名稱>

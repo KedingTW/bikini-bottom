@@ -123,6 +123,50 @@ services:
       - ./shared/steering:/opt/steering:ro
       - ./shared/skills:/opt/skills:ro
 
+  pearl:
+    build: .
+    container_name: pearl
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_PEARL}
+      - KIRO_API_KEY=${KIRO_API_KEY_PEARL}
+      - GIT_AUTHOR_NAME=珍珍 (Pearl)
+      - GIT_COMMITTER_NAME=珍珍 (Pearl)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - AGENT_NAME=pearl
+      - AGENT_SKILLS=xlsx,pdf,pptx,docx,doc-coauthoring
+    volumes:
+      - ./agents/pearl/config.toml:/etc/openab/config.toml:ro
+      - ./agents/pearl:/home/agent
+      - nas:/nas
+      - ./shared/steering:/opt/steering:ro
+      - ./shared/skills:/opt/skills:ro
+
+  larry:
+    build: .
+    container_name: larry
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_LARRY}
+      - KIRO_API_KEY=${KIRO_API_KEY_LARRY}
+      - GIT_AUTHOR_NAME=蝦霸 (Larry)
+      - GIT_COMMITTER_NAME=蝦霸 (Larry)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - AGENT_NAME=larry
+      - AGENT_SKILLS=xlsx,pdf,pptx,docx,doc-coauthoring
+    volumes:
+      - ./agents/larry/config.toml:/etc/openab/config.toml:ro
+      - ./agents/larry:/home/agent
+      - nas:/nas
+      - ./shared/steering:/opt/steering:ro
+      - ./shared/skills:/opt/skills:ro
+
   # ─── WeCom Bot（透過 Gateway 連接企業微信）─────────────
   wecom-bot:
     build: .
@@ -152,19 +196,26 @@ services:
     env_file: .env
 
   # ─── 獨立服務 ───────────────────────────────────────
-  magic-conch:
-    build: ./services/magic-conch
-    container_name: magic-conch
-    restart: always
+  conch:
+    build: .
+    container_name: conch
+    restart: unless-stopped
+    <<: *extra-hosts
+    env_file: .env
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_CONCH}
-      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
-      - CONCH_CHANNEL_ID=1505752303624392755
-      - CONCH_ADMIN_IDS=${CONCH_ADMIN_IDS}
-      - CONCH_OPERATOR_ROLE_IDS=${CONCH_OPERATOR_ROLE_IDS}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - KIRO_API_KEY=${KIRO_API_KEY_CONCH}
+      - GIT_AUTHOR_NAME=神奇海螺 (Magic Conch)
+      - GIT_COMMITTER_NAME=神奇海螺 (Magic Conch)
+      - GIT_AUTHOR_EMAIL=${GIT_EMAIL}
+      - GIT_COMMITTER_EMAIL=${GIT_EMAIL}
+      - AGENT_NAME=conch
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./agents/conch/config.toml:/etc/openab/config.toml:ro
+      - ./agents/conch:/home/agent
+      - nas:/nas
+      - ./shared/steering:/opt/steering:ro
+      - ./shared/skills:/opt/skills:ro
 
   slash-bot:
     build: ./services/slash-bot
@@ -177,12 +228,21 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=us-east-1
+      - CONCH_ADMIN_IDS=${CONCH_ADMIN_IDS}
+      - CONCH_OPERATOR_ROLE_IDS=${CONCH_OPERATOR_ROLE_IDS}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 # ─── NAS CIFS Volume（單一連線，掛載 88.BikiniBottom 根目錄）───
+# echo_interval=10：每 10 秒偵測連線（預設 60 太慢）
+# cache=loose：允許寬鬆快取，提升讀取效能
+# 注意：resilienthandles/persistenthandles 已移除（WSL2 kernel 不再支援）
+# 若斷線無法恢復，使用 /conch-nas-reset 重建所有容器
 volumes:
   nas:
     driver: local
     driver_opts:
       type: cifs
-      o: "addr=192.168.1.218,username=${NAS_USER},password=${NAS_PASSWORD},file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8"
+      o: "addr=192.168.1.218,username=${NAS_USER},password=${NAS_PASSWORD},file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,cache=loose"
       device: "//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom"

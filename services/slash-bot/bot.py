@@ -1,10 +1,15 @@
 """🐌 比奇堡查詢服務 — Slash Command Bot"""
+import asyncio
+import json
 import logging
 import os
 import traceback
+from datetime import datetime, timedelta, timezone
 
 import discord
+import docker
 from discord import app_commands
+from openai import AsyncOpenAI
 
 from query_usage import (
     ACTIVITY_CATEGORIES,
@@ -18,6 +23,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 TOKEN = os.environ["DISCORD_BOT_TOKEN"]
 GUILD_ID = os.environ.get("DISCORD_GUILD_ID")
 ALLOWED_CHANNEL_ID = os.environ.get("SLASH_BOT_CHANNEL_ID")
+
+# Container management
+ADMIN_USER_IDS = [int(uid.strip()) for uid in os.environ.get("CONCH_ADMIN_IDS", "").split(",") if uid.strip()]
+OPERATOR_ROLE_IDS = [int(rid.strip()) for rid in os.environ.get("CONCH_OPERATOR_ROLE_IDS", "").split(",") if rid.strip()]
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 RANK_MEDALS = {0: "🥇", 1: "🥈", 2: "🥉"}
 
@@ -240,6 +251,267 @@ def _col_label(col: str) -> str:
         "transformation_linesingested": "輸入行數",
     }
     return labels.get(col, col.split("_", 1)[-1])
+
+
+# ─── Container Management (from magic-conch) ─────────────
+
+ROLE_MAP = {
+    "海綿寶寶": "bob", "bob": "bob",
+    "派大星": "patrick", "patrick": "patrick",
+    "章魚哥": "squidward", "squidward": "squidward",
+    "珊迪": "sandy", "sandy": "sandy",
+    "泡芙老師": "puff", "puff": "puff",
+    "珍珍": "pearl", "pearl": "pearl",
+    "蝦霸": "larry", "larry": "larry",
+    "海螺": "conch", "conch": "conch",
+    "企微": "wecom-bot", "wecom": "wecom-bot",
+    "gateway": "gateway",
+}
+
+MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "conch"]
+
+
+def get_docker_client() -> docker.DockerClient:
+    docker_host = os.environ.get("DOCKER_HOST", "unix:///var/run/docker.sock")
+    return docker.DockerClient(base_url=docker_host)
+
+
+def resolve_container_name(name: str) -> str | None:
+    return ROLE_MAP.get(name.lower().strip())
+
+
+def is_admin(interaction: discord.Interaction) -> bool:
+    return interaction.user.id in ADMIN_USER_IDS
+
+
+def is_operator(interaction: discord.Interaction) -> bool:
+    if is_admin(interaction):
+        return True
+    if hasattr(interaction.user, "roles"):
+        user_role_ids = [r.id for r in interaction.user.roles]
+        return any(rid in user_role_ids for rid in OPERATOR_ROLE_IDS)
+    return False
+
+
+def _display_name(container_name: str) -> str:
+    names = {
+        "bob": "海綿寶寶", "patrick": "派大星", "squidward": "章魚哥",
+        "sandy": "珊迪", "puff": "泡芙老師", "pearl": "珍珍",
+        "larry": "蝦霸", "conch": "神奇海螺",
+        "slash-bot": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
+    }
+    return names.get(container_name, container_name)
+
+
+def _status_emoji(status: str) -> str:
+    return {"running": "🟢", "exited": "🔴", "restarting": "🟡", "paused": "⏸️", "dead": "💀"}.get(status, "❓")
+
+
+def _format_uptime(started_at: str) -> str:
+    try:
+        started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        delta = datetime.now(timezone.utc) - started
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes = remainder // 60
+        if days > 0:
+            return f"{days}d {hours}h"
+        elif hours > 0:
+            return f"{hours}h {minutes}m"
+        else:
+            return f"{minutes}m"
+    except Exception:
+        return "?"
+
+
+def _get_status_line(name: str, client: docker.DockerClient) -> str:
+    try:
+        c = client.containers.get(name)
+        emoji = _status_emoji(c.status)
+        started_at = c.attrs["State"].get("StartedAt", "")
+        uptime = _format_uptime(started_at)
+        base = f"{emoji} **{_display_name(name)}**"
+        if c.status != "running":
+            return f"{base} — {c.status}"
+        return f"{base} — running (uptime {uptime})"
+    except docker.errors.NotFound:
+        return f"❓ **{_display_name(name)}** — 不存在"
+
+
+@bot.tree.command(name="status", description="🐌 查看容器狀態")
+@app_commands.describe(target="角色名稱，不填則查看全部")
+async def status_cmd(interaction: discord.Interaction, target: str = ""):
+    await interaction.response.defer()
+    try:
+        client = get_docker_client()
+        if not target:
+            lines = [_get_status_line(name, client) for name in MANAGED_CONTAINERS]
+            client.close()
+            await interaction.followup.send(f"🐌 全員回報喵～\n\n" + "\n".join(lines))
+        else:
+            container_name = resolve_container_name(target)
+            if not container_name:
+                client.close()
+                await interaction.followup.send(f"🐌 不認識「{target}」喵～")
+                return
+            line = _get_status_line(container_name, client)
+            client.close()
+            await interaction.followup.send(f"🐌 {line}")
+    except Exception as e:
+        logging.error(f"/status 失敗：{e}\n{traceback.format_exc()}")
+        await interaction.followup.send(f"🐌 出了點問題喵～ `{e}`")
+
+
+@bot.tree.command(name="heal", description="🐌 重啟容器")
+@app_commands.describe(target="角色名稱")
+async def heal_cmd(interaction: discord.Interaction, target: str):
+    if not is_operator(interaction):
+        await interaction.response.send_message("🐌 不允許喵～", ephemeral=True)
+        return
+    await interaction.response.defer()
+    try:
+        container_name = resolve_container_name(target)
+        if not container_name:
+            await interaction.followup.send(f"🐌 不認識「{target}」喵～")
+            return
+        client = get_docker_client()
+        container = client.containers.get(container_name)
+        container.restart(timeout=10)
+        client.close()
+        await interaction.followup.send(f"🐌 {_display_name(container_name)}已重啟喵～")
+    except docker.errors.NotFound:
+        await interaction.followup.send(f"🐌 {target}不存在喵～")
+    except Exception as e:
+        logging.error(f"/heal 失敗：{e}\n{traceback.format_exc()}")
+        await interaction.followup.send(f"🐌 治療失敗喵～ `{e}`")
+
+
+@bot.tree.command(name="logs", description="🐌 查看容器近期 log")
+@app_commands.describe(target="角色名稱", lines="行數（預設 20，上限 50）")
+async def logs_cmd(interaction: discord.Interaction, target: str, lines: int = 20):
+    await interaction.response.defer()
+    try:
+        container_name = resolve_container_name(target)
+        if not container_name:
+            await interaction.followup.send(f"🐌 不認識「{target}」喵～")
+            return
+        client = get_docker_client()
+        lines = min(lines, 50)
+        c = client.containers.get(container_name)
+        log_output = c.logs(tail=lines, timestamps=False).decode("utf-8", errors="replace")
+        if len(log_output) > 1900:
+            log_output = log_output[-1900:]
+        client.close()
+        await interaction.followup.send(
+            f"🐌 **{_display_name(container_name)}** 最近 {lines} 行 log：\n```\n{log_output}\n```"
+        )
+    except docker.errors.NotFound:
+        await interaction.followup.send(f"🐌 {target}不存在喵～")
+    except Exception as e:
+        logging.error(f"/logs 失敗：{e}\n{traceback.format_exc()}")
+        await interaction.followup.send(f"🐌 讀取失敗喵～ `{e}`")
+
+
+@bot.tree.command(name="archive", description="🐌 封存當前 thread，開新 thread 延續對話")
+@app_commands.describe(reason="封存原因（選填）")
+async def archive_cmd(interaction: discord.Interaction, reason: str = "對話過長"):
+    channel = interaction.channel
+    if not isinstance(channel, discord.Thread):
+        await interaction.response.send_message("🐌 這個指令只能在 thread 裡使用喵～", ephemeral=True)
+        return
+    if not is_operator(interaction):
+        await interaction.response.send_message("🐌 不允許喵～", ephemeral=True)
+        return
+    await interaction.response.defer()
+    try:
+        thread = channel
+        parent_channel = thread.parent
+        messages = []
+        async for msg in thread.history(limit=300, oldest_first=True):
+            messages.append(msg)
+        msg_count = len(messages)
+        if msg_count < 5:
+            await interaction.followup.send("🐌 訊息太少，不需要封存喵～")
+            return
+
+        # Generate summary
+        summary = await _summarize_messages(messages)
+
+        # Find bot participants
+        bot_ids = set()
+        for msg in messages:
+            if msg.author.bot and msg.author.id != bot.user.id:
+                bot_ids.add(msg.author.id)
+        mentions_str = " ".join(f"<@{uid}>" for uid in bot_ids)
+
+        new_thread_title = f"{thread.name}（續）" if len(thread.name) < 90 else thread.name[:87] + "…（續）"
+
+        await thread.send(
+            f"📦 **此對話已封存**（{reason}，共 {msg_count} 則訊息）\n"
+            f"由 {interaction.user.mention} 執行封存。\n"
+            f"討論將延續至新 thread。"
+        )
+
+        opener_content = (
+            f"🔄 **延續討論**（封存自：{thread.name}）\n\n"
+            f"{mentions_str}\n\n"
+            f"**前情提要：**\n{summary}"
+        )
+        if len(opener_content) > 1900:
+            opener_content = opener_content[:1900] + "\n\n（摘要已截斷）"
+
+        new_msg = await parent_channel.send(opener_content)
+        new_thread = await new_msg.create_thread(name=new_thread_title)
+
+        await new_thread.send(
+            f"🐌 此 thread 延續自封存的對話喵～\n"
+            f"原 thread：https://discord.com/channels/{interaction.guild_id}/{thread.id}\n"
+            f"封存原因：{reason}\n"
+            f"原訊息數：{msg_count}"
+        )
+
+        await interaction.followup.send(
+            f"🐌 封存完畢喵～\n"
+            f"📦 原 thread：{msg_count} 則訊息已封存\n"
+            f"🆕 新 thread：{new_thread.mention}\n"
+            f"👥 已 mention {len(bot_ids)} 個 bot 參與者"
+        )
+    except Exception as e:
+        logging.error(f"/archive 失敗：{e}\n{traceback.format_exc()}")
+        await interaction.followup.send(f"🐌 封存失敗喵～ `{e}`")
+
+
+async def _summarize_messages(messages: list[discord.Message]) -> str:
+    if not openai_client:
+        recent = messages[-20:]
+        lines = [f"{m.author.display_name}: {m.content[:100]}" for m in recent if m.content]
+        return "（無法產生 AI 摘要，以下為最近對話）\n" + "\n".join(lines)
+
+    recent = messages[-100:]
+    conversation = "\n".join(
+        f"[{m.created_at.strftime('%m/%d %H:%M')}] {m.author.display_name}: {m.content[:200]}"
+        for m in recent if m.content
+    )
+    try:
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "你是一個對話摘要助手。請用繁體中文總結以下 Discord 對話，包含：\n"
+                    "1. 討論主題\n2. 目前進度/結論\n3. 待辦事項或未解決的問題\n"
+                    "4. 參與者各自的立場/貢獻\n保持簡潔，不超過 500 字。"
+                )},
+                {"role": "user", "content": conversation},
+            ],
+            max_tokens=800,
+            temperature=0.3,
+        )
+        return response.choices[0].message.content or "（摘要產生失敗）"
+    except Exception as e:
+        logging.error(f"OpenAI 摘要失敗：{e}")
+        recent = messages[-10:]
+        lines = [f"{m.author.display_name}: {m.content[:80]}" for m in recent if m.content]
+        return f"（AI 摘要失敗：{e}）\n最近對話：\n" + "\n".join(lines)
 
 
 if __name__ == "__main__":
