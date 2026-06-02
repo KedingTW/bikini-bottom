@@ -1,8 +1,14 @@
 # 🏝️ 比奇堡開發團隊
 
+![比奇堡 AI 開發團隊](docs/images/readme-team-hero.png)
+
 基於 [OpenAB](https://github.com/openabdev/openab) 的 Discord AI 開發團隊，每個角色都是獨立的 AI agent，擁有自己的個性、職責和工作空間。
 
 ## 架構
+
+![工作流程](docs/images/readme-workflow.png)
+
+![會議室協作](docs/images/readme-meeting-room.png)
 
 ```
 Discord Server: 比奇堡
@@ -22,7 +28,7 @@ Discord Server: 比奇堡
 │   └── 🖥️ 凱倫（karen） — Discord 授權 Token 持有者
 │
 ├── 獨立服務
-│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務
+│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務（含神奇海螺的容器操作）
 │
 └── Discord 頻道
     ├── 🍔 蟹堡王 — 工作任務交辦
@@ -91,7 +97,7 @@ bikini-bottom/
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
 ├── services/                 ← 獨立服務
-│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理）
+│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理 + 海螺容器操作）
 └── docs/
     ├── usage-guide.md        ← 使用指南（給交辦人看）
     ├── new-agent-sop.md      ← 新增角色 SOP
@@ -157,6 +163,8 @@ docker compose up -d
 | [docs/bot-setup-sop.md](docs/bot-setup-sop.md) | 維運人員 | Discord Bot 建立與設定 |
 | [docs/git-flow-sop.md](docs/git-flow-sop.md) | 開發者 | Git 分支與 PR 規範 |
 | [docs/discord-channels.md](docs/discord-channels.md) | 所有人 | Discord 頻道用途說明 |
+| [docs/k3s-operations-guide.md](docs/k3s-operations-guide.md) | 維運人員 | K3s 維運指南（含插畫） |
+| [docs/k3s-migration-plan.md](docs/k3s-migration-plan.md) | 維運人員 | K3s 遷移規劃 |
 
 ## 新增角色
 
