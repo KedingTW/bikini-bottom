@@ -1,255 +1,270 @@
-# 🚀 比奇堡 K3s 遷移規劃
+# 🏝️ 比奇堡 K3s 遷移規劃
 
-> 建立日期：2026-06-02
-> 狀態：規劃中
-> 目標：從 Windows Docker Compose 遷移至 Linux + K3s + Helm
+> 從 Docker Compose 遷移到 K3s（輕量 Kubernetes），用 docker compose 經驗帶入說明。
 
 ---
 
-## 背景與動機
+## 概念對照表
 
-### 目前架構
-- Windows 主機 + Docker Desktop（WSL2 backend）
-- `docker-compose.yml` 管理所有 agent + 服務
-- NAS 透過 CIFS volume 掛載
-- 小蝸（slash-bot）透過 docker.sock 管理容器
+先建立直覺：K3s 的每個概念都有 docker compose 的對應物。
 
-### 痛點
-1. **NAS CIFS 斷線** — WSL2 kernel 的 CIFS 實作不完整，不支援 `soft`/`reconnect`，斷線後 volume stale，需手動 `compose down && up`
-2. **無法自動恢復** — 小蝸容器內無 docker CLI，無法執行 compose 操作
-3. **Windows 不穩定** — 休眠/更新/重啟都會導致全員斷線
-4. **密鑰集中** — 所有 token 在同一個 `.env` 檔案
-5. **更新笨重** — 改任何設定都需要全員重建
-
-### 遷移後的好處
-| 類別 | 好處 |
-|---|---|
-| 穩定性 | Linux 原生 NFS mount（`soft,reconnect`），斷線自動恢復 |
-| 自動修復 | K8s 偵測 Pod 異常自動重啟，不需人工介入 |
-| 獨立生命週期 | 重啟 bob 不影響 patrick |
-| 版本更新 | `helm upgrade` 一行搞定，滾動更新不斷線 |
-| 資源管理 | 每個 agent 可設 CPU/RAM 上限 |
-| 密鑰隔離 | 每個 agent 獨立 Kubernetes Secret |
-| 監控 | K8s 原生健康檢查 + 事件日誌 |
-| 小蝸升級 | 用 K8s Python client 操作，不再需要 docker.sock |
+| Docker Compose | K3s / Kubernetes | 說明 |
+|----------------|-----------------|------|
+| `docker-compose.yml` | `Deployment` YAML | 定義要跑什麼 container、幾個副本 |
+| `services.bob` | `Deployment: bob` | 一個角色 = 一個 Deployment |
+| `environment:` | `Secret` + `ConfigMap` | 環境變數拆成機密（token）和設定（channel ID） |
+| `.env` 檔案 | `Secret` 物件 | token、密碼等敏感值 |
+| `volumes:` | `PersistentVolume` (PV) + `PersistentVolumeClaim` (PVC) | 持久化儲存 |
+| `build: .` | Image Registry（GHCR / 本地 registry） | K3s 不在部署時 build，用預先 build 好的 image |
+| `restart: unless-stopped` | K3s 內建自癒（Pod 掛了自動重啟） | 比 docker 更強，會自動重新排程 |
+| `docker compose up -d` | `kubectl apply -f k3s/` | 部署全部 |
+| `docker compose restart bob` | `kubectl rollout restart deployment/bob` | 重啟特定角色 |
+| `docker compose logs -f bob` | `kubectl logs -f deployment/bob` | 看 log |
+| `docker compose down` | `kubectl delete -f k3s/` | 全部停掉 |
+| `extra_hosts` | 不需要（Pod 本身在 host 網路或用 Service） | K3s Pod 預設能連 host |
 
 ---
 
-## 目標架構
+## 為什麼遷移？
+
+### Docker Compose 目前的痛點
+
+1. **NAS 斷線 = 全軍覆沒** — CIFS volume 斷線時，docker compose 沒有自動恢復機制，需手動 `docker compose down -v && up`
+2. **滾動更新不方便** — 改 image 後要 `down` + `up`，有短暫停機
+3. **資源管控粗糙** — 沒辦法精確限制每個 agent 的 RAM（目前 11 個容器吃同一台機器）
+4. **Config 變更要重啟** — volume mount 的 config.toml 改了要手動 restart
+
+### K3s 帶來什麼
+
+1. **自癒** — Pod 掛了自動重啟、NAS 斷線後自動重新掛載嘗試
+2. **滾動更新** — 改 image 版本 → `kubectl apply` → 自動一個個換掉，零停機
+3. **資源限制** — 每個 Pod 設定 CPU/RAM 上限，避免某個 agent 吃光所有資源
+4. **Config 熱更新** — ConfigMap 改了可以觸發 Pod 自動重啟
+5. **未來擴展** — 加第二台機器時，K3s 自動把 Pod 分散到多節點
+
+---
+
+## 硬體環境
+
+| 項目 | 規格 |
+|------|------|
+| OS | Ubuntu Desktop 24.04 LTS |
+| RAM | 16 GB（之後升 32 GB） |
+| 用途 | 跑 K3s 單節點 cluster |
+| 儲存 | NAS Samba 掛載（192.168.1.218） |
+| 網路 | 內網，可存取 NAS + MCP Server |
+
+### 資源分配估算（16 GB）
+
+| 元件 | 預估 RAM |
+|------|----------|
+| Ubuntu Desktop + 系統服務 | ~2 GB |
+| K3s control plane | ~512 MB |
+| 每個 OpenAB agent（idle） | ~150–250 MB |
+| 每個 OpenAB agent（active kiro-cli session） | ~300–500 MB |
+| slash-bot (Node.js) | ~100 MB |
+| gateway | ~50 MB |
+| **合計（11 pods idle）** | **~5–6 GB** |
+| **合計（11 pods 全活躍）** | **~8–10 GB** |
+
+16 GB 能跑，但比較緊。建議：
+- 設定每個 agent pod 的 memory limit 為 512 MB
+- 預留 4 GB 給系統 + K3s
+- 升級到 32 GB 後就很寬裕
+
+---
+
+## 架構設計
 
 ```
-Linux Server (Ubuntu 24.04 LTS)
-├── K3s（單節點）
-│   ├── Namespace: bikini-bottom
-│   │   ├── Deployment: bob        (OpenAB Helm)
-│   │   ├── Deployment: patrick    (OpenAB Helm)
-│   │   ├── Deployment: squidward  (OpenAB Helm)
-│   │   ├── Deployment: sandy      (OpenAB Helm)
-│   │   ├── Deployment: puff       (OpenAB Helm)
-│   │   ├── Deployment: pearl      (OpenAB Helm)
-│   │   ├── Deployment: larry      (OpenAB Helm)
-│   │   ├── Deployment: conch      (OpenAB Helm)
-│   │   ├── Deployment: gary       (自訂 manifest)
-│   │   ├── Deployment: gateway    (OpenAB Helm 內建)
-│   │   └── Deployment: wecom-bot  (OpenAB Helm)
-│   │
-│   ├── PersistentVolume: nfs-nas (NFS → NAS)
-│   ├── ConfigMap: shared-steering
-│   └── Secret: agent-tokens (每 agent 獨立)
-│
-└── NFS mount: 192.168.1.218:/volume1/KD共用/...
-```
-
----
-
-## 技術決策
-
-| 項目 | 決策 | 原因 |
-|---|---|---|
-| K8s 發行版 | K3s | 單機部署、輕量、5 分鐘安裝 |
-| 部署工具 | Helm | OpenAB 官方提供 chart，直接用 |
-| NAS 協定 | NFS（取代 CIFS）| Linux kernel 完整支援 `soft,reconnect` |
-| 作業系統 | Ubuntu 24.04 LTS | 穩定、長期支援、社群大 |
-| gary-service | 獨立 Deployment | 非 OpenAB agent，需自訂 manifest |
-| magic-conch | 移除 | 功能已整合進 gary-service（小蝸）|
-
----
-
-## 硬體需求
-
-| 項目 | 最低 | 建議 |
-|---|---|---|
-| CPU | 4 核 | 8 核（每 agent ~0.5 核） |
-| RAM | 16 GB | 32 GB（每 agent ~1-2 GB） |
-| 磁碟 | 50 GB SSD | 100 GB SSD |
-| 網路 | Gigabit，可連 NAS | 同上 |
-
----
-
-## 遷移步驟（依序執行）
-
-### Phase 1：環境準備
-1. 安裝 Ubuntu 24.04 LTS
-2. 安裝 K3s：`curl -sfL https://get.k3s.io | sh -`
-3. 安裝 Helm：`curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
-4. 加入 OpenAB Helm repo：`helm repo add openab https://openabdev.github.io/openab`
-5. 設定 NFS：請 MIS 在 NAS 開啟 NFS 服務，授權新主機 IP
-6. 建立 NFS PersistentVolume + StorageClass
-
-### Phase 2：部署 Agent（逐一遷移）
-1. 建立 `bikini-bottom` namespace
-2. 建立 Kubernetes Secrets（每 agent 的 token）
-3. 準備 `values-bikini-bottom.yaml`（所有 agent 的配置）
-4. `helm install bikini-bottom openab/openab -f values-bikini-bottom.yaml`
-5. 逐一驗證每個 agent 的 Discord 連線
-6. 認證：`kubectl exec -it deployment/bikini-bottom-bob -- kiro-cli login --use-device-flow`
-
-### Phase 3：gary-service（小蝸）遷移
-1. 將 `services/slash-bot/` 改名為 `services/gary-service/`
-2. 修改 Dockerfile：移除 docker SDK，改用 `kubernetes` Python client
-3. 修改 bot.py：`container.restart()` → `kubectl rollout restart deployment/xxx`
-4. 撰寫 K8s Deployment manifest（含 ServiceAccount + RBAC 權限）
-5. 部署並測試 `/heal`、`/status`、`/logs` 指令
-
-### Phase 4：NAS NFS 掛載
-1. 建立 NFS PersistentVolume 指向 NAS
-2. 各 agent 透過 `extraVolumeMounts` 掛載 `/nas`
-3. Steering 改用 ConfigMap 或 NFS subPath
-4. 驗證 NAS 斷線恢復行為（拔網路線測試）
-
-### Phase 5：清理
-1. 停止 Windows 上的 Docker Compose 環境
-2. 移除 `services/magic-conch/`（功能已整合進 gary-service）
-3. 更新 README 和 docs
-4. 歸檔 `docker-compose.yml`（保留但標記為 deprecated）
-
----
-
-## values-bikini-bottom.yaml 範例（草稿）
-
-```yaml
-# 所有 agent 共用設定透過 Helm values 管理
-# 實際部署時用：helm install bikini-bottom openab/openab -f values-bikini-bottom.yaml
-
-agents:
-  bob:
-    command: kiro-cli
-    args: ["acp", "--trust-all-tools"]
-    discord:
-      enabled: true
-      allowedChannels: ["CHANNEL_ID"]
-      allowBotMessages: "mentions"
-    env:
-      AGENT_NAME: "bob"
-      AGENT_SKILLS: "xlsx,pdf,pptx,docx,doc-coauthoring"
-      GIT_AUTHOR_NAME: "海綿寶寶 (SpongeBob)"
-      GIT_COMMITTER_NAME: "海綿寶寶 (SpongeBob)"
-    secretEnv:
-      - name: KIRO_API_KEY
-        secretName: bob-secrets
-        secretKey: kiro-api-key
-      - name: GH_TOKEN
-        secretName: bob-secrets
-        secretKey: gh-token
-    persistence:
-      enabled: true
-      size: 2Gi
-    extraVolumeMounts:
-      - name: nas
-        mountPath: /nas
-      - name: steering
-        mountPath: /opt/steering
-        readOnly: true
-    extraVolumes:
-      - name: nas
-        persistentVolumeClaim:
-          claimName: nfs-nas
-      - name: steering
-        configMap:
-          name: shared-steering
-    # 其他 agent 同理，只改 name / token / channel
+┌─────────────────────────────────────────────────┐
+│  Ubuntu Desktop (K3s single-node)               │
+│                                                 │
+│  ┌─── namespace: bikini-bottom ──────────────┐  │
+│  │                                           │  │
+│  │  Deployments:                             │  │
+│  │    bob, patrick, puff, squidward,         │  │
+│  │    sandy, pearl, larry, conch,            │  │
+│  │    slash-bot, gateway, wecom-bot          │  │
+│  │                                           │  │
+│  │  Secrets:                                 │  │
+│  │    discord-tokens, kiro-api-keys,         │  │
+│  │    github-token, nas-credentials          │  │
+│  │                                           │  │
+│  │  ConfigMaps:                              │  │
+│  │    channel-ids, agent-configs,            │  │
+│  │    shared-steering, shared-skills         │  │
+│  │                                           │  │
+│  │  PersistentVolumes:                       │  │
+│  │    nas-shared (CIFS → NAS)                │  │
+│  │    agent-home-<name> (hostPath)           │  │
+│  │                                           │  │
+│  └───────────────────────────────────────────┘  │
+│                                                 │
+│  /mnt/nas ← mount -t cifs (systemd mount)       │
+│                                                 │
+└─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## gary-service K8s manifest 草稿
+## 遷移步驟
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gary
-  namespace: bikini-bottom
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: gary
-  template:
-    metadata:
-      labels:
-        app: gary
-    spec:
-      serviceAccountName: gary-sa  # 需要 RBAC 權限操作其他 Deployment
-      containers:
-        - name: gary
-          image: ghcr.io/kedingtw/gary-service:latest
-          env:
-            - name: DISCORD_BOT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: gary-secrets
-                  key: discord-bot-token
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: gary-sa
-  namespace: bikini-bottom
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: gary-role
-  namespace: bikini-bottom
-rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "patch"]  # patch = rollout restart
-  - apiGroups: [""]
-    resources: ["pods", "pods/log"]
-    verbs: ["get", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gary-rolebinding
-  namespace: bikini-bottom
-subjects:
-  - kind: ServiceAccount
-    name: gary-sa
-roleRef:
-  kind: Role
-  name: gary-role
-  apiGroup: rbac.authorization.k8s.io
+### Phase 1：安裝 K3s（30 分鐘）
+
+```bash
+# 安裝 K3s（單節點，不跑 traefik — 我們不需要 ingress）
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
+
+# 設定 kubectl（讓一般使用者也能用）
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $(id -u):$(id -g) ~/.kube/config
+
+# 驗證
+kubectl get nodes
+# → 應該看到一個 Ready 的 node
+```
+
+### Phase 2：NAS 掛載（systemd mount 取代 docker volume driver）
+
+```bash
+# 安裝 cifs 工具
+sudo apt install -y cifs-utils
+
+# 建立 credential 檔（不把密碼寫在 fstab）
+sudo tee /etc/nas-credentials <<EOF
+username=YOUR_NAS_USER
+password=YOUR_NAS_PASSWORD
+EOF
+sudo chmod 600 /etc/nas-credentials
+
+# 建立掛載點
+sudo mkdir -p /mnt/nas
+
+# 寫入 fstab（開機自動掛載）
+echo '//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom /mnt/nas cifs credentials=/etc/nas-credentials,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
+
+# 掛載
+sudo mount -a
+
+# 驗證
+ls /mnt/nas/shared/
+```
+
+重點：用 `x-systemd.automount` 讓 systemd 管理掛載，斷線時自動重試。
+
+### Phase 3：Build Image + 本地 Registry
+
+```bash
+# K3s 內建 containerd，可以直接 import image
+# 方式一：直接 build + import（簡單，適合單節點）
+docker build -t bikini-bottom/agent:latest .
+docker save bikini-bottom/agent:latest | sudo k3s ctr images import -
+
+# 方式二：用本地 registry（適合多節點時）
+# 暫時不需要，單節點用方式一就好
+```
+
+### Phase 4：建立 K8s 資源檔
+
+目錄結構：
+
+```
+k3s/
+├── namespace.yaml
+├── secrets/
+│   ├── discord-tokens.yaml
+│   ├── kiro-api-keys.yaml
+│   ├── github-token.yaml
+│   └── nas-credentials.yaml
+├── configmaps/
+│   ├── channel-ids.yaml
+│   └── agent-env.yaml
+├── volumes/
+│   ├── nas-pv.yaml
+│   └── nas-pvc.yaml
+├── deployments/
+│   ├── bob.yaml
+│   ├── patrick.yaml
+│   ├── puff.yaml
+│   ├── squidward.yaml
+│   ├── sandy.yaml
+│   ├── pearl.yaml
+│   ├── larry.yaml
+│   ├── conch.yaml
+│   ├── slash-bot.yaml
+│   ├── gateway.yaml
+│   └── wecom-bot.yaml
+└── kustomization.yaml    ← 一鍵部署全部
+```
+
+### Phase 5：部署
+
+```bash
+# 部署全部
+kubectl apply -k k3s/
+
+# 看狀態（等同 docker ps）
+kubectl get pods -n bikini-bottom
+
+# 看特定 agent log
+kubectl logs -f deployment/bob -n bikini-bottom
+
+# 重啟某個 agent（等同 docker compose restart bob）
+kubectl rollout restart deployment/bob -n bikini-bottom
 ```
 
 ---
 
-## 風險與注意事項
+## 常用操作對照
 
-1. **Kiro CLI 認證** — 每個 agent 首次需手動 `kiro-cli login`，token 存在 PVC 裡
-2. **自訂 Dockerfile** — 目前有額外安裝 git、gh、python 套件，可能需要自建 image 或用 `extraInitContainers`
-3. **Steering 同步** — 目前用 symlink，K8s 需改用 ConfigMap 或 NFS subPath
-4. **Cronjob** — OpenAB chart 支援 `cronjobs` 設定，直接對應目前 `cronjob.toml`
-5. **WeCom Gateway** — chart 內建支援，設定 `gateway.enabled=true` + wecom 參數即可
-6. **NFS 權限** — 需確認 NAS NFS export 的 uid/gid 與 Pod 的 `runAsUser: 1000` 相容
+| 我要… | Docker Compose | K3s |
+|--------|---------------|-----|
+| 部署全部 | `docker compose up -d --build` | `kubectl apply -k k3s/` |
+| 停全部 | `docker compose down` | `kubectl delete -k k3s/` |
+| 重啟一個 | `docker compose restart bob` | `kubectl rollout restart deploy/bob -n bikini-bottom` |
+| 看 log | `docker compose logs -f bob` | `kubectl logs -f deploy/bob -n bikini-bottom` |
+| 進容器 | `docker exec -it bob bash` | `kubectl exec -it deploy/bob -n bikini-bottom -- bash` |
+| 改環境變數 | 編輯 .env → restart | 編輯 Secret → rollout restart |
+| 更新 image | `docker compose build && up -d` | `docker build` → `k3s ctr import` → `kubectl rollout restart` |
+| 看資源用量 | `docker stats` | `kubectl top pods -n bikini-bottom` |
 
 ---
 
-## 參考資料
+## 遷移時程
 
-- OpenAB Helm Chart：`refs/openab/charts/openab/`
-- OpenAB K8s Manifests：`refs/openab/k8s/`
-- K3s 官方文件：https://docs.k3s.io/
-- Helm 官方文件：https://helm.sh/docs/
+| 階段 | 預計時間 | 內容 |
+|------|----------|------|
+| Day 1 | 2 小時 | 裝 Ubuntu + K3s + NAS 掛載 |
+| Day 1 | 1 小時 | Build image + 建立 namespace/secrets/configmaps |
+| Day 1 | 2 小時 | 寫 deployment YAML（先上 bob 一個測試） |
+| Day 2 | 1 小時 | bob 驗證通過 → 部署全部角色 |
+| Day 2 | 1 小時 | 驗證 Discord mention 回應 + MCP 連線 |
+| Day 2 | 30 分鐘 | 切換 DNS/IP（如有需要）+ 關閉舊 docker compose |
+
+**總計：約 1.5 天**
+
+---
+
+## 風險與緩解
+
+| 風險 | 影響 | 緩解方式 |
+|------|------|----------|
+| K3s 學習曲線 | 部署速度慢 | 本文件 + 操作對照表 + 我可以生成所有 YAML |
+| NAS 掛載斷線 | Agent 讀不到 projects | systemd automount 自動重試 + liveness probe |
+| 16 GB RAM 不夠 | OOM kill | 設 memory limit 512MB/pod + 先跑 8 個核心 agent |
+| Image build 流程改變 | CI/CD 要調 | 先手動 build+import，之後再加 GitHub Actions |
+| 舊 docker compose 環境 | 要保留嗎？ | 建議保留 1 週作為 rollback 方案 |
+
+---
+
+## 下一步
+
+1. ✅ 本文件規劃完成
+2. ⬜ 等收到新桌機 → 安裝 Ubuntu + K3s
+3. ⬜ 我生成完整的 `k3s/` 目錄下所有 YAML 檔案
+4. ⬜ 先上 bob 單一 agent 做 smoke test
+5. ⬜ 全部角色部署 + 驗證
+
+要我現在就開始生成 `k3s/` 目錄下的 YAML 檔案嗎？還是等桌機到了再來？
