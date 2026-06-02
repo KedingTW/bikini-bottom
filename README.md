@@ -1,8 +1,14 @@
 # 🏝️ 比奇堡開發團隊
 
+![比奇堡 AI 開發團隊](docs/images/readme-team-hero.png)
+
 基於 [OpenAB](https://github.com/openabdev/openab) 的 Discord AI 開發團隊，每個角色都是獨立的 AI agent，擁有自己的個性、職責和工作空間。
 
 ## 架構
+
+![工作流程](docs/images/readme-workflow.png)
+
+![會議室協作](docs/images/readme-meeting-room.png)
 
 ```
 Discord Server: 比奇堡
@@ -157,6 +163,8 @@ docker compose up -d
 | [docs/bot-setup-sop.md](docs/bot-setup-sop.md) | 維運人員 | Discord Bot 建立與設定 |
 | [docs/git-flow-sop.md](docs/git-flow-sop.md) | 開發者 | Git 分支與 PR 規範 |
 | [docs/discord-channels.md](docs/discord-channels.md) | 所有人 | Discord 頻道用途說明 |
+| [docs/k3s-operations-guide.md](docs/k3s-operations-guide.md) | 維運人員 | K3s 維運指南（含插畫） |
+| [docs/k3s-migration-plan.md](docs/k3s-migration-plan.md) | 維運人員 | K3s 遷移規劃 |
 
 ## 新增角色
 
