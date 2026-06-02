@@ -95,3 +95,9 @@ refs/
 
 # 客訴專案暫存（正式文件在其他地方管理）
 customer-complaint/
+
+# 外部 repo sync 的 skill（由 sync-skills.sh 產生，不進 git）
+shared/skills/company-kb/
+
+# sync-skills.sh 的 repo cache
+.skill-repos/

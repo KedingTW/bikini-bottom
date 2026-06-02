@@ -104,16 +104,32 @@ bikini-bottom/
 
 所有角色共享的 skill 放在 `shared/skills/`，透過 `AGENT_SKILLS` 環境變數控制掛載。Skill 為按需載入，不會每次對話都佔用 context。
 
-| Skill | 用途 | 載入時機 |
-|-------|------|----------|
-| `xlsx` | 產生 Excel 試算表 | 被要求建立 .xlsx 檔案時 |
-| `pdf` | 產生 PDF 文件 | 被要求建立 .pdf 檔案時 |
-| `pptx` | 產生 PowerPoint 簡報 | 被要求建立 .pptx 檔案時 |
-| `docx` | 產生 Word 文件 | 被要求建立 .docx 檔案時 |
-| `doc-coauthoring` | 企業微信文檔協作 | 需要編輯企微文檔時 |
-| `company-kb` | 科定企業公司知識庫 | 被問到公司、產品、組織、文化等內部資訊時 |
+| Skill | 用途 | 來源 |
+|-------|------|------|
+| `xlsx` | 產生 Excel 試算表 | 本地 |
+| `pdf` | 產生 PDF 文件 | 本地 |
+| `pptx` | 產生 PowerPoint 簡報 | 本地 |
+| `docx` | 產生 Word 文件 | 本地 |
+| `doc-coauthoring` | 企業微信文檔協作 | 本地 |
+| `company-kb` | 科定企業公司知識庫 | [KedingTW/company-knowledge-base](https://github.com/KedingTW/company-knowledge-base) |
 
-`company-kb` 來源：[KedingTW/company-knowledge-base](https://github.com/KedingTW/company-knowledge-base)，涵蓋公司概覽、全產品線、品號編碼、業務代號、K大、展示館、海外策略、價格異動、專有名詞等。
+### 外部 Skill 同步
+
+來自外部 repo 的 skill 透過 `scripts/sync-skills.sh` 同步，來源定義在 `shared/skills/skills.json`。
+
+```bash
+# 同步所有外部 skill
+bash scripts/sync-skills.sh
+
+# 同步完後重啟容器生效
+docker compose restart
+```
+
+新增外部 skill 步驟：
+1. 在 `shared/skills/skills.json` 的 `sources` 加一筆
+2. 在 docker-compose 各角色的 `AGENT_SKILLS` 加上 skill 名稱
+3. 執行 `bash scripts/sync-skills.sh`
+4. 重啟容器
 
 ## 常用指令
 
