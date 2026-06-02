@@ -102,6 +102,7 @@ usercron_path = "cronjob.toml"
 | 派大星 | `1496024872222986313` | 派大星 |
 | 珍珍 | `待建立` | 珍珍 |
 | 蝦霸 | `待建立` | 蝦霸 |
+| 海超人 | `1511295803405373524` | 海超人 |
 | 泡芙老師 | `1503577722901893182` | 泡芙 |
 | 章魚哥 | `1503699904176853033` | 章魚哥 |
 | 珊迪 | `1504348022803402835` | 珊迪 |
@@ -281,9 +282,10 @@ channel = "1492090122257170526"
 
 ### Discord 設定
 1. 在 Discord Developer Portal 建立 Bot Application + 取得 Token
-2. 在 Discord 伺服器建立該 bot 的個人身分組，並加入相關群組身分組
-3. 確認身分組開啟「允許任何人 @mention」
-4. 設定 Bot 頭像（在 Discord Developer Portal → Bot → 上傳 Avatar）
+2. 開啟 **Privileged Gateway Intents**：MESSAGE CONTENT INTENT、SERVER MEMBERS INTENT
+3. 在 Discord 伺服器建立該 bot 的個人身分組，並加入相關群組身分組
+4. 確認身分組開啟「允許任何人 @mention」
+5. 設定 Bot 頭像（在 Discord Developer Portal → Bot → 上傳 Avatar）
 
 ### 環境變數
 5. 在 `.env` 加入 `DISCORD_BOT_TOKEN_<NAME>=...` 和 `KIRO_API_KEY_<NAME>=...`
@@ -343,6 +345,7 @@ channel = "1492090122257170526"
 | 泡芙老師 / puff | puff | AI agent |
 | 珍珍 / pearl | pearl | AI agent |
 | 蝦霸 / larry | larry | AI agent |
+| 海超人 / mermaid-man | mermaid-man | AI agent |
 | 神奇海螺 / conch | conch | AI agent |
 | 小蝸 / gary | slash-bot | 工具 Bot |
 | 企微 / wecom | wecom-bot | AI agent |
