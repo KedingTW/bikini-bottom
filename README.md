@@ -111,14 +111,14 @@ bikini-bottom/
 | `pptx` | 產生 PowerPoint 簡報 | 本地 |
 | `docx` | 產生 Word 文件 | 本地 |
 | `doc-coauthoring` | 企業微信文檔協作 | 本地 |
-| `company-kb` | 科定企業公司知識庫 | [KedingTW/company-knowledge-base](https://github.com/KedingTW/company-knowledge-base) |
+| `company-kb` | 科定企業公司知識庫 | [KedingTW/agent-skills](https://github.com/KedingTW/agent-skills) |
 
 ### 外部 Skill 同步
 
 來自外部 repo 的 skill 透過 `scripts/sync-skills.sh` 同步，來源定義在 `shared/skills/skills.json`。
 
 ```bash
-# 同步所有外部 skill
+# 同步所有外部 skill（在 WSL 執行）
 bash scripts/sync-skills.sh
 
 # 同步完後重啟容器生效

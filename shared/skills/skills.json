@@ -2,7 +2,7 @@
   "description": "外部 skill 來源清單。sync-skills.sh 會根據此檔案從各 repo 拉取 skill 到 shared/skills/。",
   "sources": [
     {
-      "repo": "https://github.com/KedingTW/company-knowledge-base.git",
+      "repo": "https://github.com/KedingTW/agent-skills.git",
       "branch": "main",
       "path": ".kiro/skills",
       "skills": ["company-kb"]
