@@ -87,6 +87,9 @@ agents/*/.bashrc
 agents/*/.npm/
 agents/*/.kiro/.cli_bash_history
 
+# AWS SSO cache（含 token，敏感資料）
+agents/*/.aws/
+
 # IDE 個人設定
 .vscode/
 

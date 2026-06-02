@@ -4,6 +4,10 @@
 
 ---
 
+## 2026-06-02
+
+- **chore**: 清理專案多餘目錄 — 刪除已廢棄的 `services/magic-conch/`、冗餘的 `docs/usage-guide.html`、過時的 `agents/magic-conch/`（spec.md 搬到 `agents/conch/`）
+
 ## 2026-06-01
 
 - **feat**: 新增 Karen — Discord token holder，用於 MCP Server 管理

@@ -22,7 +22,7 @@ Discord Server: 比奇堡
 │   └── 🖥️ 凱倫（karen） — Discord 授權 Token 持有者
 │
 ├── 獨立服務
-│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務
+│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務（含神奇海螺的容器操作）
 │
 └── Discord 頻道
     ├── 🍔 蟹堡王 — 工作任務交辦
@@ -91,7 +91,7 @@ bikini-bottom/
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
 ├── services/                 ← 獨立服務
-│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理）
+│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理 + 海螺容器操作）
 └── docs/
     ├── usage-guide.md        ← 使用指南（給交辦人看）
     ├── new-agent-sop.md      ← 新增角色 SOP
