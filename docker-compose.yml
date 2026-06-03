@@ -254,6 +254,8 @@ services:
       - CONCH_ADMIN_IDS=${CONCH_ADMIN_IDS}
       - CONCH_OPERATOR_ROLE_IDS=${CONCH_OPERATOR_ROLE_IDS}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_ADMIN_KEY=${OPENAI_ADMIN_KEY}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 

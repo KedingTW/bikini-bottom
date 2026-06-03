@@ -66,6 +66,16 @@ spec:
                 secretKeyRef:
                   name: slash-bot-secrets
                   key: OPENAI_API_KEY
+            - name: OPENAI_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: OPENAI_ADMIN_KEY
+            - name: OPENAI_ORG_ID
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: OPENAI_ORG_ID
           resources:
             requests:
               memory: "64Mi"

@@ -64,6 +64,8 @@ kubectl create secret generic slash-bot-secrets -n $NAMESPACE \
   --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
   --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
   --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+  --from-literal=OPENAI_ADMIN_KEY="${OPENAI_ADMIN_KEY:-}" \
+  --from-literal=OPENAI_ORG_ID="${OPENAI_ORG_ID:-}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo ""
