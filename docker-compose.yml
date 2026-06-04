@@ -240,9 +240,9 @@ services:
       - ./shared/steering:/opt/steering:ro
       - ./shared/skills:/opt/skills:ro
 
-  slash-bot:
+  gary:
     build: ./services/slash-bot
-    container_name: slash-bot
+    container_name: gary
     restart: unless-stopped
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_GARY}

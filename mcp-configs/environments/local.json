@@ -1,0 +1,5 @@
+{
+  "$comment": "本地環境 — docker 容器內透過 host.docker.internal 訪問本機服務",
+  "baseUrl": "http://host.docker.internal:80",
+  "token": "Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+}

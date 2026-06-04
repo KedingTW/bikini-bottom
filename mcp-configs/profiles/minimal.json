@@ -1,0 +1,10 @@
+{
+  "$comment": "最小集 — 只有核心業務 server",
+  "servers": [
+    "hrs-mcp",
+    "crm-mcp",
+    "pricing-mcp",
+    "sap-mcp",
+    "als-mcp"
+  ]
+}

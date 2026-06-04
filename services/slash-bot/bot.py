@@ -102,7 +102,7 @@ async def help_cmd(interaction: discord.Interaction):
         name="/openai-usage [range] [type]",
         value=(
             "OpenAI API 用量與費用\n"
-            "`range`：`7d`=近7天(預設), `30d`=近30天, `today`=今日, `month`=本月\n"
+            "`range`：`1`=本月(預設), `2`=近2月, `week:1`=近1週, `7d`=近7天\n"
             "`type`：`all`=全部(預設), `cost`=僅費用, `tokens`=僅token用量"
         ),
         inline=False,
@@ -267,10 +267,10 @@ def _col_label(col: str) -> str:
 
 @bot.tree.command(name="openai-usage", description="查詢 OpenAI API 用量與費用")
 @app_commands.describe(
-    range="時間範圍：7d=近7天(預設), 30d=近30天, today=今日, month=本月",
+    range="時間範圍：1=本月(預設), 2=近2月, week:1=近1週, 7d=近7天",
     type="查詢類型：all=全部(預設), cost=僅費用, tokens=僅token用量",
 )
-async def openai_usage_cmd(interaction: discord.Interaction, range: str = "7d", type: str = "all"):
+async def openai_usage_cmd(interaction: discord.Interaction, range: str = "1", type: str = "all"):
     if wrong_channel(interaction):
         await interaction.response.send_message("🐌 喵～請到指定頻道使用指令喔", ephemeral=True)
         return
@@ -378,11 +378,12 @@ ROLE_MAP = {
     "珍珍": "pearl", "pearl": "pearl",
     "蝦霸": "larry", "larry": "larry",
     "海螺": "conch", "conch": "conch",
+    "小蝸": "gary", "gary": "gary",
     "企微": "wecom-bot", "wecom": "wecom-bot",
     "gateway": "gateway",
 }
 
-MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "conch"]
+MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "conch", "gary"]
 
 
 def get_docker_client() -> docker.DockerClient:
@@ -412,7 +413,7 @@ def _display_name(container_name: str) -> str:
         "bob": "海綿寶寶", "patrick": "派大星", "squidward": "章魚哥",
         "sandy": "珊迪", "puff": "泡芙老師", "pearl": "珍珍",
         "larry": "蝦霸", "conch": "神奇海螺",
-        "slash-bot": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
+        "slash-bot": "小蝸", "gary": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
     }
     return names.get(container_name, container_name)
 

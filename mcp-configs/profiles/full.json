@@ -1,0 +1,18 @@
+{
+  "$comment": "完整 server 清單 — bob, patrick 等主要角色使用",
+  "servers": [
+    "hrs-mcp",
+    "crm-mcp",
+    "pricing-mcp",
+    "als-mcp",
+    "wecom-drive-mcp",
+    "sap-mcp",
+    "youtube-mcp",
+    "stt-mcp",
+    "discord-mcp",
+    "wecom-push-mcp",
+    "image-mcp",
+    "file-mcp",
+    "ragic-mcp"
+  ]
+}
