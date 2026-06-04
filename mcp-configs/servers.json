@@ -1,0 +1,88 @@
+{
+  "$comment": "所有 MCP server 定義。profile 決定啟用哪些，environment 決定 URL",
+  "servers": {
+    "hrs-mcp": {
+      "path": "/mcp/hrs",
+      "autoApprove": [
+        "GetSVacationName", "GetUser", "GetDepartment", "GetLeaveBalance",
+        "GetLeaveHistory", "GetLeavePolicy", "GetOrganizationCalendar",
+        "SaveLeaveRequest", "UpdateLeaveRequest", "RollbackLeaveRequest",
+        "CancelLeaveRequest", "DeleteLeaveRequest", "ApproveLeaveRequest",
+        "RejectLeaveRequest", "GetFlowWaitLeaveRequest"
+      ]
+    },
+    "crm-mcp": {
+      "path": "/mcp/crm",
+      "autoApprove": [
+        "SearchCustomer", "SearchCustomerContact", "GetCrmDescription",
+        "GetRegionSales", "CreateQuote"
+      ]
+    },
+    "pricing-mcp": {
+      "path": "/mcp/pricing",
+      "autoApprove": [
+        "GetRoomDoorPrice", "GetRoomDoorFramePrice", "GetRoomDoorAccessories",
+        "GetCabinetDoorPrice", "GetCabinetShippingFee",
+        "GetFlooringPrice", "GetFlooringAccessories"
+      ]
+    },
+    "als-mcp": {
+      "path": "/mcp/als",
+      "autoApprove": ["CreateComplaint", "QueryComplaint"]
+    },
+    "wecom-drive-mcp": {
+      "path": "/mcp/wecom_drive",
+      "autoApprove": [
+        "WecomDriveCreateDoc", "WecomDriveRenameDoc", "WecomDriveDelDoc",
+        "WecomDriveGetDocBaseInfo", "WecomDriveShareDoc", "WecomDriveGetDoc",
+        "WecomDriveBatchUpdateDoc", "WecomDriveGetSpreadsheetRangeData",
+        "WecomDriveGetSpreadsheetProperty", "WecomDriveBatchUpdateSpreadsheet",
+        "WecomDriveAddSmartsheetSheet", "WecomDriveDelSmartsheetSheet",
+        "WecomDriveUpdateSmartsheetSheet", "WecomDriveGetSmartsheetSheet",
+        "WecomDriveAddSmartsheetView"
+      ]
+    },
+    "sap-mcp": {
+      "path": "/mcp/sap",
+      "autoApprove": ["SearchProductItem", "ValidateProductCode"]
+    },
+    "youtube-mcp": {
+      "path": "/mcp/youtube",
+      "autoApprove": ["GetYoutubeVideoInfo", "CheckYoutubeRss", "DownloadYoutubeAudio"]
+    },
+    "stt-mcp": {
+      "path": "/mcp/stt",
+      "autoApprove": ["SttSubmit", "SttGetResult"]
+    },
+    "discord-mcp": {
+      "path": "/mcp/discord",
+      "autoApprove": [
+        "ListDiscordChannels", "ListDiscordActiveThreads",
+        "GetDiscordChannelMessages", "GetDiscordThreadMessages",
+        "SendDiscordMessage", "SendDiscordImageMessage",
+        "CreateDiscordThread", "EditDiscordThread", "DeleteDiscordMessage",
+        "SendDiscordThreadMessage", "AddDiscordReaction", "RemoveDiscordReaction",
+        "EditDiscordMessage", "DeleteDiscordThread"
+      ]
+    },
+    "wecom-push-mcp": {
+      "path": "/mcp/wecom_push",
+      "autoApprove": [
+        "PushWecomText", "UploadWecomMedia", "UploadWecomImage",
+        "PushWecomMpnews", "RecallWecomMessage"
+      ]
+    },
+    "image-mcp": {
+      "path": "/mcp/image",
+      "autoApprove": ["GenerateImage", "ResizeImage", "ComposeImage", "AddBrandFrame"]
+    },
+    "file-mcp": {
+      "path": "/mcp/file",
+      "autoApprove": ["UploadGuide", "DownloadGuide"]
+    },
+    "ragic-mcp": {
+      "path": "/mcp/ragic",
+      "autoApprove": []
+    }
+  }
+}

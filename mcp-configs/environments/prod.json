@@ -1,0 +1,5 @@
+{
+  "$comment": "正式環境 — 外部可達的正式服務",
+  "baseUrl": "http://mcp.twkd.com:1601",
+  "token": "Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+}

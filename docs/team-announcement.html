@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>比奇堡開發團隊 — 團隊分工公告</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: linear-gradient(135deg, #e8f4f8 0%, #fef9e7 100%);
+    padding: 40px;
+    color: #2c3e50;
+    width: 1000px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 48px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    color: #1a5276;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 36px;
+  }
+  h2 {
+    font-size: 20px;
+    color: #2980b9;
+    margin: 32px 0 16px 0;
+    padding-left: 12px;
+    border-left: 4px solid #3498db;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  thead th {
+    background: #2c3e50;
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+  }
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+  tbody tr:nth-child(even) { background: #f8fbfd; }
+  tbody tr:hover { background: #eaf4fb; }
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #ecf0f1;
+  }
+  .status-active { color: #27ae60; font-weight: 600; }
+  .status-planned { color: #e67e22; font-weight: 600; }
+  .emoji-cell { font-size: 16px; letter-spacing: 2px; }
+  .section-quick {
+    background: #fef9e7;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .section-quick h3 {
+    font-size: 16px;
+    color: #d35400;
+    margin-bottom: 12px;
+  }
+  .quick-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    font-size: 14px;
+  }
+  .quick-grid .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .quick-grid .label {
+    color: #7f8c8d;
+    min-width: 140px;
+  }
+  .quick-grid .value {
+    font-weight: 600;
+    color: #2c3e50;
+  }
+  .new-badge {
+    background: #e67e22;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .footer {
+    text-align: center;
+    color: #bdc3c7;
+    font-size: 12px;
+    margin-top: 32px;
+  }
+  .new-roles {
+    background: #fdf2e9;
+    border: 1px dashed #e67e22;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .new-roles h3 {
+    color: #d35400;
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .new-roles .role-block {
+    margin-bottom: 16px;
+  }
+  .new-roles .role-block:last-child { margin-bottom: 0; }
+  .new-roles .role-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .new-roles ul {
+    padding-left: 20px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🏝️ 比奇堡開發團隊 — 團隊分工公告</h1>
+  <p class="subtitle">關鍵目標：幫助人類快速掌握團隊分工</p>
+
+  <!-- 角色職務分配 -->
+  <h2>一、角色職務分配</h2>
+  <table>
+    <thead>
+      <tr><th>角色</th><th>代號</th><th>職務</th><th>主要職責</th><th>狀態</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>🧽 海綿寶寶</td><td>bob</td><td>全端工程師</td><td>前後端開發、文書報告、美編設計</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>⭐ 派大星</td><td>patrick</td><td>後端工程師</td><td>後端架構設計、偏好簡單直接方案</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🦞 蝦霸</td><td>larry</td><td>後端工程師</td><td>系統效能與穩定性、穩健可靠架構</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐋 珍珍</td><td>pearl</td><td>全端工程師</td><td>UI/UX 設計敏銳度、美感與體驗</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐙 章魚哥</td><td>squidward</td><td>專案經理 (PM)</td><td>需求轉規格文件、任務指派、進度管理</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐿️ 珊迪</td><td>sandy</td><td>客戶成功經理</td><td>商業價值把關、實驗規劃、客戶橋接</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐡 泡芙老師</td><td>puff</td><td>Code Reviewer</td><td>PR 審閱、程式碼品質把關</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐚 神奇海螺</td><td>conch</td><td>神諭指引</td><td>流程諮詢、方向決策、快速指路</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🦸 海超人</td><td>mermaid-man</td><td>DevOps</td><td>部署任務執行</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🐌 小蝸</td><td>gary</td><td>Slash Bot</td><td>/usage 指令服務、用量報表</td><td class="status-active">✅ 運作中</td></tr>
+      <tr><td>🦀 蟹老闆 <span class="new-badge">NEW</span></td><td>krabs</td><td>成本分析師</td><td>用量監控、預算控管、ROI 分析</td><td class="status-planned">🔜 規劃中</td></tr>
+      <tr><td>👁️ 皮老闆 <span class="new-badge">NEW</span></td><td>plankton</td><td>資安工程師</td><td>漏洞掃描、權限稽核、機敏偵測</td><td class="status-planned">🔜 規劃中</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 頻道用途 -->
+  <h2>二、頻道用途與角色出沒</h2>
+  <table>
+    <thead>
+      <tr><th>頻道</th><th>用途</th><th>出沒角色</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>🍔 蟹堡王</td><td>主要工作頻道，開發任務與技術討論</td><td class="emoji-cell">🧽 ⭐ 🦞 🐋 🐙 🐡 🦸</td></tr>
+      <tr><td>📋 蟹堡王論壇</td><td>任務追蹤、開發議題討論串</td><td class="emoji-cell">🧽 ⭐ 🦞 🐋 🐙 🐡 🐚 🦸 🐿️</td></tr>
+      <tr><td>🗓️ 會議論壇</td><td>會議紀錄、議程與決議追蹤</td><td class="emoji-cell">🧽 ⭐ 🦞 🐋 🐙 🐚 🦸 🐿️</td></tr>
+      <tr><td>🏖️ 廣場</td><td>閒聊、靈感交流、非正式討論</td><td class="emoji-cell">🧽 ⭐ 🦞 🐋 🐙 🐡 🐚 🦸 🐿️</td></tr>
+      <tr><td>🧪 實驗室</td><td>技術實驗、POC 驗證、新技術試玩</td><td class="emoji-cell">🧽 ⭐ 🐚 🐿️</td></tr>
+      <tr><td>📺 電視</td><td>資訊播報、自動推播通知</td><td class="emoji-cell">⭐ 🐚</td></tr>
+      <tr><td>📊 報告</td><td>週報 / 月報 / 統計數據</td><td class="emoji-cell">🐙</td></tr>
+      <tr><td>📈 用量報表</td><td>AI 用量統計與成本追蹤</td><td class="emoji-cell">🐌</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 快速指引 -->
+  <div class="section-quick">
+    <h3>⚡ 快速指引 — 找誰做什麼？</h3>
+    <div class="quick-grid">
+      <div class="item"><span class="label">有新功能要開發</span><span class="value">→ 🐙 章魚哥</span></div>
+      <div class="item"><span class="label">Code Review</span><span class="value">→ 🐡 泡芙老師</span></div>
+      <div class="item"><span class="label">前端 / 全端開發</span><span class="value">→ 🧽 海綿寶寶 / 🐋 珍珍</span></div>
+      <div class="item"><span class="label">後端 / API 開發</span><span class="value">→ ⭐ 派大星 / 🦞 蝦霸</span></div>
+      <div class="item"><span class="label">效能 / 穩定性</span><span class="value">→ 🦞 蝦霸</span></div>
+      <div class="item"><span class="label">UI/UX 美感</span><span class="value">→ 🐋 珍珍</span></div>
+      <div class="item"><span class="label">商業價值 / 客戶視角</span><span class="value">→ 🐿️ 珊迪</span></div>
+      <div class="item"><span class="label">部署 / DevOps</span><span class="value">→ 🦸 海超人</span></div>
+      <div class="item"><span class="label">不知道問誰</span><span class="value">→ 🐚 神奇海螺</span></div>
+      <div class="item"><span class="label">查 AI 使用量</span><span class="value">→ 🐌 /usage</span></div>
+    </div>
+  </div>
+
+  <!-- 新角色預告 -->
+  <div class="new-roles">
+    <h3>🆕 即將上線新角色</h3>
+    <div class="role-block">
+      <div class="role-name">🦀 蟹老闆 — 成本效益分析師</div>
+      <ul>
+        <li>追蹤各角色 token 消耗與 API 費用，定期出具成本報表</li>
+        <li>分析資源配置，提出最佳化與省錢方案建議</li>
+        <li>預算接近上限時主動告警，評估新功能 ROI</li>
+      </ul>
+    </div>
+    <div class="role-block">
+      <div class="role-name">👁️ 皮老闆 — 資安工程師</div>
+      <ul>
+        <li>掃描程式碼與對話中的機敏資料洩漏（token、密碼、API key）</li>
+        <li>定期稽核各角色存取權限，確保最小權限原則</li>
+        <li>監控相依套件 CVE 弱點，偵測異常存取並協調應變</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="footer">最後更新：2026-06-04 ｜ 比奇堡開發團隊</p>
+</div>
+</body>
+</html>

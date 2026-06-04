@@ -1,0 +1,5 @@
+{
+  "$comment": "測試環境 — 內網測試機",
+  "baseUrl": "http://192.168.1.105:1601",
+  "token": "Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+}
