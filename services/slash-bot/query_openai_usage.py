@@ -219,6 +219,7 @@ async def query_completions_usage(range_str: str | None = None) -> dict:
     total_input = 0
     total_output = 0
     total_requests = 0
+    total_output_image_tokens = 0
     by_model = {}
 
     for bucket in all_results:
@@ -227,22 +228,26 @@ async def query_completions_usage(range_str: str | None = None) -> dict:
             out = result.get("output_tokens", 0) or 0
             reqs = result.get("num_model_requests", 0) or 0
             model = result.get("model", "unknown")
+            img_tokens = result.get("output_image_tokens", 0) or 0
 
             total_input += inp
             total_output += out
             total_requests += reqs
+            total_output_image_tokens += img_tokens
 
             if model not in by_model:
-                by_model[model] = {"input_tokens": 0, "output_tokens": 0, "requests": 0}
+                by_model[model] = {"input_tokens": 0, "output_tokens": 0, "requests": 0, "output_image_tokens": 0}
             by_model[model]["input_tokens"] += inp
             by_model[model]["output_tokens"] += out
             by_model[model]["requests"] += reqs
+            by_model[model]["output_image_tokens"] += img_tokens
 
     return {
         "label": r["label"],
         "total_requests": total_requests,
         "total_input_tokens": total_input,
         "total_output_tokens": total_output,
+        "total_output_image_tokens": total_output_image_tokens,
         "by_model": sorted(
             [{"model": k, **v} for k, v in by_model.items()],
             key=lambda x: x["input_tokens"] + x["output_tokens"],

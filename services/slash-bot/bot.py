@@ -278,13 +278,17 @@ async def openai_usage_cmd(interaction: discord.Interaction, range: str = "1", t
     try:
         logging.info(f"/openai-usage range={range} type={type}")
         embeds = []
+        token_data = None
+
+        # 先查 token 資料（用於計算每張圖成本）
+        if type in ("all", "tokens", "cost"):
+            token_data = await query_completions_usage(range)
 
         if type in ("all", "cost"):
             cost_data = await query_costs(range)
-            embeds.append(_build_openai_cost_embed(cost_data))
+            embeds.append(_build_openai_cost_embed(cost_data, token_data))
 
         if type in ("all", "tokens"):
-            token_data = await query_completions_usage(range)
             embeds.append(_build_openai_tokens_embed(token_data))
 
         if embeds:
@@ -300,9 +304,22 @@ async def openai_usage_cmd(interaction: discord.Interaction, range: str = "1", t
             logging.error("followup 也失敗了")
 
 
-def _build_openai_cost_embed(data: dict) -> discord.Embed:
+def _build_openai_cost_embed(data: dict, token_data: dict = None) -> discord.Embed:
     """費用報表 embed"""
-    lines = [f"💰 **總費用：${data['total_cost']:.4f}**\n"]
+    lines = [f"💰 **總費用：${data['total_cost']:.4f}**"]
+
+    # 計算每張圖平均成本
+    if token_data and token_data.get("total_requests", 0) > 0:
+        avg_cost = data["total_cost"] / token_data["total_requests"]
+        lines.append(f"🖼️ 共 {token_data['total_requests']} 張圖，平均 **${avg_cost:.4f}** /張")
+
+        # 按模型顯示圖片統計
+        for m in token_data.get("by_model", []):
+            if m.get("output_image_tokens", 0) > 0 and m["requests"] > 0:
+                avg_tokens = m["output_image_tokens"] / m["requests"]
+                lines.append(f"　　`{m['model']}`：{m['requests']} 張，~{avg_tokens:.0f} tokens/張")
+
+    lines.append("")
 
     # 按 model 排序
     if data["by_model"]:
