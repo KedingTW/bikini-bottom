@@ -17,6 +17,7 @@ from query_usage import (
     get_tier_limit,
     get_usage_data,
 )
+from query_openai_usage import query_completions_usage, query_costs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -94,6 +95,15 @@ async def help_cmd(interaction: discord.Interaction):
             "功能使用分析\n"
             "`acp`：kiro（預設）\n"
             "`range`：`1`=本月(預設), `2`=近2月, `week:1`=近1週"
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="/openai-usage [range] [type]",
+        value=(
+            "OpenAI API 用量與費用\n"
+            "`range`：`7d`=近7天(預設), `30d`=近30天, `today`=今日, `month`=本月\n"
+            "`type`：`all`=全部(預設), `cost`=僅費用, `tokens`=僅token用量"
         ),
         inline=False,
     )
@@ -251,6 +261,110 @@ def _col_label(col: str) -> str:
         "transformation_linesingested": "輸入行數",
     }
     return labels.get(col, col.split("_", 1)[-1])
+
+
+# ─── /openai-usage ───────────────────────────────────────
+
+@bot.tree.command(name="openai-usage", description="查詢 OpenAI API 用量與費用")
+@app_commands.describe(
+    range="時間範圍：7d=近7天(預設), 30d=近30天, today=今日, month=本月",
+    type="查詢類型：all=全部(預設), cost=僅費用, tokens=僅token用量",
+)
+async def openai_usage_cmd(interaction: discord.Interaction, range: str = "7d", type: str = "all"):
+    if wrong_channel(interaction):
+        await interaction.response.send_message("🐌 喵～請到指定頻道使用指令喔", ephemeral=True)
+        return
+    await interaction.response.defer()
+    try:
+        logging.info(f"/openai-usage range={range} type={type}")
+        embeds = []
+
+        if type in ("all", "cost"):
+            cost_data = await query_costs(range)
+            embeds.append(_build_openai_cost_embed(cost_data))
+
+        if type in ("all", "tokens"):
+            token_data = await query_completions_usage(range)
+            embeds.append(_build_openai_tokens_embed(token_data))
+
+        if embeds:
+            await interaction.followup.send(embeds=embeds[:10])
+        else:
+            await interaction.followup.send("🐌 沒有資料喵～")
+        logging.info("/openai-usage 回覆完成")
+    except Exception as e:
+        logging.error(f"/openai-usage 失敗：{e}\n{traceback.format_exc()}")
+        try:
+            await interaction.followup.send(f"❌ 查詢失敗：{e}")
+        except Exception:
+            logging.error("followup 也失敗了")
+
+
+def _build_openai_cost_embed(data: dict) -> discord.Embed:
+    """費用報表 embed"""
+    lines = [f"💰 **總費用：${data['total_cost']:.4f}**\n"]
+
+    # 按 model 排序
+    if data["by_model"]:
+        lines.append("**依項目：**")
+        for item in data["by_model"][:10]:
+            if item["cost"] > 0:
+                lines.append(f"　　`{item['model']}`：${item['cost']:.4f}")
+
+    # 每日趨勢（只顯示最近幾天）
+    if data["by_day"]:
+        lines.append("\n**每日費用：**")
+        for day in data["by_day"][-7:]:
+            bar_len = min(int(day["cost"] / max(d["cost"] for d in data["by_day"]) * 8) + 1, 8) if day["cost"] > 0 else 0
+            lines.append(f"　　`{day['date']}` {'█' * bar_len} ${day['cost']:.4f}")
+
+    embed = discord.Embed(
+        title=f"🐌 OpenAI 費用報表 — {data['label']}",
+        description="\n".join(lines),
+        color=0xFDAA4F,
+    )
+    embed.set_footer(text="費用為 USD | 喵～")
+    return embed
+
+
+def _build_openai_tokens_embed(data: dict) -> discord.Embed:
+    """Token 用量 embed"""
+    total_tokens = data["total_input_tokens"] + data["total_output_tokens"]
+    lines = [
+        f"📊 **總計：{_format_tokens(total_tokens)} tokens**",
+        f"　　輸入：{_format_tokens(data['total_input_tokens'])}",
+        f"　　輸出：{_format_tokens(data['total_output_tokens'])}",
+        f"　　請求數：{data['total_requests']:,}\n",
+    ]
+
+    if data["by_model"]:
+        lines.append("**依模型：**")
+        for item in data["by_model"][:8]:
+            total = item["input_tokens"] + item["output_tokens"]
+            if total > 0:
+                lines.append(
+                    f"　　`{item['model']}`\n"
+                    f"　　　　↗️ {_format_tokens(item['input_tokens'])} / "
+                    f"↙️ {_format_tokens(item['output_tokens'])} / "
+                    f"📨 {item['requests']:,}"
+                )
+
+    embed = discord.Embed(
+        title=f"🐌 OpenAI Token 用量 — {data['label']}",
+        description="\n".join(lines),
+        color=0x74B9FF,
+    )
+    embed.set_footer(text="喵～")
+    return embed
+
+
+def _format_tokens(n: int) -> str:
+    """數字格式化：1234567 → 1.23M, 12345 → 12.3K"""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f}M"
+    elif n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
 
 
 # ─── Container Management (from magic-conch) ─────────────

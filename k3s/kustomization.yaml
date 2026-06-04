@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bikini-bottom
+
+resources:
+  - namespace.yaml
+  - configmaps/channel-ids.yaml
+  - configmaps/common-env.yaml
+  - volumes/nas-pv.yaml
+  - deployments/bob.yaml
+  - deployments/patrick.yaml
+  - deployments/puff.yaml
+  - deployments/squidward.yaml
+  - deployments/sandy.yaml
+  - deployments/pearl.yaml
+  - deployments/larry.yaml
+  - deployments/conch.yaml
+  - deployments/slash-bot.yaml

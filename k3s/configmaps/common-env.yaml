@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-env
+  namespace: bikini-bottom
+data:
+  GIT_EMAIL: ""
+  DISCORD_GUILD_ID: ""
+  SLASH_BOT_CHANNEL_ID: ""
+  CONCH_ADMIN_IDS: ""
+  CONCH_OPERATOR_ROLE_IDS: ""

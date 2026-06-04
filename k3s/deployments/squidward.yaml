@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: squidward
+  namespace: bikini-bottom
+  labels:
+    app: squidward
+    type: agent
+spec:
+  replicas: 0  # 初始不啟動，切換時 scale 為 1
+  selector:
+    matchLabels:
+      app: squidward
+  template:
+    metadata:
+      labels:
+        app: squidward
+        type: agent
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: agent
+          image: bikini-bottom/agent:latest
+          imagePullPolicy: Never  # 本地 image，不拉 registry
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discord-tokens
+                  key: SQUIDWARD
+            - name: KIRO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kiro-api-keys
+                  key: SQUIDWARD
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-token
+                  key: GH_TOKEN
+            - name: GIT_AUTHOR_NAME
+              value: "章魚哥 (Squidward)"
+            - name: GIT_COMMITTER_NAME
+              value: "章魚哥 (Squidward)"
+            - name: GIT_AUTHOR_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: GIT_COMMITTER_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: AGENT_NAME
+              value: "squidward"
+            - name: AGENT_SKILLS
+              value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/openab/config.toml
+              subPath: config.toml
+              readOnly: true
+            - name: agent-home
+              mountPath: /home/agent
+            - name: nas
+              mountPath: /nas
+            - name: shared-steering
+              mountPath: /opt/steering
+              readOnly: true
+            - name: shared-skills
+              mountPath: /opt/skills
+              readOnly: true
+      volumes:
+        - name: config
+          hostPath:
+            path: /opt/bikini-bottom/agents/squidward/config.toml
+            type: File
+        - name: agent-home
+          hostPath:
+            path: /opt/bikini-bottom/agents/squidward
+            type: Directory
+        - name: nas
+          persistentVolumeClaim:
+            claimName: nas-pvc
+        - name: shared-steering
+          hostPath:
+            path: /opt/bikini-bottom/shared/steering
+            type: Directory
+        - name: shared-skills
+          hostPath:
+            path: /opt/bikini-bottom/shared/skills
+            type: Directory

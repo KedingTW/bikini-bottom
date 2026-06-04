@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slash-bot
+  namespace: bikini-bottom
+  labels:
+    app: slash-bot
+    type: service
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: slash-bot
+  template:
+    metadata:
+      labels:
+        app: slash-bot
+        type: service
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: slash-bot
+          image: bikini-bottom/slash-bot:latest
+          imagePullPolicy: Never
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: DISCORD_BOT_TOKEN
+            - name: DISCORD_GUILD_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: DISCORD_GUILD_ID
+            - name: SLASH_BOT_CHANNEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: SLASH_BOT_CHANNEL_ID
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: CONCH_ADMIN_IDS
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: CONCH_ADMIN_IDS
+            - name: CONCH_OPERATOR_ROLE_IDS
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: CONCH_OPERATOR_ROLE_IDS
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: OPENAI_API_KEY
+            - name: OPENAI_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: OPENAI_ADMIN_KEY
+            - name: OPENAI_ORG_ID
+              valueFrom:
+                secretKeyRef:
+                  name: slash-bot-secrets
+                  key: OPENAI_ORG_ID
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

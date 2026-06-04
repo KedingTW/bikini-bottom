@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "discord-mcp": {
+      "url": "http://host.docker.internal:80/mcp/discord",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    }
+  }
+}

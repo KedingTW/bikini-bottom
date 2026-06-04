@@ -4,8 +4,23 @@
 
 ---
 
+## 2026-06-04
+
+- **feat**: 小蝸新增 `/openai-usage` 指令 — 查詢 OpenAI API 費用與 token 用量（使用 Admin API Key）
+- **feat**: 同步 agent-skills repo 全部 skills — 新增 kd-company-knowledge、kd-complaint-handler、kd-crm-operations、kd-glossary、kd-meeting-updates、kd-pricing-assistant、kd-product-coding、kd-product-knowledge、kd-ai-workflow-design、als-vue-ui-guide 共 10 個 skill
+- **feat**: 角色 × Skill 分配策略 — kd-* 系列全員可用；kd-ai-workflow-design 僅章魚哥+珊迪；als-vue-ui-guide 僅海綿寶寶
+- **docs**: README 新增角色×Skill 分配對照表，bot-setup-sop 更新可用 Skills 清單
+
+## 2026-06-03
+
+- **chore**: GitHub 帳號切換 — 全部 agent 改用共用帳號 `keding-bikini-bottom`
+
 ## 2026-06-02
 
+- **feat**: 升級 OpenAB 0.8.4 + 設定 `trusted_bot_ids`（全 8 角色）— bot 互 mention bypass involvement gate（受限於 Discord thread 推送機制，需人類先拉 bot 進 thread）
+- **feat**: K3s 遷移規劃完成 — 維運指南、安裝腳本、K8s YAML、切換流程（分支 `feat/k3s-migration`）
+- **docs**: README 新增團隊主視覺、工作流程、會議室協作插畫
+- **docs**: TODO 清理已完成項目（Discord 連線、Code Review、Redmine 等）
 - **chore**: 清理專案多餘目錄 — 刪除已廢棄的 `services/magic-conch/`、冗餘的 `docs/usage-guide.html`、過時的 `agents/magic-conch/`（spec.md 搬到 `agents/conch/`）
 
 ## 2026-06-01

@@ -1,0 +1,17 @@
+# 從 .env 填入實際值（由 k3s-create-secrets.sh 處理 sensitive 的，這裡放非敏感的 channel ID）
+# 如果 channel ID 不算敏感，可以直接寫；否則也放 Secret
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: channel-ids
+  namespace: bikini-bottom
+data:
+  # 填入 .env 的 Discord Channel IDs
+  CHANNEL_KRUSTY_KRAB: ""
+  CHANNEL_PLAZA: ""
+  CHANNEL_MEETING: ""
+  CHANNEL_LAB: ""
+  CHANNEL_REPORT: ""
+  CHANNEL_TV: ""
+  CHANNEL_KRUSTY_KRAB_FORUM: ""
+  CHANNEL_MEETING_FORUM: ""
