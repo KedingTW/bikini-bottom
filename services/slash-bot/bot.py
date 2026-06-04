@@ -378,11 +378,12 @@ ROLE_MAP = {
     "珍珍": "pearl", "pearl": "pearl",
     "蝦霸": "larry", "larry": "larry",
     "海螺": "conch", "conch": "conch",
+    "小蝸": "gary", "gary": "gary",
     "企微": "wecom-bot", "wecom": "wecom-bot",
     "gateway": "gateway",
 }
 
-MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "conch"]
+MANAGED_CONTAINERS = ["bob", "patrick", "squidward", "sandy", "puff", "pearl", "larry", "conch", "gary"]
 
 
 def get_docker_client() -> docker.DockerClient:
@@ -412,7 +413,7 @@ def _display_name(container_name: str) -> str:
         "bob": "海綿寶寶", "patrick": "派大星", "squidward": "章魚哥",
         "sandy": "珊迪", "puff": "泡芙老師", "pearl": "珍珍",
         "larry": "蝦霸", "conch": "神奇海螺",
-        "slash-bot": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
+        "slash-bot": "小蝸", "gary": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
     }
     return names.get(container_name, container_name)
 
