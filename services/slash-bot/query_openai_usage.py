@@ -82,19 +82,22 @@ async def query_costs(range_str: str | None = None) -> dict:
 
     async with httpx.AsyncClient(timeout=30) as client:
         while True:
-            params = {
-                "start_time": start_ts,
-                "bucket_width": "1d",
-                "group_by[]": "line_item",
-            }
             if page_token:
-                params["page"] = page_token
+                # pagination: only pass the page token, no other params
+                url = f"{BASE_URL}/costs?page={page_token}"
+                resp = await client.get(url, headers=_headers())
+            else:
+                params = {
+                    "start_time": start_ts,
+                    "bucket_width": "1d",
+                    "limit": 31,
+                }
+                resp = await client.get(
+                    f"{BASE_URL}/costs",
+                    headers=_headers(),
+                    params=params,
+                )
 
-            resp = await client.get(
-                f"{BASE_URL}/costs",
-                headers=_headers(),
-                params=params,
-            )
             if resp.status_code != 200:
                 raise RuntimeError(f"OpenAI Costs API 回傳 {resp.status_code}: {resp.text[:200]}")
 
@@ -114,7 +117,7 @@ async def query_costs(range_str: str | None = None) -> dict:
     for bucket in all_results:
         bucket_date = datetime.fromtimestamp(bucket["start_time"], tz=timezone.utc).strftime("%m/%d")
         for result in bucket.get("results", []):
-            amount = result.get("amount", {}).get("value", 0) or 0
+            amount = float(result.get("amount", {}).get("value", 0) or 0)
             total_cost += amount
             line_item = result.get("line_item", "unknown")
 
@@ -154,19 +157,22 @@ async def query_completions_usage(range_str: str | None = None) -> dict:
 
     async with httpx.AsyncClient(timeout=30) as client:
         while True:
-            params = {
-                "start_time": start_ts,
-                "bucket_width": "1d",
-                "group_by[]": "model",
-            }
             if page_token:
-                params["page"] = page_token
+                url = f"{BASE_URL}/usage/completions?page={page_token}"
+                resp = await client.get(url, headers=_headers())
+            else:
+                params = {
+                    "start_time": start_ts,
+                    "bucket_width": "1d",
+                    "group_by[]": "model",
+                    "limit": 31,
+                }
+                resp = await client.get(
+                    f"{BASE_URL}/usage/completions",
+                    headers=_headers(),
+                    params=params,
+                )
 
-            resp = await client.get(
-                f"{BASE_URL}/usage/completions",
-                headers=_headers(),
-                params=params,
-            )
             if resp.status_code != 200:
                 raise RuntimeError(f"OpenAI Usage API 回傳 {resp.status_code}: {resp.text[:200]}")
 
