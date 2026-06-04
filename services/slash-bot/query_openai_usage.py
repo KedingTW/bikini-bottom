@@ -12,14 +12,14 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
-OPENAI_ADMIN_KEY = os.environ.get("OPENAI_ADMIN_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_ADMIN_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
 OPENAI_ORG_ID = os.environ.get("OPENAI_ORG_ID", "")
 BASE_URL = "https://api.openai.com/v1/organization"
 
 
 def _headers() -> dict:
     h = {
-        "Authorization": f"Bearer {OPENAI_ADMIN_KEY}",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json",
     }
     if OPENAI_ORG_ID:
@@ -71,8 +71,8 @@ async def query_costs(range_str: str | None = None) -> dict:
     查詢 OpenAI 費用明細。
     回傳 {label, total_cost, by_model: [{model, cost}], by_day: [{date, cost}]}
     """
-    if not OPENAI_ADMIN_KEY:
-        raise RuntimeError("未設定 OPENAI_ADMIN_KEY 環境變數")
+    if not OPENAI_API_KEY:
+        raise RuntimeError("未設定 OPENAI_ADMIN_KEY 或 OPENAI_API_KEY 環境變數")
 
     r = parse_openai_range(range_str)
     start_ts = _ts(r["start"])
@@ -143,8 +143,8 @@ async def query_completions_usage(range_str: str | None = None) -> dict:
     查詢 completions token 用量。
     回傳 {label, total_requests, total_input_tokens, total_output_tokens, by_model: [...]}
     """
-    if not OPENAI_ADMIN_KEY:
-        raise RuntimeError("未設定 OPENAI_ADMIN_KEY 環境變數")
+    if not OPENAI_API_KEY:
+        raise RuntimeError("未設定 OPENAI_ADMIN_KEY 或 OPENAI_API_KEY 環境變數")
 
     r = parse_openai_range(range_str)
     start_ts = _ts(r["start"])
