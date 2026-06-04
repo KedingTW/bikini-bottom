@@ -38,31 +38,55 @@ def _ts(dt) -> int:
 
 def parse_openai_range(range_str: str | None) -> dict:
     """
-    解析 range 參數：
-    - None / "7" / "7d"  → 過去 7 天
-    - "30" / "30d"       → 過去 30 天
+    解析 range 參數（比照 Kiro /usage 格式）：
+    - None / "1"         → 本月 1 日至昨天
+    - "2"                → 2 個月前 1 日至昨天
+    - "3"                → 3 個月前 1 日至昨天
+    - "week:1"           → 過去 1 週
+    - "week:2"           → 過去 2 週
+    - "7d" / "30d"       → 過去 N 天
     - "today"            → 今天
-    - "month"            → 本月 1 日至今
     """
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday = today_start - timedelta(days=1)
 
     if not range_str:
-        range_str = "7d"
+        range_str = "1"
 
     r = range_str.strip().lower()
 
     if r == "today":
         return {"start": today_start, "end": now, "label": "今日"}
-    elif r == "month":
-        month_start = today_start.replace(day=1)
-        return {"start": month_start, "end": now, "label": f"{month_start.strftime('%m/%d')}~今日"}
-    else:
-        # 數字 or "Nd"
+
+    # "week:N"
+    if r.startswith("week:"):
+        n = int(r.split(":")[1])
+        start = today_start - timedelta(weeks=n)
+        return {"start": start, "end": now, "label": f"過去 {n} 週"}
+
+    # "Nd" — 過去 N 天
+    if r.endswith("d"):
         days = int(r.replace("d", ""))
         start = today_start - timedelta(days=days)
         return {"start": start, "end": now, "label": f"過去 {days} 天"}
 
+    # 純數字 — 月份
+    n = int(r)
+    if n == 1:
+        # 本月
+        month_start = today_start.replace(day=1)
+        return {"start": month_start, "end": now, "label": f"{month_start.strftime('%m/%d')}~今日"}
+    else:
+        # N 個月前的 1 日
+        y, m = today_start.year, today_start.month
+        for _ in range(n - 1):
+            m -= 1
+            if m <= 0:
+                m += 12
+                y -= 1
+        start = datetime(y, m, 1, tzinfo=timezone.utc)
+        return {"start": start, "end": now, "label": f"{start.strftime('%m/%d')}~今日（近 {n} 月）"}
 
 # ─── Costs 查詢 ───────────────────────────────────────────
 
@@ -76,26 +100,30 @@ async def query_costs(range_str: str | None = None) -> dict:
 
     r = parse_openai_range(range_str)
     start_ts = _ts(r["start"])
+    # 計算需要幾天的 bucket
+    days_span = max(1, (r["end"] - r["start"]).days + 1)
 
     all_results = []
     page_token = None
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         while True:
             if page_token:
-                # pagination: only pass the page token, no other params
-                url = f"{BASE_URL}/costs?page={page_token}"
-                resp = await client.get(url, headers=_headers())
-            else:
-                params = {
-                    "start_time": start_ts,
-                    "bucket_width": "1d",
-                    "limit": 31,
-                }
+                # OpenAI pagination: page token 放在獨立 request 中
                 resp = await client.get(
                     f"{BASE_URL}/costs",
                     headers=_headers(),
-                    params=params,
+                    params={"page": page_token, "start_time": start_ts, "bucket_width": "1d", "limit": min(days_span, 31)},
+                )
+            else:
+                resp = await client.get(
+                    f"{BASE_URL}/costs",
+                    headers=_headers(),
+                    params={
+                        "start_time": start_ts,
+                        "bucket_width": "1d",
+                        "limit": min(days_span, 31),
+                    },
                 )
 
             if resp.status_code != 200:
@@ -151,26 +179,29 @@ async def query_completions_usage(range_str: str | None = None) -> dict:
 
     r = parse_openai_range(range_str)
     start_ts = _ts(r["start"])
+    days_span = max(1, (r["end"] - r["start"]).days + 1)
 
     all_results = []
     page_token = None
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         while True:
             if page_token:
-                url = f"{BASE_URL}/usage/completions?page={page_token}"
-                resp = await client.get(url, headers=_headers())
-            else:
-                params = {
-                    "start_time": start_ts,
-                    "bucket_width": "1d",
-                    "group_by[]": "model",
-                    "limit": 31,
-                }
                 resp = await client.get(
                     f"{BASE_URL}/usage/completions",
                     headers=_headers(),
-                    params=params,
+                    params={"page": page_token, "start_time": start_ts, "bucket_width": "1d", "group_by[]": "model", "limit": min(days_span, 31)},
+                )
+            else:
+                resp = await client.get(
+                    f"{BASE_URL}/usage/completions",
+                    headers=_headers(),
+                    params={
+                        "start_time": start_ts,
+                        "bucket_width": "1d",
+                        "group_by[]": "model",
+                        "limit": min(days_span, 31),
+                    },
                 )
 
             if resp.status_code != 200:
