@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-users
+  namespace: bikini-bottom
+data:
+  users.json: |
+    {
+      "password": "kd-22963999",
+      "users": ["11021395", "11020955", "11020550", "11110577"]
+    }

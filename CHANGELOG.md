@@ -6,6 +6,9 @@
 
 ## 2026-06-04
 
+- **feat**: K3s 遷移完成 — 全部 agent deployment 的 hostPath 改為直接讀取 repo 目錄，不再依賴 `/opt/bikini-bottom` 副本，等同 docker-compose 的 bind mount 行為
+- **feat**: 新增 dashboard service 部署到 K3s（NodePort 30080）
+- **chore**: slash-bot 正式改名為 gary（deployment、image、secret 統一命名）
 - **feat**: 小蝸新增 `/openai-usage` 指令 — 查詢 OpenAI API 費用與 token 用量（使用 Admin API Key）
 - **feat**: 同步 agent-skills repo 全部 skills — 新增 kd-company-knowledge、kd-complaint-handler、kd-crm-operations、kd-glossary、kd-meeting-updates、kd-pricing-assistant、kd-product-coding、kd-product-knowledge、kd-ai-workflow-design、als-vue-ui-guide 共 10 個 skill
 - **feat**: 角色 × Skill 分配策略 — kd-* 系列全員可用；kd-ai-workflow-design 僅章魚哥+珊迪；als-vue-ui-guide 僅海綿寶寶

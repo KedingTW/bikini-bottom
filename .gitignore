@@ -104,3 +104,4 @@ shared/skills/company-kb/
 
 # sync-skills.sh 的 repo cache
 .skill-repos/
+agents-migration.tar

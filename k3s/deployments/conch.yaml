@@ -7,7 +7,7 @@ metadata:
     app: conch
     type: agent
 spec:
-  replicas: 0  # 初始不啟動，切換時 scale 為 1
+  replicas: 1
   selector:
     matchLabels:
       app: conch
@@ -22,7 +22,10 @@ spec:
       containers:
         - name: agent
           image: bikini-bottom/agent:latest
-          imagePullPolicy: Never  # 本地 image，不拉 registry
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: channel-ids
           env:
             - name: DISCORD_BOT_TOKEN
               valueFrom:
@@ -59,15 +62,11 @@ spec:
               value: "company-kb"
           resources:
             requests:
-              memory: "128Mi"
+              memory: "256Mi"
               cpu: "50m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
           volumeMounts:
             - name: config
               mountPath: /etc/openab/config.toml
-              subPath: config.toml
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
@@ -82,20 +81,20 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /opt/bikini-bottom/agents/conch/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/conch/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /opt/bikini-bottom/agents/conch
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/conch
             type: Directory
         - name: nas
           persistentVolumeClaim:
             claimName: nas-pvc
         - name: shared-steering
           hostPath:
-            path: /opt/bikini-bottom/shared/steering
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
             type: Directory
         - name: shared-skills
           hostPath:
-            path: /opt/bikini-bottom/shared/skills
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
             type: Directory

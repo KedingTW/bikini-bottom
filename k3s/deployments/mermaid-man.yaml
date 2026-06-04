@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mermaid-man
+  namespace: bikini-bottom
+  labels:
+    app: mermaid-man
+    type: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mermaid-man
+  template:
+    metadata:
+      labels:
+        app: mermaid-man
+        type: agent
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: agent
+          image: bikini-bottom/agent:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: channel-ids
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discord-tokens
+                  key: MERMAID_MAN
+            - name: KIRO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kiro-api-keys
+                  key: MERMAID_MAN
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-token
+                  key: GH_TOKEN
+            - name: GIT_AUTHOR_NAME
+              value: "海超人 (Mermaid Man)"
+            - name: GIT_COMMITTER_NAME
+              value: "海超人 (Mermaid Man)"
+            - name: GIT_AUTHOR_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: GIT_COMMITTER_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: AGENT_NAME
+              value: "mermaid-man"
+            - name: AGENT_SKILLS
+              value: "company-kb"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/openab/config.toml
+              readOnly: true
+            - name: agent-home
+              mountPath: /home/agent
+            - name: nas
+              mountPath: /nas
+            - name: shared-steering
+              mountPath: /opt/steering
+              readOnly: true
+            - name: shared-skills
+              mountPath: /opt/skills
+              readOnly: true
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/mermaid-man/config.toml
+            type: File
+        - name: agent-home
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/mermaid-man
+            type: Directory
+        - name: nas
+          persistentVolumeClaim:
+            claimName: nas-pvc
+        - name: shared-steering
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
+            type: Directory
+        - name: shared-skills
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+            type: Directory

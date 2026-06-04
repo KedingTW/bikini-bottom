@@ -16,4 +16,8 @@ resources:
   - deployments/pearl.yaml
   - deployments/larry.yaml
   - deployments/conch.yaml
-  - deployments/slash-bot.yaml
+  - deployments/mermaid-man.yaml
+  - deployments/gary.yaml
+  - deployments/gateway.yaml
+  - deployments/wecom-bot.yaml
+  - deployments/dashboard.yaml

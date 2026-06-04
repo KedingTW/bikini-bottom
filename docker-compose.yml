@@ -217,6 +217,18 @@ services:
       - "8080:8080"
     env_file: .env
 
+  # ─── Dashboard（團隊狀態管理介面）─────────────────────
+  dashboard:
+    build: ./services/dashboard
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "30080:8501"
+    environment:
+      - SESSION_SECRET=bikini-bottom-dashboard-secret-2026
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
   # ─── 獨立服務 ───────────────────────────────────────
   conch:
     build: .
