@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "discord-mcp": {
-      "url": "http://host.docker.internal:1601/mcp/discord",
+      "url": "http://192.168.1.105:1604/mcp/discord",
       "headers": {
         "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
       }

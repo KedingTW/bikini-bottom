@@ -1305,6 +1305,195 @@ async def api_discord_send_message(channel_id: str, request: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/discord/threads")
+async def api_discord_threads(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        from discord_api import list_active_threads, list_channels, list_forum_tags
+        threads = await list_active_threads()
+        channels = await list_channels()
+        # 過濾掉舊版頻道
+        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉"}
+        old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
+        threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
+        # Get tags for forum channels
+        forum_channels = [c for c in channels if c["type"] == 15 and c["name"] not in OLD_CHANNELS]
+        tags_map = {}
+        for fc in forum_channels:
+            try:
+                tags = await list_forum_tags(fc["id"])
+                tags_map[fc["id"]] = tags
+            except Exception:
+                pass
+        return JSONResponse({"error": None, "threads": threads, "tags_map": tags_map, "channels": channels})
+    except Exception as e:
+        return JSONResponse({"error": str(e), "threads": [], "tags_map": {}, "channels": []})
+
+
+@app.post("/api/discord/threads/{thread_id}/archive")
+async def api_discord_archive_thread(thread_id: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        from discord_api import archive_thread
+        await archive_thread(thread_id)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/api/discord/threads/{thread_id}/tags")
+async def api_discord_update_tags(thread_id: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    tag_ids = body.get("tag_ids", [])
+    try:
+        from discord_api import update_thread_tags
+        await update_thread_tags(thread_id, tag_ids)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/discord/threads/{thread_id}/messages")
+async def api_discord_thread_messages(thread_id: str, request: Request):
+    """取得討論串的全部訊息用於對話分析（有快取）"""
+    import json as json_mod
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        # Check cache (1 hour)
+        cache_key = f"thread_msgs_{thread_id}"
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+        row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+        conn.close()
+        if row:
+            return JSONResponse(json_mod.loads(row[0]))
+
+        from discord_api import get_channel_messages, NICK_MAP
+        all_msgs = []
+        before = None
+        for _ in range(20):
+            msgs = await get_channel_messages(thread_id, limit=100, before=before)
+            if not msgs:
+                break
+            all_msgs.extend(msgs)
+            before = msgs[-1]["id"]
+            if len(msgs) < 100:
+                break
+        messages = []
+        for m in all_msgs:
+            author = m.get("author", {})
+            uid = author.get("id", "")
+            display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
+            messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False)})
+        result = {"error": None, "messages": messages, "total": len(messages)}
+
+        # Cache result
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+        conn.commit()
+        conn.close()
+
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "messages": []})
+
+
+@app.get("/api/discord/activity")
+async def api_discord_activity(request: Request):
+    """Forum 討論串活躍度分析（有快取）"""
+    import json as json_mod
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        # Check cache
+        cache_key = "discord_activity"
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+        row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
+        conn.close()
+        if row:
+            return JSONResponse({"error": None, **json_mod.loads(row[0]), "cached": True})
+
+        from discord_api import list_active_threads, list_channels, list_forum_tags
+        threads = await list_active_threads()
+        channels = await list_channels()
+
+        # 過濾掉舊版（準備關閉）頻道的 threads
+        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉"}
+        old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
+        threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
+
+        # Get tags for forum channels
+        forum_channels = [c for c in channels if c["type"] == 15 and c["name"] not in OLD_CHANNELS]
+        tags_map = {}
+        for fc in forum_channels:
+            try:
+                tags = await list_forum_tags(fc["id"])
+                tags_map[fc["id"]] = tags
+            except Exception:
+                pass
+
+        # Build daily creation chart (group threads by created date)
+        from collections import defaultdict
+        daily_posts = defaultdict(int)
+        for t in threads:
+            if t.get("created_at"):
+                try:
+                    date_str = t["created_at"][:10]  # YYYY-MM-DD
+                    daily_posts[date_str] += 1
+                except Exception:
+                    pass
+
+        daily_chart = [{"date": k, "count": v} for k, v in sorted(daily_posts.items())]
+
+        # Top threads by message count
+        top_threads = sorted(threads, key=lambda x: x.get("message_count", 0), reverse=True)[:20]
+        top_list = []
+        for t in top_threads:
+            parent_name = next((c["name"] for c in channels if c["id"] == t.get("parent_id")), "")
+            tag_names = []
+            parent_tags = tags_map.get(t.get("parent_id"), [])
+            for tid in t.get("applied_tags", []):
+                tag = next((tg for tg in parent_tags if tg["id"] == tid), None)
+                if tag:
+                    tag_names.append(tag["name"])
+            top_list.append({
+                "id": t["id"], "name": t["name"], "message_count": t.get("message_count", 0),
+                "parent": parent_name, "tags": tag_names, "created_at": t.get("created_at", "")[:10],
+                "last_activity": t.get("last_activity", ""),
+                "owner_id": t.get("owner_id", ""),
+            })
+
+        # Summary
+        result = {
+            "total_threads": len(threads),
+            "forum_count": len(forum_channels),
+            "daily_chart": daily_chart,
+            "top_threads": top_list,
+        }
+
+        # Store cache
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+        conn.commit()
+        conn.close()
+
+        return JSONResponse({"error": None, **result, "cached": False})
+    except Exception as e:
+        logging.error(f"Discord activity failed: {e}")
+        return JSONResponse({"error": str(e), "total_threads": 0, "daily_chart": [], "top_threads": []})
+
+
 # ─── Mount Vue SPA dist at root (MUST be LAST, after all routes) ───
 if DIST_DIR.exists():
     app.mount("/", StaticFiles(directory=str(DIST_DIR), html=True), name="spa")

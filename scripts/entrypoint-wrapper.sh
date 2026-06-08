@@ -44,7 +44,7 @@ try:
     cur = json.load(open('$THREAD_MAP'))
 except:
     cur = {}
-merged = {**bak, **cur}
+merged = {**cur, **bak}
 json.dump(merged, open('$THREAD_MAP', 'w'))
 print(f'[thread-map] restored {len(merged)} entries (was {len(cur)})')
 " 2>/dev/null

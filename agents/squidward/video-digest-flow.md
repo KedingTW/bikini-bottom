@@ -61,12 +61,33 @@
 | 2 | 上傳縮圖取 thumbMediaId | `UploadWecomMedia`（wecom-push-mcp） |
 | 3 | 上傳內嵌圖片取 url | `UploadWecomImage`（wecom-push-mcp） |
 | 4 | 推播 mpnews | `PushWecomMpnews`（wecom-push-mcp） |
-| 5 | 更新狀態 | pending-push → pushed |
+| 5 | 歸檔 | 見下方 |
 
 ### 細節
 
 - 所有 Wecom tools 傳 `appName: "als"`
 - Step 4 的 content 為 HTML 格式（摘要文字 + 內嵌圖片）
+
+### Step 5 歸檔（推到正式機後必須立即執行）
+
+推播成功後，下一步就是歸檔，不可遺漏：
+
+1. 更新 meta.json：`status` → `pushed`，填入 `pushedAt`
+2. 更新 meta.json：寫入 `msgIdALS`（正式機推播回傳的 msgId）
+3. 移動資料夾：`videos/{videoId}/` → `videos/pushed/{videoId}/`
+4. 從 `queues/pending-push.json` 移除該筆
+5. 加入 `queues/pushed.json`
+
+### msgId 記錄規則
+
+推播成功時，企微 API 會回傳 msgId，必須寫入 meta.json：
+
+| 推播目標 | 寫入欄位 | 時機 |
+|----------|---------|------|
+| review 應用（審核） | `msgIdReview` | 推到共讀審核成功時 |
+| als 應用（正式機） | `msgIdALS` | 推到正式機成功時 |
+
+用途：後續如需撤回訊息，必須有 msgId 才能操作。
 
 ---
 
@@ -78,3 +99,4 @@
 4. 統一用 `video-digest`，不要出現 `bv-summary`
 5. 插畫兩版都保留：`illustration.png` + `illustration_branded.jpg`
 6. 加框在審核前就做（程序1 的一部分）
+7. **不重複推審核**：推送到 review 應用前，必須先檢查 meta.json 的 status。若已是 `pending-push` 或 `pushed`，代表已通過審核，不可再推去 review，避免造成筱瓔困擾

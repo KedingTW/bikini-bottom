@@ -28,8 +28,8 @@ const navItems = [
   { path: '/', icon: '🏠', label: '總覽', requireAdmin: false },
   { path: '/metrics', icon: '📊', label: '資源監控', requireAdmin: false },
   { path: '/costs', icon: '💰', label: '成本監控', requireAdmin: false },
-  { path: '/discord', icon: '🎮', label: 'Discord', requireAdmin: false },
   { path: '/alerts', icon: '🔔', label: '告警紀錄', requireAdmin: false },
+  { path: '/discord', icon: '🎮', label: 'Discord', requireAdmin: true },
   { path: '/users', icon: '👥', label: '使用者管理', requireAdmin: true },
 ]
 

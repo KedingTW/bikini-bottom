@@ -1,0 +1,159 @@
+{
+  "mcpServers": {
+    "hrs-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/hrs",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "GetSVacationName",
+        "GetUser",
+        "GetDepartment",
+        "GetLeaveBalance",
+        "GetLeaveHistory",
+        "GetLeavePolicy",
+        "GetOrganizationCalendar",
+        "SaveLeaveRequest",
+        "UpdateLeaveRequest",
+        "RollbackLeaveRequest",
+        "CancelLeaveRequest",
+        "DeleteLeaveRequest",
+        "ApproveLeaveRequest",
+        "RejectLeaveRequest",
+        "GetFlowWaitLeaveRequest"
+      ]
+    },
+    "crm-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/crm",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "SearchCustomer",
+        "SearchCustomerContact",
+        "GetCrmDescription",
+        "GetRegionSales",
+        "CreateQuote"
+      ]
+    },
+    "pricing-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/pricing",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "GetRoomDoorPrice",
+        "GetRoomDoorFramePrice",
+        "GetRoomDoorAccessories",
+        "GetCabinetDoorPrice",
+        "GetCabinetShippingFee",
+        "GetFlooringPrice",
+        "GetFlooringAccessories"
+      ]
+    },
+    "als-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/als",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "CreateComplaint",
+        "QueryComplaint"
+      ]
+    },
+    "wecom-drive-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/wecom_drive",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "WecomDriveCreateDoc",
+        "WecomDriveRenameDoc",
+        "WecomDriveDelDoc",
+        "WecomDriveGetDocBaseInfo",
+        "WecomDriveShareDoc",
+        "WecomDriveGetDoc",
+        "WecomDriveBatchUpdateDoc",
+        "WecomDriveGetSpreadsheetRangeData",
+        "WecomDriveGetSpreadsheetProperty",
+        "WecomDriveBatchUpdateSpreadsheet",
+        "WecomDriveAddSmartsheetSheet",
+        "WecomDriveDelSmartsheetSheet",
+        "WecomDriveUpdateSmartsheetSheet",
+        "WecomDriveGetSmartsheetSheet",
+        "WecomDriveAddSmartsheetView"
+      ]
+    },
+    "sap-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/sap",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "SearchProductItem"
+      ]
+    },
+    "youtube-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/youtube",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "GetYoutubeVideoInfo",
+        "CheckYoutubeRss",
+        "DownloadYoutubeAudio"
+      ]
+    },
+    "stt-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/stt",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "SttSubmit",
+        "SttGetResult"
+      ]
+    },
+    "discord-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/discord",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "ListDiscordChannels",
+        "ListDiscordActiveThreads",
+        "GetDiscordChannelMessages",
+        "GetDiscordThreadMessages",
+        "SendDiscordMessage",
+        "SendDiscordImageMessage",
+        "CreateDiscordThread",
+        "EditDiscordThread",
+        "DeleteDiscordMessage"
+      ]
+    },
+    "wecom-push-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/wecom_push",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "PushWecomText",
+        "UploadWecomMedia",
+        "UploadWecomImage",
+        "PushWecomMpnews",
+        "RecallWecomMessage"
+      ]
+    },
+    "image-mcp": {
+      "url": "http://192.168.1.105:1604/mcp/image",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      },
+      "autoApprove": [
+        "GenerateImage",
+        "ResizeImage",
+        "ComposeImage"
+      ]
+    }
+  }
+}

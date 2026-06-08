@@ -25,6 +25,9 @@ def _headers():
 
 async def list_members(limit=100, after=None):
     """List guild members."""
+    # Bot 角色 ID 需要過濾
+    BOT_ROLE_NAMES = {"海綿寶寶", "派大星", "泡芙老師", "章魚哥", "珊迪", "神奇海螺", "小蝸", "珍珍", "蝦霸", "凱倫", "海超人"}
+
     params = {"limit": min(limit, 1000)}
     if after:
         params["after"] = after
@@ -32,6 +35,13 @@ async def list_members(limit=100, after=None):
         r = await client.get(f"{BASE}/guilds/{GUILD_ID}/members", headers=_headers(), params=params)
         r.raise_for_status()
         members = r.json()
+        # Get roles to find bot role IDs
+        r2 = await client.get(f"{BASE}/guilds/{GUILD_ID}/roles", headers=_headers())
+        r2.raise_for_status()
+        all_roles = r2.json()
+
+    bot_role_ids = {r["id"] for r in all_roles if r["name"] in BOT_ROLE_NAMES or r.get("managed", False)}
+
     return [
         {
             "id": m["user"]["id"],
@@ -39,7 +49,7 @@ async def list_members(limit=100, after=None):
             "display_name": NICK_MAP.get(m["user"]["id"]) or m["user"].get("global_name") or m.get("nick") or m["user"]["username"],
             "nick": NICK_MAP.get(m["user"]["id"]) or m.get("nick"),
             "avatar": m["user"].get("avatar"),
-            "roles": m.get("roles", []),
+            "roles": [rid for rid in m.get("roles", []) if rid not in bot_role_ids],
             "joined_at": m.get("joined_at"),
         }
         for m in members
@@ -112,3 +122,85 @@ async def set_nickname(user_id: str, nick: str):
             json={"nick": nick},
         )
         r.raise_for_status()
+
+
+async def list_active_threads():
+    """List all active threads in guild."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(f"{BASE}/guilds/{GUILD_ID}/threads/active", headers=_headers())
+        r.raise_for_status()
+        data = r.json()
+    threads = data.get("threads", [])
+    return [
+        {
+            "id": t["id"],
+            "name": t["name"],
+            "parent_id": t.get("parent_id"),
+            "archived": t.get("thread_metadata", {}).get("archived", False),
+            "locked": t.get("thread_metadata", {}).get("locked", False),
+            "message_count": t.get("message_count", 0),
+            "created_at": t.get("thread_metadata", {}).get("create_timestamp"),
+            "last_activity": _snowflake_to_iso(t.get("last_message_id")),
+            "owner_id": t.get("owner_id"),
+            "applied_tags": t.get("applied_tags", []),
+        }
+        for t in threads
+    ]
+
+
+def _snowflake_to_iso(snowflake_id):
+    """Convert Discord snowflake ID to ISO timestamp."""
+    if not snowflake_id:
+        return None
+    try:
+        ts_ms = (int(snowflake_id) >> 22) + 1420070400000
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return None
+
+
+async def list_forum_tags(channel_id: str):
+    """Get available tags for a forum channel."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(f"{BASE}/channels/{channel_id}", headers=_headers())
+        r.raise_for_status()
+        ch = r.json()
+    return ch.get("available_tags", [])
+
+
+async def archive_thread(thread_id: str):
+    """Archive a thread."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.patch(
+            f"{BASE}/channels/{thread_id}",
+            headers=_headers(),
+            json={"archived": True},
+        )
+        r.raise_for_status()
+
+
+async def update_thread_tags(thread_id: str, tag_ids: list):
+    """Update applied tags on a forum thread."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.patch(
+            f"{BASE}/channels/{thread_id}",
+            headers=_headers(),
+            json={"applied_tags": tag_ids},
+        )
+        r.raise_for_status()
+
+
+async def get_channel_messages(channel_id: str, limit: int = 100, before: str = None):
+    """Get recent messages from a channel."""
+    params = {"limit": min(limit, 100)}
+    if before:
+        params["before"] = before
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{BASE}/channels/{channel_id}/messages",
+            headers=_headers(),
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json()
