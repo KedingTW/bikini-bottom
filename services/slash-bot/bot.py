@@ -430,7 +430,7 @@ def _display_name(container_name: str) -> str:
         "bob": "海綿寶寶", "patrick": "派大星", "squidward": "章魚哥",
         "sandy": "珊迪", "puff": "泡芙老師", "pearl": "珍珍",
         "larry": "蝦霸", "conch": "神奇海螺",
-        "slash-bot": "小蝸", "gary": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
+        "gary": "小蝸", "wecom-bot": "企微Bot", "gateway": "Gateway",
     }
     return names.get(container_name, container_name)
 
