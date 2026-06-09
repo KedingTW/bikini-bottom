@@ -10,8 +10,10 @@ import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import AgentConfig from './views/AgentConfig.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
+import Login from './views/Login.vue'
 
 const routes = [
+  { path: '/login', name: 'login', component: Login, meta: { public: true } },
   { path: '/', name: 'home', component: Dashboard },
   { path: '/metrics', name: 'metrics', component: Metrics },
   { path: '/costs', name: 'costs', component: Costs },
@@ -34,7 +36,18 @@ const routes = [
   { path: '/users', name: 'users', component: Users },
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 })
+
+router.beforeEach(async (to) => {
+  if (to.meta.public) return true
+  try {
+    const res = await fetch('/api/me')
+    if (res.ok) return true
+  } catch {}
+  return { name: 'login' }
+})
+
+export default router
