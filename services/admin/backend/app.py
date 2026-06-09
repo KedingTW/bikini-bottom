@@ -1445,9 +1445,110 @@ async def api_discord_send_message(channel_id: str, request: Request):
     try:
         from discord_api import send_message
         msg = await send_message(channel_id, content)
+        _log_push(user, "discord", channel_id, content)
         return JSONResponse({"ok": True, "message_id": msg.get("id")})
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─── Messaging APIs ──────────────────────────────────────
+def _init_push_table():
+    with sqlite3.connect(METRICS_DB) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS push_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                platform TEXT NOT NULL,
+                target TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT DEFAULT 'sent',
+                scheduled_at TEXT DEFAULT ''
+            )
+        """)
+
+
+_init_push_table()
+
+
+def _log_push(user, platform, target, content, scheduled_at=""):
+    tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'sent', ?)",
+                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
+    conn.commit()
+    conn.close()
+
+
+@app.get("/api/messaging/history")
+async def api_messaging_history(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    rows = conn.execute("SELECT ts, user_name, platform, target, content, status, scheduled_at FROM push_history ORDER BY id DESC LIMIT 50").fetchall()
+    conn.close()
+    return JSONResponse({"history": [{"ts": r[0], "user": r[1], "platform": r[2], "target": r[3], "content": r[4], "status": r[5], "scheduled_at": r[6]} for r in rows]})
+
+
+@app.post("/api/messaging/wecom")
+async def api_messaging_wecom(request: Request):
+    """推送訊息到企業微信 webhook"""
+    import httpx
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    content = body.get("content", "").strip() if isinstance(body, dict) else ""
+    webhook_url = body.get("webhook_url", "").strip() if isinstance(body, dict) else ""
+    if not content:
+        raise HTTPException(status_code=400, detail="訊息內容不能為空")
+    if not webhook_url:
+        raise HTTPException(status_code=400, detail="請提供 Webhook URL")
+    from urllib.parse import urlparse
+    parsed = urlparse(webhook_url)
+    if parsed.hostname != "qyapi.weixin.qq.com":
+        raise HTTPException(status_code=400, detail="僅允許企業微信官方 Webhook 域名（qyapi.weixin.qq.com）")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(webhook_url, json={"msgtype": "text", "text": {"content": content}})
+            r.raise_for_status()
+        _log_push(user, "wecom", "webhook", content)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"推送失敗：{e}")
+
+
+@app.post("/api/messaging/schedule")
+async def api_messaging_schedule(request: Request):
+    """排程推送（寫入 push_history 標記 scheduled）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    content = body.get("content", "").strip()
+    platform = body.get("platform", "")
+    target = body.get("target", "")
+    scheduled_at = body.get("scheduled_at", "")
+    if not content or not scheduled_at:
+        raise HTTPException(status_code=400, detail="請填寫內容和排程時間")
+    tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'scheduled', ?)",
+                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True, "message": f"已排程於 {scheduled_at} 發送"})
 
 
 @app.get("/api/discord/threads")
