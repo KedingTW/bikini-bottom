@@ -75,7 +75,7 @@
 
     <!-- Threads -->
     <div v-if="!loading">
-      <div v-if="!threads.length" class="text-center py-12 text-white/50">沒有活躍的討論串</div>
+      <div v-if="!threads.length && threadsLoaded" class="text-center py-12 text-white/50">沒有活躍的討論串</div>
       <div v-else>
         <!-- Toolbar -->
         <div class="flex items-center gap-3 mb-4 flex-wrap">
@@ -335,6 +335,7 @@ const msgChannel = ref('')
 const msgContent = ref('')
 const msgStatus = ref(null)
 const threads = ref([])
+const threadsLoaded = ref(false)
 const tagsMap = ref({})
 const threadFilter = ref('')
 const threadTagFilter = ref('')
@@ -427,6 +428,7 @@ async function loadThreads() {
     threads.value = res?.threads || []
     tagsMap.value = res?.tags_map || {}
   } catch (e) { console.error(e) }
+  threadsLoaded.value = true
 }
 
 async function loadActivity() {
