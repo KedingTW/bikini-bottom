@@ -898,6 +898,70 @@ async def api_logs(agent_name: str, request: Request, lines: int = 50):
         return JSONResponse({"logs": "無可用後端"})
 
 
+@app.get("/api/logs/search")
+async def api_logs_search(request: Request, keyword: str = "", agents: str = "", lines: int = 100, since_hours: int = 24):
+    """跨 Pod 搜尋 log 關鍵字"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    import subprocess
+    target_agents = [a.strip() for a in agents.split(",") if a.strip()] if agents else [a["name"] for a in AGENTS]
+    valid_names = [a["name"] for a in AGENTS]
+    target_agents = [a for a in target_agents if a in valid_names]
+    lines = min(lines, 500)
+    results = []
+
+    for agent_name in target_agents:
+        try:
+            r = subprocess.run(
+                ["kubectl", "logs", f"deployment/{agent_name}", "-n", NAMESPACE,
+                 f"--since={since_hours}h", f"--tail={lines}"],
+                capture_output=True, text=True, timeout=10
+            )
+            if r.returncode == 0 and r.stdout:
+                log_lines = r.stdout.strip().split("\n")
+                if keyword:
+                    log_lines = [l for l in log_lines if keyword.lower() in l.lower()]
+                if log_lines:
+                    results.append({"agent": agent_name, "lines": log_lines[-200:], "total": len(log_lines)})
+        except Exception:
+            pass
+
+    return JSONResponse({"results": results, "keyword": keyword, "since_hours": since_hours})
+
+
+@app.get("/api/logs/export")
+async def api_logs_export(request: Request, agents: str = "", since_hours: int = 24):
+    """匯出所有 log 為純文字"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    import subprocess
+    target_agents = [a.strip() for a in agents.split(",") if a.strip()] if agents else [a["name"] for a in AGENTS]
+    valid_names = [a["name"] for a in AGENTS]
+    target_agents = [a for a in target_agents if a in valid_names]
+    output = []
+
+    for agent_name in target_agents:
+        try:
+            r = subprocess.run(
+                ["kubectl", "logs", f"deployment/{agent_name}", "-n", NAMESPACE,
+                 f"--since={since_hours}h", "--tail=1000"],
+                capture_output=True, text=True, timeout=15
+            )
+            if r.returncode == 0 and r.stdout:
+                output.append(f"=== {agent_name} ===")
+                output.append(r.stdout.strip())
+                output.append("")
+        except Exception:
+            pass
+
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("\n".join(output), headers={"Content-Disposition": "attachment; filename=logs-export.txt"})
+
+
 @app.get("/api/metrics")
 async def api_metrics(request: Request):
     """取得各 pod 的 CPU/Memory 即時用量（需 metrics-server）"""

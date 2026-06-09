@@ -11,6 +11,7 @@ import AgentConfig from './views/AgentConfig.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
 import Deploy from './views/Deploy.vue'
+import Logs from './views/Logs.vue'
 import Login from './views/Login.vue'
 
 const routes = [
@@ -30,7 +31,7 @@ const routes = [
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },
   // 系統運維
   { path: '/system', name: 'system', component: ComingSoon },
-  { path: '/logs', name: 'logs', component: ComingSoon },
+  { path: '/logs', name: 'logs', component: Logs },
   { path: '/deploy', name: 'deploy', component: Deploy },
   { path: '/api-keys', name: 'api-keys', component: ComingSoon },
   // 系統管理
