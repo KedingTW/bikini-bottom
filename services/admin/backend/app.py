@@ -1592,6 +1592,34 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     return JSONResponse({"content": path.read_text(), "filename": filename})
 
 
+@app.get("/api/agents/{agent_name}/cronjob")
+async def api_agent_cronjob(agent_name: str, request: Request):
+    """取得角色的 cronjob 配置"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    if not path.exists():
+        return JSONResponse({"content": ""})
+    return JSONResponse({"content": path.read_text()})
+
+
+@app.get("/api/agents/{agent_name}/kb")
+async def api_agent_kb(agent_name: str, request: Request):
+    """取得角色的 Knowledge Base 檔案列表"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    if not kb_path.exists():
+        return JSONResponse({"files": []})
+    files = []
+    for f in sorted(kb_path.rglob("*")):
+        if f.is_file():
+            files.append(str(f.relative_to(kb_path)))
+    return JSONResponse({"files": files})
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/cronjobs", "/knowledge",

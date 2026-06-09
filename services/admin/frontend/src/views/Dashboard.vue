@@ -43,6 +43,7 @@
         <div class="flex gap-2">
           <button v-if="userRole === 'admin'" @click="restart(agent)" class="px-3 py-1.5 text-xs rounded border border-amber-400/30 text-amber-300 hover:bg-amber-400/10">🔁 重啟</button>
           <button @click="openLogs(agent)" class="px-3 py-1.5 text-xs rounded border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10">📋 Log</button>
+          <router-link v-if="userRole === 'admin'" :to="'/agent-config#' + agent.name" class="px-3 py-1.5 text-xs rounded border border-white/15 text-white/70 hover:bg-white/10 no-underline">⚙️ 設定</router-link>
         </div>
       </div>
     </div>

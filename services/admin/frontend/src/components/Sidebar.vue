@@ -41,8 +41,6 @@ const navGroups = [
   ]},
   { label: 'AI 角色', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
-    { path: '/cronjobs', icon: '⏰', label: 'Cronjob', admin: true },
-    { path: '/knowledge', icon: '📚', label: 'Knowledge Base', admin: true },
   ]},
   { label: '系統運維', items: [
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
