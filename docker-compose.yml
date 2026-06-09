@@ -217,6 +217,18 @@ services:
       - "8080:8080"
     env_file: .env
 
+  # ─── Dashboard（團隊狀態管理介面）─────────────────────
+  dashboard:
+    build: ./services/admin
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "30080:8501"
+    environment:
+      - SESSION_SECRET=${DASHBOARD_SESSION_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
   # ─── 獨立服務 ───────────────────────────────────────
   conch:
     build: .

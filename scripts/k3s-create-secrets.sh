@@ -36,6 +36,7 @@ kubectl create secret generic discord-tokens -n $NAMESPACE \
   --from-literal=PEARL="${DISCORD_BOT_TOKEN_PEARL}" \
   --from-literal=LARRY="${DISCORD_BOT_TOKEN_LARRY}" \
   --from-literal=GARY="${DISCORD_BOT_TOKEN_GARY}" \
+  --from-literal=MERMAID_MAN="${DISCORD_BOT_TOKEN_MERMAID_MAN}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # ─── Kiro API Keys ───
@@ -49,6 +50,8 @@ kubectl create secret generic kiro-api-keys -n $NAMESPACE \
   --from-literal=CONCH="${KIRO_API_KEY_CONCH}" \
   --from-literal=PEARL="${KIRO_API_KEY_PEARL}" \
   --from-literal=LARRY="${KIRO_API_KEY_LARRY}" \
+  --from-literal=MERMAID_MAN="${KIRO_API_KEY_MERMAID_MAN}" \
+  --from-literal=WECOM_BOT="${KIRO_API_KEY_WECOM_BOT}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # ─── GitHub Token ───
@@ -66,6 +69,16 @@ kubectl create secret generic slash-bot-secrets -n $NAMESPACE \
   --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   --from-literal=OPENAI_ADMIN_KEY="${OPENAI_ADMIN_KEY:-}" \
   --from-literal=OPENAI_ORG_ID="${OPENAI_ORG_ID:-}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ─── WeCom Gateway ───
+echo "  📌 wecom-secrets..."
+kubectl create secret generic wecom-secrets -n $NAMESPACE \
+  --from-literal=WECOM_CORP_ID="${WECOM_CORP_ID:-}" \
+  --from-literal=WECOM_AGENT_ID="${WECOM_AGENT_ID:-}" \
+  --from-literal=WECOM_SECRET="${WECOM_SECRET:-}" \
+  --from-literal=WECOM_TOKEN="${WECOM_TOKEN:-}" \
+  --from-literal=WECOM_ENCODING_AES_KEY="${WECOM_ENCODING_AES_KEY:-}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo ""

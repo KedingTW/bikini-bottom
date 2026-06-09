@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: bikini-bottom
+  labels:
+    app: gateway
+    type: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        type: service
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: gateway
+          image: ghcr.io/openabdev/openab-gateway:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WECOM_CORP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: wecom-secrets
+                  key: WECOM_CORP_ID
+            - name: WECOM_AGENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: wecom-secrets
+                  key: WECOM_AGENT_ID
+            - name: WECOM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: wecom-secrets
+                  key: WECOM_SECRET
+            - name: WECOM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: wecom-secrets
+                  key: WECOM_TOKEN
+            - name: WECOM_ENCODING_AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wecom-secrets
+                  key: WECOM_ENCODING_AES_KEY
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: bikini-bottom
+spec:
+  selector:
+    app: gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

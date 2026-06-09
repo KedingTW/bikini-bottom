@@ -24,6 +24,20 @@ agents/*/.kiro/settings/
 # 動態記憶（每個環境不同）
 agents/*/.kiro/steering/memory.md
 
+# OpenAB runtime 資料（thread_map、session 等）
+agents/*/.openab/thread_map.json
+
+# Agent SSH 金鑰（不可進 git）
+agents/*/.ssh/
+
+# 角色私有的 spec / 工作筆記（這個 repo 只管團隊配置，角色專屬產出之後另外做備份機制）
+agents/squidward/_projects.md
+agents/squidward/als-daily-report-spec.md
+agents/squidward/order-data-transform-rules.md
+agents/squidward/video-digest-flow.md
+agents/squidward/product-knowledge-comic/
+agents/sandy/renovation-warrior-report-spec.md
+
 # 舊的 steering 目錄（已搬到 agents/）
 steering-old/
 
@@ -104,3 +118,10 @@ shared/skills/company-kb/
 
 # sync-skills.sh 的 repo cache
 .skill-repos/
+agents-migration.tar
+
+# MCP 備份（含 token，不進 git）
+mcp-backup/
+
+# Vue build 產物（由 npm run build 產生，不進 git）
+services/admin/dist/

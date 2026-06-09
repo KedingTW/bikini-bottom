@@ -4,8 +4,8 @@ metadata:
   name: common-env
   namespace: bikini-bottom
 data:
-  GIT_EMAIL: ""
-  DISCORD_GUILD_ID: ""
-  SLASH_BOT_CHANNEL_ID: ""
+  GIT_EMAIL: "kdpg@twkd.com"
+  DISCORD_GUILD_ID: "1492090122257170523"
+  SLASH_BOT_CHANNEL_ID: "1493802266296188988"
   CONCH_ADMIN_IDS: ""
   CONCH_OPERATOR_ROLE_IDS: ""
