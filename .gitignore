@@ -122,3 +122,6 @@ agents-migration.tar
 
 # MCP 備份（含 token，不進 git）
 mcp-backup/
+
+# Vue build 產物（由 npm run build 產生，不進 git）
+services/admin/dist/
