@@ -345,6 +345,9 @@ const idleYellowDays = ref(7)
 const idleRedDays = ref(14)
 const showCleanup = ref(false)
 const pinnedThreads = ref(new Set(JSON.parse(localStorage.getItem('pinnedThreads') || '[]')))
+
+watch(idleYellowDays, (v) => { if (idleRedDays.value < v) idleRedDays.value = v })
+watch(idleRedDays, (v) => { if (v < idleYellowDays.value) idleYellowDays.value = v })
 const previewThread = ref(null)
 const previewMessages = ref([])
 const previewLoading = ref(false)
@@ -540,7 +543,7 @@ const allOwners = computed(() => {
 
 const cleanupThreads = computed(() => {
   return threads.value
-    .filter(t => getIdleDays(t) >= idleRedDays.value)
+    .filter(t => getIdleDays(t) >= idleRedDays.value && !pinnedThreads.value.has(t.id))
     .sort((a, b) => (a.last_activity || '').localeCompare(b.last_activity || ''))
 })
 
