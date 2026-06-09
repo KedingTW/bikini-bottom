@@ -1623,8 +1623,11 @@ async def api_agent_config_save(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    body = await request.json()
-    raw = body.get("raw", "")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    raw = body.get("raw", "") if isinstance(body, dict) else ""
     config_path = AGENTS_DIR / agent_name / "config.toml"
     if not config_path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent 不存在")
