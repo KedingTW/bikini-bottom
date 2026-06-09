@@ -1,4 +1,5 @@
 """🏝️ 比奇堡團隊 Dashboard — 角色狀態管理介面"""
+import hashlib
 import os
 import logging
 import sqlite3
@@ -39,104 +40,78 @@ METRICS_DB = os.environ.get("METRICS_DB", "/data/metrics/metrics.db")
 def _init_db():
     """Initialize SQLite database for metrics history."""
     os.makedirs(os.path.dirname(METRICS_DB), exist_ok=True)
-    conn = sqlite3.connect(METRICS_DB)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS metrics_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts TEXT NOT NULL,
-            agent TEXT NOT NULL,
-            cpu_milli REAL NOT NULL,
-            memory_mb REAL NOT NULL
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts TEXT NOT NULL,
-            agent TEXT NOT NULL,
-            level TEXT NOT NULL,
-            message TEXT NOT NULL,
-            dismissed INTEGER DEFAULT 0
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics_history(ts)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_agent ON metrics_history(agent)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts)")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            department TEXT DEFAULT '',
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'admin'
-        )
-    """)
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(METRICS_DB) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS metrics_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                agent TEXT NOT NULL,
+                cpu_milli REAL NOT NULL,
+                memory_mb REAL NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                agent TEXT NOT NULL,
+                level TEXT NOT NULL,
+                message TEXT NOT NULL,
+                dismissed INTEGER DEFAULT 0
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics_history(ts)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_agent ON metrics_history(agent)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                department TEXT DEFAULT '',
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'admin'
+            )
+        """)
     _seed_users()
 
 
 def _seed_users():
     """Seed initial users if table is empty."""
-    import hashlib
-    conn = sqlite3.connect(METRICS_DB)
-    # Add role column if not exists (migration)
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'")
-        conn.commit()
-    except Exception:
-        pass
-    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    if count == 0:
-        default_pw = hashlib.sha256("kd-22963999".encode()).hexdigest()
-        initial_users = [
-            ("11021395", "蔡旻哲", "系統開發課"),
-            ("11020955", "林潔庭", "系統開發課"),
-            ("11020550", "吳珈瑄", "系統開發課"),
-            ("11110577", "楊詠仁", "系統開發課"),
-        ]
-        for uid, name, dept in initial_users:
-            conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
-                         (uid, name, dept, default_pw))
-        conn.commit()
-    conn.close()
+    with sqlite3.connect(METRICS_DB) as conn:
+        # Add role column if not exists (migration)
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'")
+            conn.commit()
+        except Exception:
+            pass
+        count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        if count == 0:
+            default_pw = hashlib.sha256("kd-22963999".encode()).hexdigest()
+            initial_users = [
+                ("11021395", "蔡旻哲", "系統開發課"),
+                ("11020955", "林潔庭", "系統開發課"),
+                ("11020550", "吳珈瑄", "系統開發課"),
+                ("11110577", "楊詠仁", "系統開發課"),
+            ]
+            for uid, name, dept in initial_users:
+                conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
+                             (uid, name, dept, default_pw))
+            conn.commit()
 
 
 def _store_metrics(metrics: dict):
     """Store current metrics snapshot to SQLite."""
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        rows = []
-        for agent_name, m in metrics.items():
-            cpu_raw = m.get("cpu_raw", "0")
-            mem_raw = m.get("memory_raw", "0")
-            # Parse CPU to milli
-            if cpu_raw.endswith("n"):
-                cpu_milli = int(cpu_raw[:-1]) / 1_000_000
-            elif cpu_raw.endswith("m"):
-                cpu_milli = int(cpu_raw[:-1])
-            else:
-                try:
-                    cpu_milli = int(cpu_raw) * 1000
-                except ValueError:
-                    cpu_milli = 0
-            # Parse Memory to MB
-            if mem_raw.endswith("Ki"):
-                mem_mb = int(mem_raw[:-2]) / 1024
-            elif mem_raw.endswith("Mi"):
-                mem_mb = int(mem_raw[:-2])
-            elif mem_raw.endswith("Gi"):
-                mem_mb = int(mem_raw[:-2]) * 1024
-            else:
-                try:
-                    mem_mb = int(mem_raw) / (1024 * 1024)
-                except ValueError:
-                    mem_mb = 0
-            rows.append((ts, agent_name, cpu_milli, mem_mb))
-        conn.executemany("INSERT INTO metrics_history (ts, agent, cpu_milli, memory_mb) VALUES (?, ?, ?, ?)", rows)
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(METRICS_DB) as conn:
+            ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            rows = []
+            for agent_name, m in metrics.items():
+                cpu_raw = m.get("cpu_raw", "0")
+                mem_raw = m.get("memory_raw", "0")
+                cpu_milli = _parse_cpu_milli(cpu_raw)
+                mem_mb = _parse_memory_mb(mem_raw)
+                rows.append((ts, agent_name, cpu_milli, mem_mb))
+            conn.executemany("INSERT INTO metrics_history (ts, agent, cpu_milli, memory_mb) VALUES (?, ?, ?, ?)", rows)
     except Exception as e:
         logging.error(f"Metrics store error: {e}")
 
@@ -144,11 +119,9 @@ def _store_metrics(metrics: dict):
 def _cleanup_old_metrics():
     """Remove metrics older than 30 days."""
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-        conn.execute("DELETE FROM metrics_history WHERE ts < ?", (cutoff,))
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(METRICS_DB) as conn:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("DELETE FROM metrics_history WHERE ts < ?", (cutoff,))
     except Exception as e:
         logging.error(f"Metrics cleanup error: {e}")
 
@@ -449,7 +422,6 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
-    import hashlib
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
     conn = sqlite3.connect(METRICS_DB)
     row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
@@ -512,7 +484,6 @@ async def api_me(request: Request):
 @app.post("/api/change-password")
 async def api_change_password(request: Request):
     """修改密碼"""
-    import hashlib
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -550,7 +521,6 @@ async def api_users(request: Request):
 @app.post("/api/users")
 async def api_create_user(request: Request):
     """新增使用者（需 admin 權限）"""
-    import hashlib
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -606,7 +576,6 @@ async def api_delete_user(user_id: str, request: Request):
 @app.post("/api/users/{user_id}/reset-password")
 async def api_reset_password(user_id: str, request: Request):
     """重設使用者密碼為預設值（需 admin 權限）"""
-    import hashlib
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -934,11 +903,9 @@ async def api_dismiss_alert(alert_id: int, request: Request):
 def _insert_alert(agent: str, level: str, message: str):
     """Insert an alert into SQLite."""
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        conn.execute("INSERT INTO alerts (ts, agent, level, message) VALUES (?, ?, ?, ?)", (ts, agent, level, message))
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(METRICS_DB) as conn:
+            ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("INSERT INTO alerts (ts, agent, level, message) VALUES (?, ?, ?, ?)", (ts, agent, level, message))
     except Exception as e:
         logging.error(f"Insert alert error: {e}")
 
@@ -978,39 +945,55 @@ async def alerts_page(request: Request):
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
-def _parse_cpu(val: str) -> str:
-    """Parse CPU like '1234567n' or '5m' to percentage of 1 core."""
+def _parse_cpu_milli(val: str) -> float:
+    """Parse CPU string to millicores (numeric)."""
     try:
         if val.endswith("n"):
-            milli = int(val[:-1]) / 1_000_000
+            return int(val[:-1]) / 1_000_000
         elif val.endswith("m"):
-            milli = int(val[:-1])
+            return int(val[:-1])
         else:
-            milli = int(val) * 1000
-        pct = milli / 10  # 1000m = 1 core = 100%
-        if pct < 0.1:
-            return "<0.1%"
-        return f"{pct:.1f}%"
+            return int(val) * 1000
     except ValueError:
+        return 0
+
+
+def _parse_memory_mb(val: str) -> float:
+    """Parse memory string to MB (numeric)."""
+    try:
+        if val.endswith("Ki"):
+            return int(val[:-2]) / 1024
+        elif val.endswith("Mi"):
+            return int(val[:-2])
+        elif val.endswith("Gi"):
+            return int(val[:-2]) * 1024
+        else:
+            return int(val) / (1024 * 1024)
+    except ValueError:
+        return 0
+
+
+def _parse_cpu(val: str) -> str:
+    """Parse CPU like '1234567n' or '5m' to percentage of 1 core."""
+    milli = _parse_cpu_milli(val)
+    if milli == 0 and val not in ("0", "0m", "0n"):
         return val
+    pct = milli / 10  # 1000m = 1 core = 100%
+    if pct < 0.1:
+        return "<0.1%"
+    return f"{pct:.1f}%"
 
 
 def _parse_memory(val: str) -> str:
     """Parse memory like '91234Ki' to MB."""
-    try:
-        if val.endswith("Ki"):
-            mb = int(val[:-2]) / 1024
-        elif val.endswith("Mi"):
-            mb = int(val[:-2])
-        elif val.endswith("Gi"):
-            mb = int(val[:-2]) * 1024
-        else:
-            mb = int(val) / (1024 * 1024)
-        if mb >= 1024:
-            return f"{mb / 1024:.1f} GB"
-        return f"{mb:.0f} MB"
-    except ValueError:
+    mb = _parse_memory_mb(val)
+    if mb == 0 and val not in ("0", "0Ki", "0Mi", "0Gi"):
         return val
+    if mb >= 1024:
+        return f"{mb / 1024:.1f} GB"
+    return f"{mb:.0f} MB"
+
+
 def _find_pod_for_agent(agent_name: str, pods) -> dict:
     """Find pod matching the agent and extract status info."""
     for pod in pods:

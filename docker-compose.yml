@@ -219,7 +219,7 @@ services:
 
   # ─── Dashboard（團隊狀態管理介面）─────────────────────
   dashboard:
-    build: ./services/dashboard
+    build: ./services/admin
     container_name: dashboard
     restart: unless-stopped
     ports:
