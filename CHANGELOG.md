@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-06-09
+
+- **feat**: Admin 管理後台全面升級 — dashboard 更名為 admin，重構為 Vue 3 + Vite + Tailwind 標準專案
+- **feat**: 總覽頁 — 角色狀態卡片（按記憶體排序）、CPU/Memory 即時監控、告警橫幅
+- **feat**: 資源監控 — 每角色歷史 CPU/Memory 圖表（SQLite 紀錄，保留 30 天）、放大 Dialog
+- **feat**: 成本監控 — Kiro 額度排名 + OpenAI 費用分析（每日趨勢圖、按模型拆分、Token 用量）
+- **feat**: 成本監控快取 — Kiro 1 小時 / OpenAI 30 分鐘，點更新強制重查
+- **feat**: 告警系統 — 自動偵測 OOMKilled/CrashLoopBackOff/重啟，告警紀錄歷史頁面
+- **feat**: Discord 管理 — 成員列表（中文名對照）、身分組管理（過濾 bot 角色）、發送公告
+- **feat**: 討論串管理 — 列表/標籤篩選/封存、活躍度分析（每日新增折線圖）
+- **feat**: 討論串詳情 — 每小時對話密度圖、自動化指數、參與者統計
+- **feat**: 使用者管理 — 新增/刪除/重設密碼/角色切換（admin/viewer）
+- **feat**: 修改密碼功能 + 右上角下拉選單
+- **feat**: 左側收合選單 + 分組顯示 + sticky bar + 深海鳳梨背景
+- **feat**: 選單重整 — 通訊管理/AI 角色/系統運維分組，未實作頁面顯示 Coming Soon
+- **fix**: 小蝸（gary）Dashboard 狀態偵測修正（name mapping slash-bot → gary）
+- **chore**: AGENTS display 移除 emoji prefix
+- **chore**: 新增 conch avatar、assets 品牌資源（header/footer/logo）
+- **chore**: 新增 DISCORD_BOT_TOKEN_KAREN 到 .env
+
 ## 2026-06-04
 
 - **feat**: K3s 遷移完成 — 全部 agent deployment 的 hostPath 改為直接讀取 repo 目錄，不再依賴 `/opt/bikini-bottom` 副本，等同 docker-compose 的 bind mount 行為

@@ -1200,8 +1200,8 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
 
 
 # ─── Discord Management APIs ─────────────────────────────
-@app.get("/discord", response_class=HTMLResponse)
-async def discord_page(request: Request):
+@app.get("/threads", response_class=HTMLResponse)
+async def threads_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
@@ -1492,6 +1492,20 @@ async def api_discord_activity(request: Request):
     except Exception as e:
         logging.error(f"Discord activity failed: {e}")
         return JSONResponse({"error": str(e), "total_threads": 0, "daily_chart": [], "top_threads": []})
+
+
+# ─── SPA catch-all for client-side routes ───
+SPA_ROUTES = ["/messaging", "/members", "/threads", "/thread-analytics",
+              "/agent-config", "/cronjobs", "/knowledge",
+              "/system", "/logs", "/deploy", "/api-keys"]
+
+for _route in SPA_ROUTES:
+    @app.get(_route, response_class=HTMLResponse)
+    async def _spa_page(request: Request, _r=_route):
+        user = get_current_user(request)
+        if not user:
+            return RedirectResponse(url="/login", status_code=303)
+        return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
 # ─── Mount Vue SPA dist at root (MUST be LAST, after all routes) ───
