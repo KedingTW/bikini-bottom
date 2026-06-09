@@ -15,7 +15,7 @@
   </div>
 
   <div class="p-7">
-    <div v-if="!alerts.length" class="text-center py-16 text-white/60">🎉 目前沒有告警紀錄</div>
+    <div v-if="!alerts.length" class="text-center py-16 text-white/60">🎉 目前沒有異常通知紀錄</div>
 
     <div v-else class="glass rounded-xl overflow-hidden">
       <table class="w-full">

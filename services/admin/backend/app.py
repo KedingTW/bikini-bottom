@@ -899,7 +899,7 @@ async def metrics_page(request: Request):
 # ─── Alerts API ───────────────────────────────────────────
 @app.get("/api/alerts")
 async def api_alerts(request: Request):
-    """取得未關閉的告警列表"""
+    """取得未關閉的異常通知列表"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -917,7 +917,7 @@ async def api_alerts(request: Request):
 
 @app.post("/api/alerts/{alert_id}/dismiss")
 async def api_dismiss_alert(alert_id: int, request: Request):
-    """關閉（dismiss）一則告警"""
+    """關閉（dismiss）一則異常通知"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -929,20 +929,6 @@ async def api_dismiss_alert(alert_id: int, request: Request):
         return JSONResponse({"ok": True})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/alerts/test")
-async def api_test_alert(request: Request):
-    """注入模擬告警（開發測試用）"""
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    body = await request.json()
-    agent = body.get("agent", "bob")
-    level = body.get("level", "warning")  # warning, critical
-    message = body.get("message", "測試告警：這是一則模擬事件")
-    _insert_alert(agent, level, message)
-    return JSONResponse({"ok": True, "message": f"已注入 {level} 告警"})
 
 
 def _insert_alert(agent: str, level: str, message: str):
@@ -959,7 +945,7 @@ def _insert_alert(agent: str, level: str, message: str):
 
 @app.get("/api/alerts/history")
 async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
-    """取得告警歷史紀錄（含已關閉）"""
+    """取得異常通知歷史紀錄（含已關閉）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")

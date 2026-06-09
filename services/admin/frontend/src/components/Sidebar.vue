@@ -31,7 +31,7 @@ const navGroups = [
     { path: '/', icon: '🏠', label: '總覽', admin: false },
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
-    { path: '/alerts', icon: '🔔', label: '告警紀錄', admin: false },
+    { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
   ]},
   { label: '通訊管理', items: [
     { path: '/messaging', icon: '💬', label: '訊息推送', admin: true },

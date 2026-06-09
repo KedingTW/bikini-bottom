@@ -14,6 +14,13 @@ export function useApi() {
     return res.json()
   }
 
+  async function put(url, body = null) {
+    const opts = { method: 'PUT' }
+    if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts)
+    return res.json()
+  }
+
   function formatMem(mb) {
     if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB'
     return mb.toFixed(0) + ' MB'
@@ -40,5 +47,5 @@ export function useApi() {
     return 0
   }
 
-  return { get, post, formatMem, pad, formatTime24, parseCpuRaw, parseMemRaw }
+  return { get, post, put, formatMem, pad, formatTime24, parseCpuRaw, parseMemRaw }
 }

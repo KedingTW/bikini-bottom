@@ -77,21 +77,55 @@
     <div v-if="!loading && activeTab === 'threads'">
       <div v-if="!threads.length" class="text-center py-12 text-white/50">沒有活躍的討論串</div>
       <div v-else>
-        <div class="mb-4">
-          <input v-model="threadFilter" placeholder="搜尋討論串..." class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-2 text-sm w-64 focus:outline-none focus:border-cyan-400/60">
+        <!-- Toolbar -->
+        <div class="flex items-center gap-3 mb-4 flex-wrap">
+          <input v-model="threadFilter" placeholder="搜尋討論串..." class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-2 text-sm w-52 focus:outline-none focus:border-cyan-400/60">
+          <select v-model="threadTagFilter" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
+            <option value="">全部標籤</option>
+            <option v-for="tag in allTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+          </select>
+          <select v-model="threadChannelFilter" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
+            <option value="">全部頻道</option>
+            <option v-for="ch in forumChannels" :key="ch.id" :value="ch.id">#{{ ch.name }}</option>
+          </select>
+          <select v-model="threadSort" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
+            <option value="idle">最久未動</option>
+            <option value="active">最近活動</option>
+            <option value="messages">訊息最多</option>
+          </select>
+          <span class="text-white/40 text-xs">{{ sortedFilteredThreads.length }} / {{ threads.length }} 個</span>
+          <!-- Batch actions -->
+          <div v-if="selectedThreads.length" class="ml-auto flex items-center gap-2">
+            <span class="text-xs text-white/50">已選 {{ selectedThreads.length }} 個</span>
+            <button @click="batchClose()" class="text-xs px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white font-medium">🏷️ 批次結案</button>
+            <button @click="batchArchive()" class="text-xs px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">📦 批次封存</button>
+          </div>
         </div>
-        <div class="space-y-2">
-          <div v-for="t in filteredThreads" :key="t.id" class="glass rounded-lg p-4 flex items-center gap-4">
+
+        <!-- Thread List -->
+        <div class="space-y-1.5">
+          <div v-for="t in sortedFilteredThreads" :key="t.id"
+            class="glass rounded-lg px-4 py-3 flex items-center gap-3"
+            :class="getIdleDays(t) >= 7 ? 'border-l-4 border-yellow-500' : getIdleDays(t) >= 14 ? 'border-l-4 border-red-500' : ''">
+            <!-- Checkbox -->
+            <input type="checkbox" :value="t.id" v-model="selectedThreads" class="w-4 h-4 rounded bg-ocean-800 border-white/30">
+            <!-- Content -->
             <div class="flex-1 min-w-0">
-              <div class="font-medium truncate">{{ t.name }}</div>
+              <div class="flex items-center gap-2">
+                <span class="font-medium truncate text-sm">{{ t.name }}</span>
+                <span v-if="getIdleDays(t) >= 7" class="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">閒置 {{ getIdleDays(t) }}天</span>
+              </div>
               <div class="flex items-center gap-2 mt-1 flex-wrap">
                 <span class="text-xs text-white/40">#{{ getChannelName(t.parent_id) }}</span>
                 <span class="text-xs text-white/40">💬 {{ t.message_count }}</span>
+                <span class="text-xs text-white/40">{{ t.last_activity ? t.last_activity.slice(5) : '' }}</span>
                 <span v-for="tagId in t.applied_tags" :key="tagId"
                   class="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">{{ getTagName(t.parent_id, tagId) }}</span>
               </div>
             </div>
-            <button @click="archiveThread(t.id)" class="text-xs px-3 py-1 rounded border border-white/20 text-white/70 hover:bg-white/10 shrink-0">📦 封存</button>
+            <!-- Actions -->
+            <button @click="closeThread(t)" class="text-xs px-2 py-1 rounded border border-green-400/30 text-green-300 hover:bg-green-400/10" title="結案">🏷️</button>
+            <button @click="archiveThread(t.id)" class="text-xs px-2 py-1 rounded border border-white/20 text-white/70 hover:bg-white/10" title="封存">📦</button>
           </div>
         </div>
       </div>
@@ -228,9 +262,9 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import Chart from 'chart.js/auto'
 import { useApi } from '../composables/useApi.js'
 
-const { get, post } = useApi()
+const { get, post, put } = useApi()
 
-const activeTab = ref('members')
+const activeTab = ref('threads')
 const loading = ref(false)
 const members = ref([])
 const roles = ref([])
@@ -242,6 +276,10 @@ const msgStatus = ref(null)
 const threads = ref([])
 const tagsMap = ref({})
 const threadFilter = ref('')
+const threadTagFilter = ref('')
+const threadChannelFilter = ref('')
+const threadSort = ref('idle')
+const selectedThreads = ref([])
 const activityData = ref(null)
 const activityLoading = ref(false)
 const activityChart = ref(null)
@@ -378,6 +416,114 @@ const filteredThreads = computed(() => {
   const q = threadFilter.value.toLowerCase()
   return threads.value.filter(t => t.name.toLowerCase().includes(q))
 })
+
+const allTags = computed(() => {
+  const tags = []
+  const seen = new Set()
+  for (const [, tagList] of Object.entries(tagsMap.value)) {
+    for (const t of tagList) {
+      if (!seen.has(t.id)) { seen.add(t.id); tags.push(t) }
+    }
+  }
+  return tags
+})
+
+const forumChannels = computed(() => {
+  return channels.value.filter(c => c.type === 15)
+})
+
+const sortedFilteredThreads = computed(() => {
+  let list = [...threads.value]
+  // Text filter
+  if (threadFilter.value) {
+    const q = threadFilter.value.toLowerCase()
+    list = list.filter(t => t.name.toLowerCase().includes(q))
+  }
+  // Tag filter
+  if (threadTagFilter.value) {
+    list = list.filter(t => t.applied_tags.includes(threadTagFilter.value))
+  }
+  // Channel filter
+  if (threadChannelFilter.value) {
+    list = list.filter(t => t.parent_id === threadChannelFilter.value)
+  }
+  // Sort
+  if (threadSort.value === 'idle') {
+    list.sort((a, b) => (a.last_activity || '').localeCompare(b.last_activity || ''))
+  } else if (threadSort.value === 'active') {
+    list.sort((a, b) => (b.last_activity || '').localeCompare(a.last_activity || ''))
+  } else if (threadSort.value === 'messages') {
+    list.sort((a, b) => b.message_count - a.message_count)
+  }
+  return list
+})
+
+function getIdleDays(t) {
+  if (!t.last_activity) return 999
+  const last = new Date(t.last_activity)
+  const now = new Date()
+  return Math.floor((now - last) / (1000 * 60 * 60 * 24))
+}
+
+async function closeThread(t) {
+  if (!confirm(`結案「${t.name}」？將貼上「已完成」標籤並移除進行中標籤`)) return
+  try {
+    // Find the right tags for this thread's parent channel
+    const parentTags = tagsMap.value[t.parent_id] || []
+    const doneTag = parentTags.find(tag => tag.name === '已完成' || tag.name === '已結案')
+    const removeTags = ['處理中', '測試中', '討論中']
+    const newTags = t.applied_tags.filter(id => {
+      const tag = parentTags.find(pt => pt.id === id)
+      return tag && !removeTags.includes(tag.name)
+    })
+    if (doneTag && !newTags.includes(doneTag.id)) newTags.push(doneTag.id)
+    await put(`/api/discord/threads/${t.id}/tags`, { tag_ids: newTags })
+    loadThreads()
+  } catch (e) { console.error(e) }
+}
+
+async function batchClose() {
+  if (!confirm(`批次結案 ${selectedThreads.value.length} 個討論串？`)) return
+  for (const tid of selectedThreads.value) {
+    const t = threads.value.find(x => x.id === tid)
+    if (t) {
+      const parentTags = tagsMap.value[t.parent_id] || []
+      const doneTag = parentTags.find(tag => tag.name === '已完成' || tag.name === '已結案')
+      const removeTags = ['處理中', '測試中', '討論中']
+      const newTags = t.applied_tags.filter(id => {
+        const tag = parentTags.find(pt => pt.id === id)
+        return tag && !removeTags.includes(tag.name)
+      })
+      if (doneTag && !newTags.includes(doneTag.id)) newTags.push(doneTag.id)
+      try { await put(`/api/discord/threads/${t.id}/tags`, { tag_ids: newTags }) } catch {}
+    }
+  }
+  selectedThreads.value = []
+  loadThreads()
+}
+
+async function batchArchive() {
+  if (!confirm(`批次封存 ${selectedThreads.value.length} 個討論串？（將同時結案）`)) return
+  for (const tid of selectedThreads.value) {
+    const t = threads.value.find(x => x.id === tid)
+    if (t) {
+      // Close first
+      const parentTags = tagsMap.value[t.parent_id] || []
+      const doneTag = parentTags.find(tag => tag.name === '已完成' || tag.name === '已結案')
+      const removeTags = ['處理中', '測試中', '討論中']
+      const newTags = t.applied_tags.filter(id => {
+        const tag = parentTags.find(pt => pt.id === id)
+        return tag && !removeTags.includes(tag.name)
+      })
+      if (doneTag && !newTags.includes(doneTag.id)) newTags.push(doneTag.id)
+      try { await put(`/api/discord/threads/${t.id}/tags`, { tag_ids: newTags }) } catch {}
+    }
+    // Archive
+    try { await post(`/api/discord/threads/${tid}/archive`) } catch {}
+  }
+  selectedThreads.value = []
+  loadThreads()
+}
 
 function getChannelName(id) {
   const c = channels.value.find(c => c.id === id)
