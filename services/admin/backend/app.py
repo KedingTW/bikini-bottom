@@ -34,6 +34,7 @@ SECRET_KEY = os.environ.get("SESSION_SECRET", "bikini-bottom-dashboard-secret-ke
 NAMESPACE = os.environ.get("K8S_NAMESPACE", "bikini-bottom")
 BACKEND = os.environ.get("DASHBOARD_BACKEND", "auto")  # "k8s", "docker", or "auto"
 METRICS_DB = os.environ.get("METRICS_DB", "/data/metrics/metrics.db")
+DEFAULT_PASSWORD = os.environ.get("DASHBOARD_DEFAULT_PASSWORD", "")
 
 
 # ─── SQLite Metrics Store ─────────────────────────────────
@@ -86,7 +87,10 @@ def _seed_users():
             pass
         count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if count == 0:
-            default_pw = hashlib.sha256("kd-22963999".encode()).hexdigest()
+            default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
+            if not default_pw:
+                logging.warning("⚠️ DASHBOARD_DEFAULT_PASSWORD 未設定，跳過 seed users")
+                return
             initial_users = [
                 ("11021395", "蔡旻哲", "系統開發課"),
                 ("11020955", "林潔庭", "系統開發課"),
@@ -245,7 +249,11 @@ def _load_users() -> tuple[set, str]:
         return set(data.get("users", [])), data.get("password", "")
     except Exception:
         logging.warning(f"⚠️ 無法讀取 {USERS_FILE}，使用內建預設帳號")
-        return {"11021395"}, "kd-22963999"
+        fallback_pw = os.environ.get("DASHBOARD_DEFAULT_PASSWORD", "")
+        if not fallback_pw:
+            logging.error("❌ DASHBOARD_DEFAULT_PASSWORD 環境變數未設定，無法啟動")
+            raise RuntimeError("DASHBOARD_DEFAULT_PASSWORD is required when USERS_FILE is unavailable")
+        return {"11021395"}, fallback_pw
 
 
 AUTH_USERS, AUTH_PASSWORD = _load_users()
@@ -535,7 +543,7 @@ async def api_create_user(request: Request):
     name = body.get("name", "").strip()
     department = body.get("department", "").strip()
     role = body.get("role", "viewer")
-    password = body.get("password", "kd-22963999")
+    password = body.get("password", DEFAULT_PASSWORD)
     if not uid or not name:
         conn.close()
         raise HTTPException(status_code=400, detail="員工編號和姓名為必填")
@@ -584,7 +592,9 @@ async def api_reset_password(user_id: str, request: Request):
     if not me or me[0] != "admin":
         conn.close()
         raise HTTPException(status_code=403, detail="權限不足")
-    default_pw = hashlib.sha256("kd-22963999".encode()).hexdigest()
+    default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
+    if not default_pw:
+        raise HTTPException(status_code=500, detail="DASHBOARD_DEFAULT_PASSWORD 未設定")
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (default_pw, user_id))
     conn.commit()
     conn.close()
