@@ -168,7 +168,7 @@ async function openDetail(t) {
   detailLoading.value = true
   detailMessages.value = []
   try {
-    const res = await get(`/api/discord/threads/${t.id}/messages`)
+    const res = await get(`/api/discord/threads/${t.id}/messages?mode=all`)
     detailMessages.value = res?.messages || []
   } catch (e) { console.error(e) }
   detailLoading.value = false

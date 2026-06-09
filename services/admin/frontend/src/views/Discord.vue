@@ -1,10 +1,6 @@
 <template>
   <div class="glass px-7 py-3 flex items-center gap-5 border-b border-white/10 text-sm flex-wrap sticky top-0 z-10">
-    <div class="flex gap-1 bg-ocean-800/50 rounded-lg p-1">
-      <button v-for="t in tabs" :key="t.key" @click="switchTab(t.key)"
-        :class="activeTab === t.key ? 'bg-cyan-600 text-white' : 'text-white/60 hover:text-white'"
-        class="px-4 py-1.5 rounded-md text-sm font-medium transition">{{ t.label }}</button>
-    </div>
+    <span class="font-medium">討論串管理</span>
     <button @click="refresh()" class="ml-auto bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm hover:border-cyan-400/50">🔄 更新</button>
   </div>
 
@@ -73,8 +69,8 @@
       </div>
     </div>
 
-    <!-- Threads Tab -->
-    <div v-if="!loading && activeTab === 'threads'">
+    <!-- Threads -->
+    <div v-if="!loading">
       <div v-if="!threads.length" class="text-center py-12 text-white/50">沒有活躍的討論串</div>
       <div v-else>
         <!-- Toolbar -->
@@ -109,8 +105,8 @@
             :class="getIdleDays(t) >= 7 ? 'border-l-4 border-yellow-500' : getIdleDays(t) >= 14 ? 'border-l-4 border-red-500' : ''">
             <!-- Checkbox -->
             <input type="checkbox" :value="t.id" v-model="selectedThreads" class="w-4 h-4 rounded bg-ocean-800 border-white/30">
-            <!-- Content -->
-            <div class="flex-1 min-w-0">
+            <!-- Content (clickable for preview) -->
+            <div class="flex-1 min-w-0 cursor-pointer" @click="openPreview(t)">
               <div class="flex items-center gap-2">
                 <span class="font-medium truncate text-sm">{{ t.name }}</span>
                 <span v-if="getIdleDays(t) >= 7" class="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">閒置 {{ getIdleDays(t) }}天</span>
@@ -255,6 +251,32 @@
       </div>
     </div>
   </div>
+
+  <!-- Preview Dialog -->
+  <div v-if="previewThread" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="previewThread = null">
+    <div class="bg-ocean-700 rounded-xl w-[90%] max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+      <div class="px-6 py-4 border-b border-white/10 flex items-center gap-3 font-semibold shrink-0">
+        <span class="truncate">💬 {{ previewThread.name }}</span>
+        <span class="text-sm font-normal text-white/50">{{ previewThread.message_count }} 則</span>
+        <button @click="previewThread = null" class="ml-auto text-2xl text-white/60 hover:text-white">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3" ref="previewScroll">
+        <button v-if="previewHasMore" @click="loadMorePreview()" class="w-full text-center text-xs text-cyan-400 hover:text-cyan-300 py-2">⬆️ 載入更多</button>
+        <div v-for="m in previewMessages" :key="m.id" class="flex gap-3">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" :class="m.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ m.is_bot ? '🤖' : m.author.charAt(0) }}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium" :class="m.is_bot ? 'text-purple-300' : ''">{{ m.author }}</span>
+              <span class="text-xs text-white/40">{{ formatMsgTime(m.timestamp) }}</span>
+            </div>
+            <div class="text-sm text-white/80 whitespace-pre-wrap break-words mt-0.5">{{ m.content || '（無文字內容）' }}</div>
+            <div v-if="m.attachments" class="text-xs text-white/40 mt-0.5">📎 {{ m.attachments }} 個附件</div>
+          </div>
+        </div>
+        <div v-if="previewLoading" class="text-center py-4"><div class="w-6 h-6 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin inline-block"></div></div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -280,6 +302,11 @@ const threadTagFilter = ref('')
 const threadChannelFilter = ref('')
 const threadSort = ref('idle')
 const selectedThreads = ref([])
+const previewThread = ref(null)
+const previewMessages = ref([])
+const previewLoading = ref(false)
+const previewHasMore = ref(false)
+const previewScroll = ref(null)
 const activityData = ref(null)
 const activityLoading = ref(false)
 const activityChart = ref(null)
@@ -292,7 +319,6 @@ let threadChartInstance = null
 
 const tabs = [
   { key: 'threads', label: '📌 討論串' },
-  { key: 'activity', label: '📈 活躍度' },
 ]
 
 const filteredMembers = computed(() => {
@@ -525,6 +551,38 @@ async function batchArchive() {
 function getChannelName(id) {
   const c = channels.value.find(c => c.id === id)
   return c ? c.name : id
+}
+
+async function openPreview(t) {
+  previewThread.value = t
+  previewMessages.value = []
+  previewLoading.value = true
+  previewHasMore.value = false
+  try {
+    const res = await get(`/api/discord/threads/${t.id}/messages?limit=10`)
+    previewMessages.value = (res?.messages || []).reverse()
+    previewHasMore.value = res?.has_more || false
+  } catch (e) { console.error(e) }
+  previewLoading.value = false
+}
+
+async function loadMorePreview() {
+  if (!previewMessages.value.length || !previewThread.value) return
+  const oldest = previewMessages.value[0]
+  previewLoading.value = true
+  try {
+    const res = await get(`/api/discord/threads/${previewThread.value.id}/messages?limit=10&before=${oldest.id}`)
+    const older = (res?.messages || []).reverse()
+    previewMessages.value = [...older, ...previewMessages.value]
+    previewHasMore.value = res?.has_more || false
+  } catch (e) { console.error(e) }
+  previewLoading.value = false
+}
+
+function formatMsgTime(ts) {
+  const d = new Date(ts)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function getOwnerName(ownerId) {

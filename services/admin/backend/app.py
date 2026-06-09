@@ -1301,7 +1301,7 @@ async def api_discord_threads(request: Request):
         threads = await list_active_threads()
         channels = await list_channels()
         # 過濾掉舊版頻道
-        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉"}
+        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉", "🪨派大星的石頭下面"}
         old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
         threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
         # Get tags for forum channels
@@ -1347,50 +1347,67 @@ async def api_discord_update_tags(thread_id: str, request: Request):
 
 
 @app.get("/api/discord/threads/{thread_id}/messages")
-async def api_discord_thread_messages(thread_id: str, request: Request):
-    """取得討論串的全部訊息用於對話分析（有快取）"""
+async def api_discord_thread_messages(thread_id: str, request: Request, limit: int = 10, before: str = "", mode: str = "preview"):
+    """取得討論串訊息。mode=preview 最後N則（分頁），mode=all 全部（分析用，有快取）"""
     import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        # Check cache (1 hour)
-        cache_key = f"thread_msgs_{thread_id}"
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-        conn.close()
-        if row:
-            return JSONResponse(json_mod.loads(row[0]))
-
         from discord_api import get_channel_messages, NICK_MAP
-        all_msgs = []
-        before = None
-        for _ in range(20):
-            msgs = await get_channel_messages(thread_id, limit=100, before=before)
-            if not msgs:
-                break
-            all_msgs.extend(msgs)
-            before = msgs[-1]["id"]
-            if len(msgs) < 100:
-                break
+
+        if mode == "all":
+            # Full fetch for analytics (cached 1 hour)
+            cache_key = f"thread_msgs_{thread_id}"
+            conn = sqlite3.connect(METRICS_DB)
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+            conn.close()
+            if row:
+                return JSONResponse(json_mod.loads(row[0]))
+
+            all_msgs = []
+            bf = None
+            for _ in range(20):
+                msgs = await get_channel_messages(thread_id, limit=100, before=bf)
+                if not msgs:
+                    break
+                all_msgs.extend(msgs)
+                bf = msgs[-1]["id"]
+                if len(msgs) < 100:
+                    break
+            messages = []
+            for m in all_msgs:
+                author = m.get("author", {})
+                uid = author.get("id", "")
+                display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
+                messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False)})
+            result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
+            conn = sqlite3.connect(METRICS_DB)
+            conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+            conn.commit()
+            conn.close()
+            return JSONResponse(result)
+
+        # Preview mode — last N messages
+        msgs = await get_channel_messages(thread_id, limit=min(limit, 100), before=before or None)
         messages = []
-        for m in all_msgs:
+        for m in msgs:
             author = m.get("author", {})
             uid = author.get("id", "")
             display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
-            messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False)})
-        result = {"error": None, "messages": messages, "total": len(messages)}
-
-        # Cache result
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-        conn.commit()
-        conn.close()
-
-        return JSONResponse(result)
+            messages.append({
+                "id": m.get("id"),
+                "timestamp": m["timestamp"],
+                "author": display,
+                "author_id": uid,
+                "is_bot": author.get("bot", False),
+                "content": m.get("content", "")[:500],
+                "attachments": len(m.get("attachments", [])),
+            })
+        return JSONResponse({"error": None, "messages": messages, "has_more": len(msgs) == min(limit, 100)})
     except Exception as e:
-        return JSONResponse({"error": str(e), "messages": []})
+        return JSONResponse({"error": str(e), "messages": [], "has_more": False})
 
 
 @app.get("/api/discord/activity")
@@ -1415,7 +1432,7 @@ async def api_discord_activity(request: Request):
         channels = await list_channels()
 
         # 過濾掉舊版（準備關閉）頻道的 threads
-        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉"}
+        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉", "🪨派大星的石頭下面"}
         old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
         threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
 
