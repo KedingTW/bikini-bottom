@@ -1364,6 +1364,21 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
             return JSONResponse(result)
 
         # Preview mode — last N messages
+        import re
+        def resolve_mentions(content, mentions_list):
+            """Replace <@id> with display name."""
+            def repl(match):
+                uid = match.group(1)
+                # Check mentions list from message
+                for u in mentions_list:
+                    if u.get("id") == uid:
+                        return f"@{NICK_MAP.get(uid) or u.get('global_name') or u.get('username', uid)}"
+                # Fallback to NICK_MAP
+                if uid in NICK_MAP:
+                    return f"@{NICK_MAP[uid]}"
+                return match.group(0)
+            return re.sub(r'<@!?(\d+)>', repl, content) if content else ""
+
         msgs = await get_channel_messages(thread_id, limit=min(limit, 100), before=before or None)
         messages = []
         for m in msgs:
@@ -1377,7 +1392,7 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
                 "author_id": uid,
                 "is_bot": author.get("bot", False),
                 "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None,
-                "content": m.get("content", "")[:500],
+                "content": resolve_mentions(m.get("content", ""), m.get("mentions", []))[:500],
                 "attachments": len(m.get("attachments", [])),
             })
         return JSONResponse({"error": None, "messages": messages, "has_more": len(msgs) == min(limit, 100)})
