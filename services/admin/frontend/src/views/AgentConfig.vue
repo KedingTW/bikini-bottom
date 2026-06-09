@@ -52,22 +52,40 @@
       <div class="px-6 py-4 flex-1 overflow-y-auto">
         <!-- MCP Tab -->
         <div v-if="detailTab === 'mcp'">
-          <div class="flex items-center gap-2 mb-3">
-            <button @click="mcpMode = 'ui'" :class="mcpMode === 'ui' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-2 py-1 rounded text-xs">UI</button>
-            <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-2 py-1 rounded text-xs">JSON</button>
+          <div class="flex items-center gap-2 mb-4">
+            <button @click="mcpMode = 'ui'" :class="mcpMode === 'ui' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">管理模式</button>
+            <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">JSON</button>
+            <button v-if="mcpMode === 'ui'" @click="showAddServer = true" class="ml-auto text-xs px-3 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white">+ 新增 Server</button>
           </div>
 
           <!-- UI Mode -->
           <div v-if="mcpMode === 'ui'" class="space-y-3">
             <div v-if="!mcpServers.length" class="text-white/50 text-sm py-4">無 MCP Server 配置</div>
-            <div v-for="(srv, name) in mcpServersMap" :key="name" class="bg-ocean-800/50 rounded-lg p-4">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="font-medium text-sm text-cyan-300">{{ name }}</span>
-                <span v-if="srv.disabled" class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">停用</span>
+            <div v-for="name in mcpServers" :key="name" class="bg-ocean-800/50 rounded-lg p-4">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="font-medium text-sm" :class="mcpServersMap[name].disabled ? 'text-white/40 line-through' : 'text-cyan-300'">{{ name }}</span>
+                <span v-if="mcpServersMap[name].disabled" class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">停用</span>
+                <span v-else class="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">啟用</span>
+                <div class="ml-auto flex gap-2">
+                  <button @click="toggleServer(name)" class="text-xs px-2 py-1 rounded border border-white/20 hover:bg-white/10">
+                    {{ mcpServersMap[name].disabled ? '啟用' : '停用' }}
+                  </button>
+                  <button @click="removeServer(name)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
+                </div>
               </div>
-              <div class="grid grid-cols-2 gap-2 text-xs text-white/70">
-                <div><span class="text-white/40">command:</span> {{ srv.command }}</div>
-                <div><span class="text-white/40">args:</span> {{ (srv.args || []).join(' ') }}</div>
+              <div class="grid grid-cols-1 gap-1.5 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="text-white/40 min-w-[60px]">command</span>
+                  <span class="text-white/80 font-mono">{{ mcpServersMap[name].command || '-' }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-white/40 min-w-[60px]">args</span>
+                  <span class="text-white/80 font-mono truncate">{{ (mcpServersMap[name].args || []).join(' ') || '-' }}</span>
+                </div>
+                <div v-if="mcpServersMap[name].env" class="flex items-start gap-2">
+                  <span class="text-white/40 min-w-[60px]">env</span>
+                  <span class="text-white/80 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].env).join(', ') }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -78,6 +96,33 @@
             <div class="flex items-center gap-3 mt-3">
               <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-medium">💾 儲存</button>
               <span v-if="mcpStatus" class="text-xs" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
+            </div>
+          </div>
+
+          <!-- Add Server Dialog -->
+          <div v-if="showAddServer" class="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center" @click.self="showAddServer = false">
+            <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
+              <h3 class="text-lg font-semibold mb-4">新增 MCP Server</h3>
+              <div class="mb-3">
+                <label class="block text-sm text-white/70 mb-1">名稱</label>
+                <input v-model="newServer.name" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：my-server">
+              </div>
+              <div class="mb-3">
+                <label class="block text-sm text-white/70 mb-1">Command</label>
+                <input v-model="newServer.command" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：uvx 或 npx">
+              </div>
+              <div class="mb-3">
+                <label class="block text-sm text-white/70 mb-1">Args（每行一個）</label>
+                <textarea v-model="newServer.args" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="例：my-package@latest&#10;--option"></textarea>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm text-white/70 mb-1">ENV（key=value，每行一個）</label>
+                <textarea v-model="newServer.env" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="例：API_KEY=xxx"></textarea>
+              </div>
+              <div class="flex gap-3 justify-end">
+                <button @click="showAddServer = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
+                <button @click="addServer()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
+              </div>
             </div>
           </div>
         </div>
@@ -151,6 +196,8 @@ const detailTab = ref('mcp')
 const mcpMode = ref('ui')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
+const showAddServer = ref(false)
+const newServer = ref({ name: '', command: '', args: '', env: '' })
 const cronjobContent = ref('')
 const kbFiles = ref([])
 const fileView = ref(null)
@@ -210,8 +257,55 @@ async function saveMcp() {
     return
   }
   const res = await put(`/api/agents/${selectedAgent.value.name}/mcp`, { raw: mcpRaw.value })
-  if (res?.ok) mcpStatus.value = { ok: true, text: '✅ 已儲存' }
+  if (res?.ok) { mcpStatus.value = { ok: true, text: '✅ 已儲存' }; load() }
   else mcpStatus.value = { ok: false, text: '❌ ' + (res?.detail || '儲存失敗') }
+}
+
+function toggleServer(name) {
+  try {
+    const config = JSON.parse(mcpRaw.value)
+    if (config.mcpServers && config.mcpServers[name]) {
+      config.mcpServers[name].disabled = !config.mcpServers[name].disabled
+      mcpRaw.value = JSON.stringify(config, null, 2)
+      saveMcp()
+    }
+  } catch {}
+}
+
+function removeServer(name) {
+  if (!confirm(`確定要刪除 MCP Server「${name}」？`)) return
+  try {
+    const config = JSON.parse(mcpRaw.value)
+    if (config.mcpServers) {
+      delete config.mcpServers[name]
+      mcpRaw.value = JSON.stringify(config, null, 2)
+      saveMcp()
+    }
+  } catch {}
+}
+
+function addServer() {
+  if (!newServer.value.name || !newServer.value.command) return
+  try {
+    const config = JSON.parse(mcpRaw.value) || {}
+    if (!config.mcpServers) config.mcpServers = {}
+    const args = newServer.value.args.split('\n').map(a => a.trim()).filter(Boolean)
+    const env = {}
+    newServer.value.env.split('\n').forEach(line => {
+      const [k, ...v] = line.split('=')
+      if (k && v.length) env[k.trim()] = v.join('=').trim()
+    })
+    config.mcpServers[newServer.value.name] = {
+      command: newServer.value.command,
+      args: args.length ? args : undefined,
+      env: Object.keys(env).length ? env : undefined,
+      disabled: false,
+    }
+    mcpRaw.value = JSON.stringify(config, null, 2)
+    saveMcp()
+    showAddServer.value = false
+    newServer.value = { name: '', command: '', args: '', env: '' }
+  } catch {}
 }
 
 async function viewFile(agent, type, filename) {
