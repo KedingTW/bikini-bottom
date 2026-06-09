@@ -1498,6 +1498,100 @@ async def api_discord_activity(request: Request):
         return JSONResponse({"error": str(e), "total_threads": 0, "daily_chart": [], "top_threads": []})
 
 
+# ─── Agent Config APIs ────────────────────────────────────
+@app.get("/api/agents")
+async def api_agents_list(request: Request):
+    """列出所有角色及其配置摘要"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    agents_dir = AGENTS_DIR
+    result = []
+    for agent in AGENTS:
+        name = agent["name"]
+        agent_path = agents_dir / name
+        if not agent_path.is_dir():
+            continue
+        # MCP config
+        mcp_path = agent_path / ".kiro" / "settings" / "mcp.json"
+        mcp_servers = 0
+        if mcp_path.exists():
+            try:
+                data = json_mod.loads(mcp_path.read_text())
+                mcp_servers = len(data.get("mcpServers", {}))
+            except Exception:
+                pass
+        # Skills
+        skills_path = agent_path / ".kiro" / "skills"
+        skills = sorted([d.name for d in skills_path.iterdir() if d.is_dir()]) if skills_path.exists() else []
+        # Steering
+        steering_path = agent_path / ".kiro" / "steering"
+        steering = sorted([f.name for f in steering_path.iterdir() if f.suffix == ".md"]) if steering_path.exists() else []
+
+        result.append({
+            "name": name,
+            "display": agent["display"],
+            "role": agent["role"],
+            "mcp_servers": mcp_servers,
+            "skills_count": len(skills),
+            "steering_count": len(steering),
+            "skills": skills,
+            "steering": steering,
+        })
+    return JSONResponse({"agents": result})
+
+
+@app.get("/api/agents/{agent_name}/mcp")
+async def api_agent_mcp(agent_name: str, request: Request):
+    """取得角色的 MCP 配置"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    if not mcp_path.exists():
+        return JSONResponse({"error": None, "config": {}, "raw": "{}"})
+    try:
+        raw = mcp_path.read_text()
+        config = json_mod.loads(raw)
+        return JSONResponse({"error": None, "config": config, "raw": raw})
+    except Exception as e:
+        return JSONResponse({"error": str(e), "config": {}, "raw": ""})
+
+
+@app.put("/api/agents/{agent_name}/mcp")
+async def api_agent_mcp_save(agent_name: str, request: Request):
+    """儲存角色的 MCP 配置"""
+    import json as json_mod
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    raw = body.get("raw", "")
+    # Validate JSON
+    try:
+        json_mod.loads(raw)
+    except json_mod.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"JSON 語法錯誤：{e}")
+    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    mcp_path.parent.mkdir(parents=True, exist_ok=True)
+    mcp_path.write_text(raw)
+    return JSONResponse({"ok": True, "message": "已儲存"})
+
+
+@app.get("/api/agents/{agent_name}/steering/{filename}")
+async def api_agent_steering(agent_name: str, filename: str, request: Request):
+    """取得 steering 檔案內容"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="檔案不存在")
+    return JSONResponse({"content": path.read_text(), "filename": filename})
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/cronjobs", "/knowledge",

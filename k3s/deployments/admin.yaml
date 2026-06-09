@@ -110,7 +110,6 @@ spec:
               readOnly: true
             - name: agents-data
               mountPath: /data/agents
-              readOnly: true
             - name: admin-src
               mountPath: /app
               subPath: backend

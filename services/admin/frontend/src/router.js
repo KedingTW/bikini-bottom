@@ -7,6 +7,7 @@ import Messaging from './views/Messaging.vue'
 import Members from './views/Members.vue'
 import Discord from './views/Discord.vue'
 import ThreadAnalytics from './views/ThreadAnalytics.vue'
+import AgentConfig from './views/AgentConfig.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
 
@@ -16,12 +17,12 @@ const routes = [
   { path: '/costs', name: 'costs', component: Costs },
   { path: '/alerts', name: 'alerts', component: Alerts },
   // 通訊管理
-  { path: '/messaging', name: 'messaging', component: Messaging },
   { path: '/members', name: 'members', component: Members },
   { path: '/threads', name: 'threads', component: Discord },
   { path: '/thread-analytics', name: 'thread-analytics', component: ThreadAnalytics },
+  { path: '/messaging', name: 'messaging', component: Messaging },
   // AI 角色管理
-  { path: '/agent-config', name: 'agent-config', component: ComingSoon },
+  { path: '/agent-config', name: 'agent-config', component: AgentConfig },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },
   // 系統運維
