@@ -1,7 +1,6 @@
 <template>
   <div class="glass px-7 py-3 flex items-center gap-5 border-b border-white/10 text-sm flex-wrap sticky top-0 z-10">
     <span class="font-medium">Log 搜尋</span>
-    <button @click="search()" :disabled="searching" class="ml-auto bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded px-3 py-1.5 text-sm">{{ searching ? '搜尋中...' : '🔍 搜尋' }}</button>
   </div>
 
   <div class="p-7 space-y-4">
@@ -24,6 +23,7 @@
       </div>
       <button @click="selectAll()" class="text-xs text-cyan-400 hover:text-cyan-300">全選</button>
       <button @click="selectedAgents = []" class="text-xs text-white/40 hover:text-white/60">清除</button>
+      <button @click="search()" :disabled="searching" class="ml-auto bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded px-3 py-1.5 text-sm font-medium">{{ searching ? '搜尋中...' : '🔍 搜尋' }}</button>
     </div>
 
     <!-- Tail Mode -->
