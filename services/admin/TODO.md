@@ -31,14 +31,14 @@
 ## 通訊管理
 
 ### 討論串管理（核心）
-- [ ] 排序：按最後活動時間（最久未動優先）
-- [ ] 篩選：按標籤/頻道/建立者
-- [ ] 批次結案：貼「已完成」/「已結案」標籤 + 移除「處理中」「測試中」
-- [ ] 批次封存：結案 + 封存 thread
-- [ ] 閒置提醒：超過 N 天未動作標黃/標紅
-- [ ] 建議清理列表（閒置 thread 一覽）
-- [ ] 排程/持續性 thread 標記（不建議關閉）
-- [ ] 勾選多個一起操作
+- [x] 排序：按最後活動時間（最久未動優先）
+- [x] 篩選：按標籤/頻道/建立者
+- [x] 批次結案：貼「已完成」/「已結案」標籤 + 移除「處理中」「測試中」
+- [x] 批次封存：結案 + 封存 thread
+- [x] 閒置提醒：超過 N 天未動作標黃/標紅
+- [x] 建議清理列表（閒置 thread 一覽）
+- [x] 排程/持續性 thread 標記（不建議關閉）
+- [x] 勾選多個一起操作
 
 ### 討論串分析
 - [ ] 每人發起的 thread 數統計
@@ -52,9 +52,9 @@
 
 ### 訊息推送
 - [x] Discord 發公告（已完成 ✅）
-- [ ] 排程發送（定時推送）
-- [ ] WeCom 推送
-- [ ] 推送歷史紀錄
+- [x] 排程發送（定時推送）
+- [x] WeCom 推送
+- [x] 推送歷史紀錄
 
 ---
 
@@ -67,7 +67,7 @@
 - [x] Cronjob 視覺化管理：每個 job 顯示 schedule/sender/channel/timezone + 一鍵啟用/停用 + TOML raw 編輯
 - [x] Knowledge Base 管理：讀 contexts.json 顯示人類可讀名稱、來源檔案、大小，點開預覽 source_path
 - [x] Dialog 固定高度（80vh）+ 卡片 4 欄佈局 + URL hash 同步
-- [ ] Config.toml：agent 基本設定
+- [x] Config.toml：agent 基本設定
 - [ ] 配置比對（A 角色 vs B 角色差異）
 - [ ] 範本套用（一次套用 MCP 配置到多個角色）
 - [ ] KB 上傳新檔案
@@ -84,16 +84,16 @@
 - [ ] 磁碟空間警告
 
 ### Log 搜尋
-- [ ] 跨 Pod 搜尋關鍵字
-- [ ] 時間範圍篩選
-- [ ] 即時 tail -f 模式
-- [ ] 匯出 log
+- [x] 跨 Pod 搜尋關鍵字
+- [x] 時間範圍篩選
+- [x] 即時 tail -f 模式
+- [x] 匯出 log
 
 ### 部署管理
-- [ ] 一鍵 Build & Deploy（選角色 → build image → import → restart）
+- [x] 一鍵 Build & Deploy（選角色 → build image → import → restart）
 - [ ] 搭配 bot bootstrap 流程
-- [ ] 部署歷史 / Change Log（誰在什麼時間做了什麼）
-- [ ] Git 狀態顯示（branch / 最近 commit / uncommitted changes）
+- [x] 部署歷史 / Change Log（誰在什麼時間做了什麼）
+- [x] Git 狀態顯示（branch / 最近 commit / uncommitted changes）
 
 ### API Key 管理
 - [ ] 列出所有服務的 API Key（遮罩顯示）
@@ -118,7 +118,7 @@
 ---
 
 ## UI/UX 改善
-- [ ] Login 頁面改 Vue（移除 templates/login.html + Jinja2，登入流程改 SPA + JSON API，視覺風格統一）
+- [x] Login 頁面改 Vue（移除 templates/login.html + Jinja2，登入流程改 SPA + JSON API，視覺風格統一）
 - [ ] .gitignore 整理（目前累積太多片段，需重新分類整合）
 - [ ] Kiro 額度 tab 改版（摘要卡片 + 每日趨勢）
 - [ ] 圖表 hover 優化
