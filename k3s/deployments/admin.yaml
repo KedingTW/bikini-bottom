@@ -114,6 +114,8 @@ spec:
               readOnly: true
             - name: metrics-data
               mountPath: /data/metrics
+            - name: repo-data
+              mountPath: /data/repo
             - name: shared-skills
               mountPath: /opt/skills
               readOnly: true
@@ -153,6 +155,10 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/services/admin/data
             type: DirectoryOrCreate
+        - name: repo-data
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom
+            type: Directory
         - name: shared-skills
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
