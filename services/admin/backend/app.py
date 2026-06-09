@@ -907,7 +907,7 @@ async def api_logs_search(request: Request, keyword: str = "", agents: str = "",
 
     import subprocess
     target_agents = [a.strip() for a in agents.split(",") if a.strip()] if agents else [a["name"] for a in AGENTS]
-    valid_names = [a["name"] for a in AGENTS]
+    valid_names = [a["name"] for a in AGENTS] + ["admin"]
     target_agents = [a for a in target_agents if a in valid_names]
     lines = min(lines, 500)
     results = []
@@ -940,7 +940,7 @@ async def api_logs_export(request: Request, agents: str = "", since_hours: int =
 
     import subprocess
     target_agents = [a.strip() for a in agents.split(",") if a.strip()] if agents else [a["name"] for a in AGENTS]
-    valid_names = [a["name"] for a in AGENTS]
+    valid_names = [a["name"] for a in AGENTS] + ["admin"]
     target_agents = [a for a in target_agents if a in valid_names]
     output = []
 
