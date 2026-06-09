@@ -118,7 +118,16 @@
 ---
 
 ## UI/UX 改善
+- [ ] Login 頁面改 Vue（移除 templates/login.html + Jinja2，登入流程改 SPA + JSON API，視覺風格統一）
+- [ ] .gitignore 整理（目前累積太多片段，需重新分類整合）
 - [ ] Kiro 額度 tab 改版（摘要卡片 + 每日趨勢）
 - [ ] 圖表 hover 優化
 - [ ] 響應式（手機/平板）調整
 - [ ] 操作日誌（誰在後台做了什麼）
+
+---
+
+## 倉儲清理（Repo Hygiene）
+- [ ] 歷史 commit 中的 SSH 私鑰 (`agents/squidward/.ssh/BikiniBottom.pem`) — 用 git-filter-repo 重寫歷史；同時撤換 AWS key pair
+- [ ] 歷史 commit 中的 MCP Bearer token (`mcp-backup/`) — 同上，並輪替 token
+- [ ] 角色私有檔案備份機制（spec/筆記等不該進團隊 repo，但需要備份）
