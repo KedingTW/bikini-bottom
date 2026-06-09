@@ -119,6 +119,9 @@ spec:
               readOnly: true
             - name: metrics-data
               mountPath: /data/metrics
+            - name: shared-skills
+              mountPath: /opt/skills
+              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -158,6 +161,10 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/services/admin/data
             type: DirectoryOrCreate
+        - name: shared-skills
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+            type: Directory
 ---
 apiVersion: v1
 kind: Service

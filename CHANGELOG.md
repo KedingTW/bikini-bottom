@@ -6,6 +6,12 @@
 
 ## 2026-06-09
 
+- **feat**: 角色配置（AgentConfig）大幅強化 — 卡片改 4 欄+細項統計（MCP 啟用/總數、技能、指引、排程啟用/總數、KB context 數）、Dialog 固定 85vh
+- **feat**: Cronjob 視覺化管理 — 列出每個 job（schedule/channel/sender/timezone）、一鍵啟用/停用、保留 TOML raw editor（雙模式切換）
+- **feat**: Knowledge Base 管理 — 從 `contexts.json` 讀人類可讀名稱、source_path、item_count、size，點開可預覽來源檔內容
+- **feat**: Skills 顯示修正 — admin 容器掛載 `/opt/skills`，符號連結正確解析；卡片顯示 SKILL.md frontmatter description，點開預覽
+- **feat**: AgentConfig 與總覽 URL hash 同步 — `/agent-config#bob` 自動彈 dialog
+- **fix**: 小蝸（gary）Dashboard 狀態偵測修正（name mapping slash-bot → gary）
 - **feat**: Admin 管理後台全面升級 — dashboard 更名為 admin，重構為 Vue 3 + Vite + Tailwind 標準專案
 - **feat**: 總覽頁 — 角色狀態卡片（按記憶體排序）、CPU/Memory 即時監控、告警橫幅
 - **feat**: 資源監控 — 每角色歷史 CPU/Memory 圖表（SQLite 紀錄，保留 30 天）、放大 Dialog
@@ -19,7 +25,6 @@
 - **feat**: 修改密碼功能 + 右上角下拉選單
 - **feat**: 左側收合選單 + 分組顯示 + sticky bar + 深海鳳梨背景
 - **feat**: 選單重整 — 通訊管理/AI 角色/系統運維分組，未實作頁面顯示 Coming Soon
-- **fix**: 小蝸（gary）Dashboard 狀態偵測修正（name mapping slash-bot → gary）
 - **chore**: AGENTS display 移除 emoji prefix
 - **chore**: 新增 conch avatar、assets 品牌資源（header/footer/logo）
 - **chore**: 新增 DISCORD_BOT_TOKEN_KAREN 到 .env

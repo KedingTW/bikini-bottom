@@ -61,24 +61,18 @@
 ## AI 角色管理
 
 ### 角色配置
-- [ ] MCP 配置：JSON editor（新增/移除 MCP server）
-- [ ] Skills：列出 skill 檔案，可編輯/新增/刪除
-- [ ] Steering：同上
+- [x] MCP 配置：UI 管理（啟用/停用/新增/刪除）+ JSON raw mode 編輯（含語法驗證）
+- [x] Skills：列出 skill + 描述，可預覽 SKILL.md（唯讀，透過 Kiro 修改）
+- [x] Steering：列表預覽（唯讀，透過 Kiro 修改）
+- [x] Cronjob 視覺化管理：每個 job 顯示 schedule/sender/channel/timezone + 一鍵啟用/停用 + TOML raw 編輯
+- [x] Knowledge Base 管理：讀 contexts.json 顯示人類可讀名稱、來源檔案、大小，點開預覽 source_path
+- [x] Dialog 固定高度（80vh）+ 卡片 4 欄佈局 + URL hash 同步
 - [ ] Config.toml：agent 基本設定
 - [ ] 配置比對（A 角色 vs B 角色差異）
 - [ ] 範本套用（一次套用 MCP 配置到多個角色）
-- [ ] 修改需確認 + JSON/TOML 語法驗證
-
-### Cronjob 管理
-- [ ] 查看所有角色的 cronjob.toml
-- [ ] 新增/修改/停用排程
-- [ ] 手動觸發 Cronjob（不等排程）
-- [ ] 執行歷史
-
-### Knowledge Base 管理
-- [ ] 查看各角色 knowledge_bases 目錄
-- [ ] 上傳/更新/刪除知識文件
-- [ ] 檔案大小/更新時間
+- [ ] KB 上傳新檔案
+- [ ] Cronjob 手動觸發（不等排程）
+- [ ] Cronjob 執行歷史
 
 ---
 

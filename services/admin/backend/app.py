@@ -1499,6 +1499,75 @@ async def api_discord_activity(request: Request):
 
 
 # ─── Agent Config APIs ────────────────────────────────────
+def _parse_skill_meta(skill_dir: Path) -> dict:
+    """Parse SKILL.md frontmatter (name, description)."""
+    skill_md = skill_dir / "SKILL.md"
+    meta = {"name": skill_dir.name, "description": ""}
+    if not skill_md.exists():
+        return meta
+    try:
+        text = skill_md.read_text()
+        if text.startswith("---"):
+            end = text.find("---", 3)
+            if end > 0:
+                fm = text[3:end]
+                for line in fm.splitlines():
+                    if ":" in line:
+                        k, v = line.split(":", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k in ("name", "description"):
+                            meta[k] = v
+    except Exception:
+        pass
+    return meta
+
+
+def _parse_cronjob_toml(content: str) -> list:
+    """Parse cronjob.toml into structured job list."""
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+        data = tomllib.loads(content)
+        return data.get("jobs", [])
+    except Exception:
+        return []
+
+
+def _read_kb_contexts(kb_path: Path) -> list:
+    """Read contexts.json and merge file size/mtime info."""
+    import json as json_mod
+    contexts_file = kb_path / "kiro_default" / "contexts.json"
+    if not contexts_file.exists():
+        return []
+    try:
+        ctx_data = json_mod.loads(contexts_file.read_text())
+        result = []
+        for cid, c in ctx_data.items():
+            ctx_dir = kb_path / "kiro_default" / cid
+            size = 0
+            if ctx_dir.exists():
+                for f in ctx_dir.rglob("*"):
+                    if f.is_file():
+                        size += f.stat().st_size
+            result.append({
+                "id": cid,
+                "name": c.get("name", cid),
+                "description": c.get("description", ""),
+                "source_path": c.get("source_path", ""),
+                "item_count": c.get("item_count", 0),
+                "updated_at": c.get("updated_at", ""),
+                "persistent": c.get("persistent", False),
+                "auto_sync": c.get("auto_sync", False),
+                "size_bytes": size,
+            })
+        return result
+    except Exception:
+        return []
+
+
 @app.get("/api/agents")
 async def api_agents_list(request: Request):
     """列出所有角色及其配置摘要"""
@@ -1516,27 +1585,49 @@ async def api_agents_list(request: Request):
         # MCP config
         mcp_path = agent_path / ".kiro" / "settings" / "mcp.json"
         mcp_servers = 0
+        mcp_enabled = 0
         if mcp_path.exists():
             try:
                 data = json_mod.loads(mcp_path.read_text())
-                mcp_servers = len(data.get("mcpServers", {}))
+                servers = data.get("mcpServers", {})
+                mcp_servers = len(servers)
+                mcp_enabled = sum(1 for s in servers.values() if not s.get("disabled", False))
             except Exception:
                 pass
-        # Skills
+        # Skills (resolve symlinks)
         skills_path = agent_path / ".kiro" / "skills"
-        skills = sorted([d.name for d in skills_path.iterdir() if d.is_dir()]) if skills_path.exists() else []
+        skills_meta = []
+        if skills_path.exists():
+            for d in sorted(skills_path.iterdir()):
+                if d.is_dir() or d.is_symlink():
+                    target = d.resolve() if d.is_symlink() else d
+                    if target.is_dir():
+                        skills_meta.append(_parse_skill_meta(target))
         # Steering
         steering_path = agent_path / ".kiro" / "steering"
         steering = sorted([f.name for f in steering_path.iterdir() if f.suffix == ".md"]) if steering_path.exists() else []
+        # Cronjob
+        cron_path = agent_path / ".openab" / "cronjob.toml"
+        cron_jobs = []
+        if cron_path.exists():
+            cron_jobs = _parse_cronjob_toml(cron_path.read_text())
+        # KB
+        kb_path = agent_path / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+        kb_count = len(_read_kb_contexts(kb_path)) if kb_path.exists() else 0
 
         result.append({
             "name": name,
             "display": agent["display"],
             "role": agent["role"],
             "mcp_servers": mcp_servers,
-            "skills_count": len(skills),
+            "mcp_enabled": mcp_enabled,
+            "skills_count": len(skills_meta),
             "steering_count": len(steering),
-            "skills": skills,
+            "cronjob_count": len(cron_jobs),
+            "cronjob_enabled": sum(1 for j in cron_jobs if j.get("enabled", False)),
+            "kb_count": kb_count,
+            "skills": [s["name"] for s in skills_meta],
+            "skills_meta": skills_meta,
             "steering": steering,
         })
     return JSONResponse({"agents": result})
@@ -1592,32 +1683,132 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     return JSONResponse({"content": path.read_text(), "filename": filename})
 
 
+@app.get("/api/agents/{agent_name}/skills/{skill_name}")
+async def api_agent_skill_view(agent_name: str, skill_name: str, request: Request):
+    """取得 skill 的 SKILL.md 內容"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    skill_path = AGENTS_DIR / agent_name / ".kiro" / "skills" / skill_name
+    if skill_path.is_symlink():
+        skill_path = skill_path.resolve()
+    skill_md = skill_path / "SKILL.md"
+    if not skill_md.exists():
+        raise HTTPException(status_code=404, detail="SKILL.md 不存在")
+    return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
+
+
 @app.get("/api/agents/{agent_name}/cronjob")
 async def api_agent_cronjob(agent_name: str, request: Request):
-    """取得角色的 cronjob 配置"""
+    """取得角色的 cronjob 配置（含 raw 與 parsed）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
     if not path.exists():
-        return JSONResponse({"content": ""})
-    return JSONResponse({"content": path.read_text()})
+        return JSONResponse({"content": "", "jobs": []})
+    raw = path.read_text()
+    return JSONResponse({"content": raw, "jobs": _parse_cronjob_toml(raw)})
+
+
+@app.put("/api/agents/{agent_name}/cronjob/{job_index}/toggle")
+async def api_agent_cronjob_toggle(agent_name: str, job_index: int, request: Request):
+    """切換特定 cronjob 的 enabled 狀態"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="cronjob.toml 不存在")
+    raw = path.read_text()
+    # Find [[jobs]] block boundaries and toggle the job_index-th block's `enabled`
+    import re
+    # Split by [[jobs]] markers
+    blocks = re.split(r'(?=^\[\[jobs\]\])', raw, flags=re.MULTILINE)
+    # blocks[0] is preamble (may not have [[jobs]]), rest are job blocks
+    job_blocks = [b for b in blocks if b.startswith("[[jobs]]")]
+    preamble = "".join([b for b in blocks if not b.startswith("[[jobs]]")])
+    if job_index < 0 or job_index >= len(job_blocks):
+        raise HTTPException(status_code=400, detail=f"job_index 超出範圍：{len(job_blocks)} jobs")
+    block = job_blocks[job_index]
+    # Toggle enabled = true/false
+    if re.search(r'^enabled\s*=\s*true', block, re.MULTILINE):
+        new_block = re.sub(r'^enabled\s*=\s*true', 'enabled = false', block, count=1, flags=re.MULTILINE)
+    elif re.search(r'^enabled\s*=\s*false', block, re.MULTILINE):
+        new_block = re.sub(r'^enabled\s*=\s*false', 'enabled = true', block, count=1, flags=re.MULTILINE)
+    else:
+        # Add enabled = true after schedule line
+        new_block = re.sub(r'(^schedule\s*=.*$)', r'\1\nenabled = true', block, count=1, flags=re.MULTILINE)
+    job_blocks[job_index] = new_block
+    new_raw = preamble + "".join(job_blocks)
+    path.write_text(new_raw)
+    return JSONResponse({"ok": True, "jobs": _parse_cronjob_toml(new_raw)})
+
+
+@app.put("/api/agents/{agent_name}/cronjob")
+async def api_agent_cronjob_save(agent_name: str, request: Request):
+    """儲存 cronjob.toml raw 內容（搭配 raw editor）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    raw = body.get("content", "")
+    # Try parse to validate
+    if _parse_cronjob_toml(raw) is None:
+        raise HTTPException(status_code=400, detail="TOML 語法錯誤")
+    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(raw)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/api/agents/{agent_name}/kb")
 async def api_agent_kb(agent_name: str, request: Request):
-    """取得角色的 Knowledge Base 檔案列表"""
+    """取得角色的 Knowledge Base 列表（從 contexts.json 讀人類可讀名稱）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
-    if not kb_path.exists():
-        return JSONResponse({"files": []})
-    files = []
-    for f in sorted(kb_path.rglob("*")):
-        if f.is_file():
-            files.append(str(f.relative_to(kb_path)))
-    return JSONResponse({"files": files})
+    contexts = _read_kb_contexts(kb_path) if kb_path.exists() else []
+    return JSONResponse({"contexts": contexts})
+
+
+@app.get("/api/agents/{agent_name}/kb/{kb_id}")
+async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
+    """取得 KB 來源檔案資訊（顯示路徑、嘗試讀取內容）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    contexts_file = kb_path / "kiro_default" / "contexts.json"
+    if not contexts_file.exists():
+        raise HTTPException(status_code=404, detail="contexts.json 不存在")
+    try:
+        ctx_data = json_mod.loads(contexts_file.read_text())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"contexts.json 解析失敗：{e}")
+    if kb_id not in ctx_data:
+        raise HTTPException(status_code=404, detail="KB context 不存在")
+    ctx = ctx_data[kb_id]
+    # Try to read source file content (read-only preview)
+    source_path = ctx.get("source_path", "")
+    content = ""
+    content_error = ""
+    if source_path:
+        try:
+            sp = Path(source_path)
+            if sp.exists() and sp.is_file():
+                content = sp.read_text(errors="replace")
+            else:
+                content_error = f"來源檔案不存在或無法讀取：{source_path}"
+        except Exception as e:
+            content_error = f"讀取錯誤：{e}"
+    return JSONResponse({
+        "context": ctx,
+        "content": content,
+        "content_error": content_error,
+    })
 
 
 # ─── SPA catch-all for client-side routes ───
