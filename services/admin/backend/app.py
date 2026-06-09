@@ -1445,6 +1445,10 @@ async def api_messaging_wecom(request: Request):
         raise HTTPException(status_code=400, detail="訊息內容不能為空")
     if not webhook_url:
         raise HTTPException(status_code=400, detail="請提供 Webhook URL")
+    from urllib.parse import urlparse
+    parsed = urlparse(webhook_url)
+    if parsed.hostname != "qyapi.weixin.qq.com":
+        raise HTTPException(status_code=400, detail="僅允許企業微信官方 Webhook 域名（qyapi.weixin.qq.com）")
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(webhook_url, json={"msgtype": "text", "text": {"content": content}})
