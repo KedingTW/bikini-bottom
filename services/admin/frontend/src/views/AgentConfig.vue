@@ -73,18 +73,22 @@
                   <button @click="removeServer(name)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
                 </div>
               </div>
-              <div class="grid grid-cols-1 gap-1.5 text-xs">
-                <div class="flex items-center gap-2">
+              <div class="space-y-1 text-xs">
+                <div v-if="mcpServersMap[name].url" class="flex items-center gap-2">
+                  <span class="text-white/40 min-w-[60px]">url</span>
+                  <span class="text-white/80 font-mono truncate">{{ mcpServersMap[name].url }}</span>
+                </div>
+                <div v-if="mcpServersMap[name].command" class="flex items-center gap-2">
                   <span class="text-white/40 min-w-[60px]">command</span>
-                  <span class="text-white/80 font-mono">{{ mcpServersMap[name].command || '-' }}</span>
+                  <span class="text-white/80 font-mono">{{ mcpServersMap[name].command }} {{ (mcpServersMap[name].args || []).join(' ') }}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-white/40 min-w-[60px]">args</span>
-                  <span class="text-white/80 font-mono truncate">{{ (mcpServersMap[name].args || []).join(' ') || '-' }}</span>
+                <div v-if="mcpServersMap[name].headers" class="flex items-center gap-2">
+                  <span class="text-white/40 min-w-[60px]">headers</span>
+                  <span class="text-white/60 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].headers).join(', ') }}</span>
                 </div>
-                <div v-if="mcpServersMap[name].env" class="flex items-start gap-2">
+                <div v-if="mcpServersMap[name].env" class="flex items-center gap-2">
                   <span class="text-white/40 min-w-[60px]">env</span>
-                  <span class="text-white/80 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].env).join(', ') }}</span>
+                  <span class="text-white/60 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].env).join(', ') }}</span>
                 </div>
               </div>
             </div>
@@ -105,20 +109,41 @@
               <h3 class="text-lg font-semibold mb-4">新增 MCP Server</h3>
               <div class="mb-3">
                 <label class="block text-sm text-white/70 mb-1">名稱</label>
-                <input v-model="newServer.name" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：my-server">
+                <input v-model="newServer.name" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：my-mcp-server">
               </div>
               <div class="mb-3">
-                <label class="block text-sm text-white/70 mb-1">Command</label>
-                <input v-model="newServer.command" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：uvx 或 npx">
+                <label class="block text-sm text-white/70 mb-1">連線方式</label>
+                <select v-model="newServer.mode" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm">
+                  <option value="url">HTTP/SSE（URL）</option>
+                  <option value="stdio">Stdio（Command）</option>
+                </select>
               </div>
-              <div class="mb-3">
-                <label class="block text-sm text-white/70 mb-1">Args（每行一個）</label>
-                <textarea v-model="newServer.args" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="例：my-package@latest&#10;--option"></textarea>
-              </div>
-              <div class="mb-4">
-                <label class="block text-sm text-white/70 mb-1">ENV（key=value，每行一個）</label>
-                <textarea v-model="newServer.env" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="例：API_KEY=xxx"></textarea>
-              </div>
+              <!-- URL mode -->
+              <template v-if="newServer.mode === 'url'">
+                <div class="mb-3">
+                  <label class="block text-sm text-white/70 mb-1">URL</label>
+                  <input v-model="newServer.url" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="http://host.docker.internal:1601/mcp/xxx">
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm text-white/70 mb-1">Headers（key: value，每行一個）</label>
+                  <textarea v-model="newServer.headers" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="Authorization: Bearer xxx"></textarea>
+                </div>
+              </template>
+              <!-- Stdio mode -->
+              <template v-else>
+                <div class="mb-3">
+                  <label class="block text-sm text-white/70 mb-1">Command</label>
+                  <input v-model="newServer.command" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm" placeholder="例：uvx 或 npx">
+                </div>
+                <div class="mb-3">
+                  <label class="block text-sm text-white/70 mb-1">Args（每行一個）</label>
+                  <textarea v-model="newServer.args" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="例：my-package@latest"></textarea>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm text-white/70 mb-1">ENV（key=value，每行一個）</label>
+                  <textarea v-model="newServer.env" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="API_KEY=xxx"></textarea>
+                </div>
+              </template>
               <div class="flex gap-3 justify-end">
                 <button @click="showAddServer = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
                 <button @click="addServer()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
@@ -197,7 +222,7 @@ const mcpMode = ref('ui')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
 const showAddServer = ref(false)
-const newServer = ref({ name: '', command: '', args: '', env: '' })
+const newServer = ref({ name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '' })
 const cronjobContent = ref('')
 const kbFiles = ref([])
 const fileView = ref(null)
@@ -285,26 +310,40 @@ function removeServer(name) {
 }
 
 function addServer() {
-  if (!newServer.value.name || !newServer.value.command) return
+  if (!newServer.value.name) return
   try {
     const config = JSON.parse(mcpRaw.value) || {}
     if (!config.mcpServers) config.mcpServers = {}
-    const args = newServer.value.args.split('\n').map(a => a.trim()).filter(Boolean)
-    const env = {}
-    newServer.value.env.split('\n').forEach(line => {
-      const [k, ...v] = line.split('=')
-      if (k && v.length) env[k.trim()] = v.join('=').trim()
-    })
-    config.mcpServers[newServer.value.name] = {
-      command: newServer.value.command,
-      args: args.length ? args : undefined,
-      env: Object.keys(env).length ? env : undefined,
-      disabled: false,
+
+    const srv = { disabled: false }
+
+    if (newServer.value.mode === 'url') {
+      if (!newServer.value.url) return
+      srv.url = newServer.value.url
+      const headers = {}
+      newServer.value.headers.split('\n').forEach(line => {
+        const idx = line.indexOf(':')
+        if (idx > 0) headers[line.slice(0, idx).trim()] = line.slice(idx + 1).trim()
+      })
+      if (Object.keys(headers).length) srv.headers = headers
+    } else {
+      if (!newServer.value.command) return
+      srv.command = newServer.value.command
+      const args = newServer.value.args.split('\n').map(a => a.trim()).filter(Boolean)
+      if (args.length) srv.args = args
+      const env = {}
+      newServer.value.env.split('\n').forEach(line => {
+        const [k, ...v] = line.split('=')
+        if (k && v.length) env[k.trim()] = v.join('=').trim()
+      })
+      if (Object.keys(env).length) srv.env = env
     }
+
+    config.mcpServers[newServer.value.name] = srv
     mcpRaw.value = JSON.stringify(config, null, 2)
     saveMcp()
     showAddServer.value = false
-    newServer.value = { name: '', command: '', args: '', env: '' }
+    newServer.value = { name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '' }
   } catch {}
 }
 
