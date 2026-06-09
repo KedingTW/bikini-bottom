@@ -10,6 +10,7 @@ import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import AgentConfig from './views/AgentConfig.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
+import Deploy from './views/Deploy.vue'
 import Login from './views/Login.vue'
 
 const routes = [
@@ -30,7 +31,7 @@ const routes = [
   // 系統運維
   { path: '/system', name: 'system', component: ComingSoon },
   { path: '/logs', name: 'logs', component: ComingSoon },
-  { path: '/deploy', name: 'deploy', component: ComingSoon },
+  { path: '/deploy', name: 'deploy', component: Deploy },
   { path: '/api-keys', name: 'api-keys', component: ComingSoon },
   // 系統管理
   { path: '/users', name: 'users', component: Users },
