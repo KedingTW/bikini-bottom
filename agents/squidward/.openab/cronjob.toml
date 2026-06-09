@@ -1,0 +1,20 @@
+# Squidward's cronjob 設定
+
+[[jobs]]
+enabled = false
+schedule = "0 9 3 6 *"
+channel = "1508682127200489552"
+thread_id = "1509361261513543770"
+message = "提醒米哥和珈瑄：今天 12:00 要正式推播兩則影片（Intel 股價 + 聯發科），請先做完整確認。確認後回覆我，我安排海綿寶寶 12:00 執行推播。<@565206708473823233> <@1494150209637318866>"
+sender_name = "VideoDigestReminder"
+timezone = "Asia/Taipei"
+
+[[jobs]]
+enabled = false
+schedule = "*/5 * * * *"
+channel = "1508387929364631562"
+thread_id = "1507189703957282847"
+message = "檢查 /shared/workspace/video-digest/queues/pushed.json 是否包含 qzi0OdRDZZU、lGN7gPtJZJk、vORSW_xQWbA。3 支都在就回報「3 支已全部推播完成」並停用此排程（enabled = false）。否則回報一行進度。"
+sender_name = "SqCheck"
+timezone = "Asia/Taipei"
+
