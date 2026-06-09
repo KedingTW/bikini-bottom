@@ -17,9 +17,9 @@
         <option :value="168">最近 7 天</option>
       </select>
       <div class="flex items-center gap-2">
-        <label v-for="a in agentList" :key="a" class="flex items-center gap-1 text-xs">
-          <input type="checkbox" :value="a" v-model="selectedAgents" class="w-3 h-3 rounded">
-          <span class="text-white/70">{{ a }}</span>
+        <label v-for="a in agentList" :key="a.id" class="flex items-center gap-1 text-xs">
+          <input type="checkbox" :value="a.id" v-model="selectedAgents" class="w-3 h-3 rounded">
+          <span class="text-white/70">{{ a.name }}</span>
         </label>
       </div>
       <button @click="selectAll()" class="text-xs text-cyan-400 hover:text-cyan-300">全選</button>
@@ -32,7 +32,7 @@
         <h3 class="font-semibold text-cyan-300 text-sm">📡 即時 Log（tail -f）</h3>
         <select v-model="tailAgent" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-xs">
           <option value="">選擇角色...</option>
-          <option v-for="a in agentList" :key="a" :value="a">{{ a }}</option>
+          <option v-for="a in agentList" :key="a.id" :value="a.id">{{ a.name }}</option>
         </select>
         <button v-if="!tailing" @click="startTail()" :disabled="!tailAgent" class="text-xs px-3 py-1 rounded bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white">▶ 開始</button>
         <button v-else @click="stopTail()" class="text-xs px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white">⏹ 停止</button>
@@ -70,10 +70,21 @@ import { useApi } from '../composables/useApi.js'
 
 const { get } = useApi()
 
-const agentList = ['bob', 'patrick', 'pearl', 'larry', 'squidward', 'sandy', 'puff', 'conch', 'mermaid-man', 'admin']
+const agentList = [
+  { id: 'bob', name: '海綿寶寶' },
+  { id: 'patrick', name: '派大星' },
+  { id: 'pearl', name: '珍珍' },
+  { id: 'larry', name: '蝦霸' },
+  { id: 'squidward', name: '章魚哥' },
+  { id: 'sandy', name: '珊迪' },
+  { id: 'puff', name: '泡芙老師' },
+  { id: 'conch', name: '神奇海螺' },
+  { id: 'mermaid-man', name: '海超人' },
+  { id: 'admin', name: '管理後台' },
+]
 const keyword = ref('')
 const sinceHours = ref(24)
-const selectedAgents = ref([...agentList])
+const selectedAgents = ref(agentList.map(a => a.id))
 const searching = ref(false)
 const searched = ref(false)
 const results = ref([])
@@ -88,7 +99,7 @@ let tailInterval = null
 const totalLines = computed(() => results.value.reduce((s, r) => s + r.total, 0))
 const exportUrl = computed(() => `/api/logs/export?agents=${selectedAgents.value.join(',')}&since_hours=${sinceHours.value}`)
 
-function selectAll() { selectedAgents.value = [...agentList] }
+function selectAll() { selectedAgents.value = agentList.map(a => a.id) }
 
 async function search() {
   searching.value = true
