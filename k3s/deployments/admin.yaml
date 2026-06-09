@@ -54,6 +54,9 @@ spec:
         type: service
     spec:
       serviceAccountName: admin
+      # Deploy 頁面要呼叫 host 的 docker / k3s containerd，需用 host 的 docker group GID
+      securityContext:
+        supplementalGroups: [984]  # docker group on host
       containers:
         - name: admin
           image: bikini-bottom/admin:latest
@@ -114,6 +117,12 @@ spec:
               readOnly: true
             - name: metrics-data
               mountPath: /data/metrics
+            - name: repo-data
+              mountPath: /data/repo
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: containerd-sock
+              mountPath: /run/k3s/containerd/containerd.sock
             - name: shared-skills
               mountPath: /opt/skills
               readOnly: true
@@ -153,6 +162,18 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/services/admin/data
             type: DirectoryOrCreate
+        - name: repo-data
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom
+            type: Directory
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: containerd-sock
+          hostPath:
+            path: /run/k3s/containerd/containerd.sock
+            type: Socket
         - name: shared-skills
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/shared/skills

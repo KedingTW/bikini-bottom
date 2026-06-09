@@ -707,6 +707,147 @@ async def api_restart(agent_name: str, request: Request):
         raise HTTPException(status_code=503, detail="無可用後端")
 
 
+# ─── Deploy APIs ─────────────────────────────────────────
+REPO_DIR = Path(os.environ.get("REPO_DIR", "/data/repo"))
+
+
+def _init_deploy_table():
+    with sqlite3.connect(METRICS_DB) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deploy_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                agent TEXT NOT NULL,
+                action TEXT NOT NULL,
+                status TEXT NOT NULL,
+                message TEXT DEFAULT ''
+            )
+        """)
+
+
+_init_deploy_table()
+
+
+@app.get("/api/deploy/git-status")
+async def api_deploy_git_status(request: Request):
+    """取得 repo 的 git 狀態"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import subprocess
+    repo_dir = str(REPO_DIR) if REPO_DIR.exists() else "/data/repo"
+    try:
+        branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir, capture_output=True, text=True, timeout=5).stdout.strip()
+        log = subprocess.run(["git", "log", "--oneline", "-10"], cwd=repo_dir, capture_output=True, text=True, timeout=5).stdout.strip()
+        status = subprocess.run(["git", "status", "--short"], cwd=repo_dir, capture_output=True, text=True, timeout=5).stdout.strip()
+        return JSONResponse({"branch": branch, "log": log.split("\n") if log else [], "uncommitted": status.split("\n") if status else []})
+    except Exception as e:
+        return JSONResponse({"branch": "unknown", "log": [], "uncommitted": [], "error": str(e)})
+
+
+@app.get("/api/deploy/history")
+async def api_deploy_history(request: Request):
+    """取得部署歷史"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    rows = conn.execute("SELECT ts, user_name, agent, action, status, message FROM deploy_history ORDER BY id DESC LIMIT 50").fetchall()
+    conn.close()
+    history = [{"ts": r[0], "user": r[1], "agent": r[2], "action": r[3], "status": r[4], "message": r[5]} for r in rows]
+    return JSONResponse({"history": history})
+
+
+@app.post("/api/deploy/{agent_name}")
+async def api_deploy(agent_name: str, request: Request):
+    """一鍵部署：build image + import to k3s + restart"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    valid_names = [a["name"] for a in AGENTS] + ["admin"]
+    if agent_name not in valid_names:
+        raise HTTPException(status_code=400, detail=f"未知目標：{agent_name}")
+
+    import subprocess
+    tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    repo_dir = str(REPO_DIR) if REPO_DIR.exists() else "/data/repo"
+    steps = []
+
+    def log_deploy(action, status, message=""):
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("INSERT INTO deploy_history (ts, user_id, user_name, agent, action, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (now_str, user["id"], user["name"], agent_name, action, status, message))
+        conn.commit()
+        conn.close()
+
+    # Step 1: git pull
+    try:
+        r = subprocess.run(["git", "pull", "origin", "master"], cwd=repo_dir, capture_output=True, text=True, timeout=30)
+        steps.append({"step": "git pull", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[-200:]})
+        if r.returncode != 0:
+            log_deploy("deploy", "failed", f"git pull 失敗: {r.stderr.strip()[:100]}")
+            return JSONResponse({"success": False, "steps": steps, "error": "git pull 失敗"})
+    except Exception as e:
+        steps.append({"step": "git pull", "ok": False, "output": str(e)})
+        log_deploy("deploy", "failed", f"git pull 例外: {e}")
+        return JSONResponse({"success": False, "steps": steps, "error": str(e)})
+
+    # Step 2: docker build
+    if agent_name == "admin":
+        dockerfile = f"{repo_dir}/services/admin/Dockerfile"
+        context = f"{repo_dir}/services/admin"
+        image_tag = "bikini-bottom/admin:latest"
+    else:
+        dockerfile = f"{repo_dir}/Dockerfile"
+        context = repo_dir
+        image_tag = "bikini-bottom/agent:latest"
+    try:
+        r = subprocess.run(["docker", "build", "-f", dockerfile, "-t", image_tag, context],
+                           capture_output=True, text=True, timeout=300)
+        steps.append({"step": "docker build", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[-300:]})
+        if r.returncode != 0:
+            log_deploy("deploy", "failed", "docker build 失敗")
+            return JSONResponse({"success": False, "steps": steps, "error": "docker build 失敗"})
+    except Exception as e:
+        steps.append({"step": "docker build", "ok": False, "output": str(e)})
+        log_deploy("deploy", "failed", f"docker build 例外: {e}")
+        return JSONResponse({"success": False, "steps": steps, "error": str(e)})
+
+    # Step 3: import to k3s
+    try:
+        save_r = subprocess.run(["docker", "save", image_tag], capture_output=True, timeout=120)
+        import_r = subprocess.run(["k3s", "ctr", "images", "import", "-"], input=save_r.stdout, capture_output=True, timeout=120)
+        ok = import_r.returncode == 0
+        steps.append({"step": "k3s import", "ok": ok, "output": import_r.stderr.decode()[:200] if not ok else "OK"})
+        if not ok:
+            log_deploy("deploy", "failed", "k3s import 失敗")
+            return JSONResponse({"success": False, "steps": steps, "error": "k3s import 失敗"})
+    except Exception as e:
+        steps.append({"step": "k3s import", "ok": False, "output": str(e)})
+        log_deploy("deploy", "failed", f"k3s import 例外: {e}")
+        return JSONResponse({"success": False, "steps": steps, "error": str(e)})
+
+    # Step 4: restart deployment
+    try:
+        deploy_name = agent_name if agent_name != "admin" else "admin"
+        r = subprocess.run(["kubectl", "rollout", "restart", f"deployment/{deploy_name}", "-n", NAMESPACE],
+                           capture_output=True, text=True, timeout=30)
+        steps.append({"step": "restart", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:200]})
+        if r.returncode != 0:
+            log_deploy("deploy", "failed", "restart 失敗")
+            return JSONResponse({"success": False, "steps": steps, "error": "restart 失敗"})
+    except Exception as e:
+        steps.append({"step": "restart", "ok": False, "output": str(e)})
+        log_deploy("deploy", "failed", f"restart 例外: {e}")
+        return JSONResponse({"success": False, "steps": steps, "error": str(e)})
+
+    log_deploy("deploy", "success", f"部署完成")
+    return JSONResponse({"success": True, "steps": steps})
+
+
 @app.get("/api/logs/{agent_name}")
 async def api_logs(agent_name: str, request: Request, lines: int = 50):
     user = get_current_user(request)
