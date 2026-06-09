@@ -29,7 +29,6 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # ─── Config ───────────────────────────────────────────────
-USERS_FILE = os.environ.get("USERS_FILE", "/etc/dashboard/users.json")
 SECRET_KEY = os.environ.get("SESSION_SECRET", "bikini-bottom-dashboard-secret-key-2026")
 NAMESPACE = os.environ.get("K8S_NAMESPACE", "bikini-bottom")
 BACKEND = os.environ.get("DASHBOARD_BACKEND", "auto")  # "k8s", "docker", or "auto"
@@ -239,24 +238,6 @@ def _fetch_k8s_metrics() -> dict:
 _init_db()
 _start_metrics_collector()
 
-
-def _load_users() -> tuple[set, str]:
-    """Load users from mounted JSON file, with fallback defaults."""
-    try:
-        import json
-        with open(USERS_FILE) as f:
-            data = json.load(f)
-        return set(data.get("users", [])), data.get("password", "")
-    except Exception:
-        logging.warning(f"⚠️ 無法讀取 {USERS_FILE}，使用內建預設帳號")
-        fallback_pw = os.environ.get("DASHBOARD_DEFAULT_PASSWORD", "")
-        if not fallback_pw:
-            logging.error("❌ DASHBOARD_DEFAULT_PASSWORD 環境變數未設定，無法啟動")
-            raise RuntimeError("DASHBOARD_DEFAULT_PASSWORD is required when USERS_FILE is unavailable")
-        return {"11021395"}, fallback_pw
-
-
-AUTH_USERS, AUTH_PASSWORD = _load_users()
 
 # ─── App Setup ────────────────────────────────────────────
 app = FastAPI(title="比奇堡 Dashboard", docs_url=None, redoc_url=None)

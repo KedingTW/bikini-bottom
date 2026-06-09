@@ -68,8 +68,6 @@ spec:
                 secretKeyRef:
                   name: dashboard-secrets
                   key: SESSION_SECRET
-            - name: USERS_FILE
-              value: "/etc/admin/users.json"
             - name: DIST_DIR
               value: "/srv/dist"
             - name: AWS_ACCESS_KEY_ID
@@ -105,9 +103,6 @@ spec:
                   name: admin-discord-secrets
                   key: DISCORD_GUILD_ID
           volumeMounts:
-            - name: users-config
-              mountPath: /etc/admin
-              readOnly: true
             - name: agents-data
               mountPath: /data/agents
             - name: admin-src
@@ -142,9 +137,6 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
       volumes:
-        - name: users-config
-          configMap:
-            name: dashboard-users
         - name: agents-data
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents
