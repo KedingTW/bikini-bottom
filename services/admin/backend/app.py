@@ -1602,6 +1602,36 @@ async def api_agents_list(request: Request):
     return JSONResponse({"agents": result})
 
 
+@app.get("/api/agents/{agent_name}/config")
+async def api_agent_config(agent_name: str, request: Request):
+    """取得角色的 config.toml"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    config_path = AGENTS_DIR / agent_name / "config.toml"
+    if not config_path.exists():
+        return JSONResponse({"error": None, "raw": ""})
+    try:
+        return JSONResponse({"error": None, "raw": config_path.read_text()})
+    except Exception as e:
+        return JSONResponse({"error": str(e), "raw": ""})
+
+
+@app.put("/api/agents/{agent_name}/config")
+async def api_agent_config_save(agent_name: str, request: Request):
+    """儲存角色的 config.toml"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    raw = body.get("raw", "")
+    config_path = AGENTS_DIR / agent_name / "config.toml"
+    if not config_path.parent.exists():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    config_path.write_text(raw)
+    return JSONResponse({"ok": True, "message": "已儲存"})
+
+
 @app.get("/api/agents/{agent_name}/mcp")
 async def api_agent_mcp(agent_name: str, request: Request):
     """取得角色的 MCP 配置"""

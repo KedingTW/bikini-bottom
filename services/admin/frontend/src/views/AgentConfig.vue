@@ -67,6 +67,70 @@
       </div>
 
       <div class="px-6 py-4 flex-1 overflow-y-auto">
+        <!-- Config Tab -->
+        <div v-if="detailTab === 'config'">
+          <div class="flex items-center gap-2 mb-4">
+            <button @click="configMode = 'ui'" :class="configMode === 'ui' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">卡片模式</button>
+            <button @click="configMode = 'raw'" :class="configMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">TOML</button>
+          </div>
+
+          <div v-if="configMode === 'ui'">
+            <div v-if="!configRaw" class="text-white/50 text-sm py-4">無 config.toml</div>
+            <div v-else class="space-y-4">
+              <!-- Discord Section -->
+              <div v-if="configParsed.discord" class="bg-ocean-800/50 rounded-lg p-4">
+                <h4 class="text-cyan-300 font-medium text-sm mb-3">🔌 Discord</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div><span class="text-white/50">allow_bot_messages:</span> <span class="text-white ml-1">{{ configParsed.discord.allow_bot_messages }}</span></div>
+                  <div><span class="text-white/50">allow_user_messages:</span> <span class="text-white ml-1">{{ configParsed.discord.allow_user_messages }}</span></div>
+                  <div><span class="text-white/50">max_bot_turns:</span> <span class="text-white ml-1">{{ configParsed.discord.max_bot_turns }}</span></div>
+                  <div class="col-span-2"><span class="text-white/50">allowed_channels:</span> <span class="text-white ml-1">{{ (configParsed.discord.allowed_channels || []).length }} 個</span></div>
+                  <div class="col-span-2"><span class="text-white/50">trusted_bot_ids:</span> <span class="text-white ml-1">{{ (configParsed.discord.trusted_bot_ids || []).length }} 個</span></div>
+                </div>
+              </div>
+              <!-- Agent Section -->
+              <div v-if="configParsed.agent" class="bg-ocean-800/50 rounded-lg p-4">
+                <h4 class="text-cyan-300 font-medium text-sm mb-3">🤖 Agent</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div><span class="text-white/50">command:</span> <span class="text-white ml-1 font-mono">{{ configParsed.agent.command }}</span></div>
+                  <div><span class="text-white/50">args:</span> <span class="text-white ml-1 font-mono">{{ (configParsed.agent.args || []).join(' ') }}</span></div>
+                  <div class="col-span-2"><span class="text-white/50">working_dir:</span> <span class="text-white ml-1 font-mono">{{ configParsed.agent.working_dir }}</span></div>
+                  <div class="col-span-2"><span class="text-white/50">inherit_env:</span> <span class="text-white ml-1">{{ (configParsed.agent.inherit_env || []).length }} 個變數</span></div>
+                </div>
+              </div>
+              <!-- Pool Section -->
+              <div v-if="configParsed.pool" class="bg-ocean-800/50 rounded-lg p-4">
+                <h4 class="text-cyan-300 font-medium text-sm mb-3">🏊 Pool</h4>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div><span class="text-white/50">max_sessions:</span> <span class="text-white ml-1">{{ configParsed.pool.max_sessions }}</span></div>
+                  <div><span class="text-white/50">session_ttl_hours:</span> <span class="text-white ml-1">{{ configParsed.pool.session_ttl_hours }}</span></div>
+                </div>
+              </div>
+              <!-- Reactions Section -->
+              <div v-if="configParsed.reactions" class="bg-ocean-800/50 rounded-lg p-4">
+                <h4 class="text-cyan-300 font-medium text-sm mb-3">😀 Reactions</h4>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div><span class="text-white/50">enabled:</span> <span class="ml-1" :class="configParsed.reactions.enabled ? 'text-green-400' : 'text-red-400'">{{ configParsed.reactions.enabled }}</span></div>
+                  <div v-if="configParsed.reactions.emojis"><span class="text-white/50">emojis:</span> <span class="text-white ml-1">{{ Object.values(configParsed.reactions.emojis || {}).join(' ') }}</span></div>
+                </div>
+              </div>
+              <!-- Cron Section -->
+              <div v-if="configParsed.cron" class="bg-ocean-800/50 rounded-lg p-4">
+                <h4 class="text-cyan-300 font-medium text-sm mb-3">⏰ Cron</h4>
+                <div class="text-xs"><span class="text-white/50">usercron_enabled:</span> <span class="ml-1" :class="configParsed.cron.usercron_enabled ? 'text-green-400' : 'text-red-400'">{{ configParsed.cron.usercron_enabled }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="configMode === 'raw'">
+            <textarea v-model="configRaw" rows="25" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-xs font-mono leading-relaxed resize-y"></textarea>
+            <div class="flex items-center gap-3 mt-3">
+              <button @click="saveConfig()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-medium">💾 儲存</button>
+              <span v-if="configStatus" class="text-xs" :class="configStatus.ok ? 'text-green-400' : 'text-red-400'">{{ configStatus.text }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- MCP Tab -->
         <div v-if="detailTab === 'mcp'">
           <div class="flex items-center gap-2 mb-4">
@@ -257,12 +321,15 @@ const { get, put } = useApi()
 const loading = ref(false)
 const agents = ref([])
 const selectedAgent = ref(null)
-const detailTab = ref('mcp')
+const detailTab = ref('config')
 
 // MCP state
 const mcpMode = ref('ui')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
+const configMode = ref('ui')
+const configRaw = ref('')
+const configStatus = ref(null)
 const showAddServer = ref(false)
 const newServer = ref({ name: '', url: '', headers: '', enabled: true })
 
@@ -279,6 +346,7 @@ const kbContexts = ref([])
 const fileView = ref(null)
 
 const detailTabs = [
+  { key: 'config', label: '⚙️ Config' },
   { key: 'mcp', label: '🔌 MCP' },
   { key: 'skills', label: '🧠 Skills' },
   { key: 'steering', label: '📋 Steering' },
@@ -312,12 +380,19 @@ async function load() {
 
 async function openAgent(a) {
   selectedAgent.value = a
-  detailTab.value = 'mcp'
+  detailTab.value = 'config'
   mcpMode.value = 'ui'
+  configMode.value = 'ui'
   cronMode.value = 'ui'
   mcpStatus.value = null
   cronStatus.value = null
+  configStatus.value = null
   window.location.hash = a.name
+  // Load config.toml
+  try {
+    const cfgRes = await get(`/api/agents/${a.name}/config`)
+    configRaw.value = cfgRes?.raw || ''
+  } catch { configRaw.value = '' }
   // Load MCP
   const res = await get(`/api/agents/${a.name}/mcp`)
   mcpRaw.value = res?.raw || '{}'
@@ -350,6 +425,53 @@ async function saveMcp() {
   const res = await put(`/api/agents/${selectedAgent.value.name}/mcp`, { raw: mcpRaw.value })
   if (res?.ok) { mcpStatus.value = { ok: true, text: '✅ 已儲存' }; load() }
   else mcpStatus.value = { ok: false, text: '❌ ' + (res?.detail || '儲存失敗') }
+}
+
+const configParsed = computed(() => {
+  if (!configRaw.value) return {}
+  try {
+    // Simple TOML parser for display — parse sections
+    const result = {}
+    let section = null
+    let subSection = null
+    for (const line of configRaw.value.split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const secMatch = trimmed.match(/^\[([^\]]+)\]$/)
+      if (secMatch) {
+        const parts = secMatch[1].split('.')
+        section = parts[0]
+        subSection = parts.length > 1 ? parts.slice(1).join('.') : null
+        if (!result[section]) result[section] = {}
+        continue
+      }
+      if (!section) continue
+      const kvMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/)
+      if (kvMatch) {
+        let val = kvMatch[2].trim()
+        // Parse value
+        if (val === 'true') val = true
+        else if (val === 'false') val = false
+        else if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1)
+        else if (val.startsWith('[')) try { val = JSON.parse(val.replace(/'/g, '"')) } catch {}
+        else if (!isNaN(val)) val = Number(val)
+        if (subSection) {
+          if (!result[section][subSection]) result[section][subSection] = {}
+          result[section][subSection][kvMatch[1]] = val
+        } else {
+          result[section][kvMatch[1]] = val
+        }
+      }
+    }
+    return result
+  } catch { return {} }
+})
+
+async function saveConfig() {
+  configStatus.value = null
+  const res = await put(`/api/agents/${selectedAgent.value.name}/config`, { raw: configRaw.value })
+  if (res?.ok) configStatus.value = { ok: true, text: '✅ 已儲存' }
+  else configStatus.value = { ok: false, text: '❌ ' + (res?.detail || '儲存失敗') }
 }
 
 function toggleServer(name) {
