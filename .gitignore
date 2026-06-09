@@ -24,8 +24,9 @@ agents/*/.kiro/settings/
 # 動態記憶（每個環境不同）
 agents/*/.kiro/steering/memory.md
 
-# OpenAB runtime 資料（thread_map、session 等）
+# OpenAB runtime — thread_map 是動態映射，不進 git
 agents/*/.openab/thread_map.json
+agents/*/.openab/thread_map.json.bak
 
 # Agent SSH 金鑰（不可進 git）
 agents/*/.ssh/
@@ -91,8 +92,9 @@ agents/*/.kiro/agents/
 # Agent 狀態檔（由 agent 自動產生，不進 git）
 agents/**/projects/**/_status.md
 
-# OpenAB runtime 資料（thread_map、session 等）
-agents/*/.openab/
+# OpenAB runtime — sessions/logs 不進 git（cronjob.toml 需追蹤）
+agents/*/.openab/sessions/
+agents/*/.openab/*.log
 
 # 容器內自動產生的 shell 設定
 agents/*/.profile
