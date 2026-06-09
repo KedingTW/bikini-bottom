@@ -401,9 +401,12 @@ def require_auth(request: Request):
 # ─── Routes ──────────────────────────────────────────────
 @app.post("/api/login")
 async def api_login(request: Request):
-    body = await request.json()
-    username = body.get("username", "")
-    password = body.get("password", "")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    username = body.get("username", "") if isinstance(body, dict) else ""
+    password = body.get("password", "") if isinstance(body, dict) else ""
     if not username or not password:
         raise HTTPException(status_code=400, detail="請輸入帳號和密碼")
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
