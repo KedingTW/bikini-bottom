@@ -6,6 +6,7 @@ import Alerts from './views/Alerts.vue'
 import Messaging from './views/Messaging.vue'
 import Members from './views/Members.vue'
 import Discord from './views/Discord.vue'
+import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
 
@@ -18,7 +19,7 @@ const routes = [
   { path: '/messaging', name: 'messaging', component: Messaging },
   { path: '/members', name: 'members', component: Members },
   { path: '/threads', name: 'threads', component: Discord },
-  { path: '/thread-analytics', name: 'thread-analytics', component: ComingSoon },
+  { path: '/thread-analytics', name: 'thread-analytics', component: ThreadAnalytics },
   // AI 角色管理
   { path: '/agent-config', name: 'agent-config', component: ComingSoon },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },

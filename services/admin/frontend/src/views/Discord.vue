@@ -291,11 +291,8 @@ let activityChartInstance = null
 let threadChartInstance = null
 
 const tabs = [
-  { key: 'members', label: '👥 成員' },
-  { key: 'roles', label: '🎭 身分組' },
   { key: 'threads', label: '📌 討論串' },
   { key: 'activity', label: '📈 活躍度' },
-  { key: 'message', label: '📢 發送訊息' },
 ]
 
 const filteredMembers = computed(() => {

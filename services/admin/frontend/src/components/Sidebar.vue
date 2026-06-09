@@ -34,10 +34,10 @@ const navGroups = [
     { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
   ]},
   { label: '通訊管理', items: [
-    { path: '/messaging', icon: '💬', label: '訊息推送', admin: true },
-    { path: '/members', icon: '👥', label: '成員管理', admin: true },
-    { path: '/threads', icon: '📌', label: '討論串管理', admin: true },
-    { path: '/thread-analytics', icon: '📈', label: '討論串分析', admin: true },
+    { path: '/members', icon: '�', label: '成員管理', admin: true },
+    { path: '/threads', icon: '�', label: '討論串管理', admin: true },
+    { path: '/thread-analytics', icon: '�', label: '討論串分析', admin: true },
+    { path: '/messaging', icon: '�', label: '訊息推送', admin: true },
   ]},
   { label: 'AI 角色', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },

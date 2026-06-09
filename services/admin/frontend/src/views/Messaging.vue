@@ -4,7 +4,7 @@
   </div>
 
   <div class="p-7">
-    <div class="glass rounded-xl p-6 max-w-2xl">
+    <div class="glass rounded-xl p-6 max-w-3xl">
       <h3 class="font-semibold mb-4 text-cyan-300">📢 發送公告</h3>
       <div class="mb-4">
         <label class="block text-sm text-white/70 mb-1">平台</label>
