@@ -4,7 +4,7 @@
     <span class="text-xs px-2.5 py-1 rounded-full" :class="threads.length >= 800 ? 'bg-red-500/20 text-red-300' : threads.length >= 500 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-green-500/20 text-green-300'">
       {{ threads.length }} / 1000
     </span>
-    <span v-if="idleCount > 0" class="text-xs text-yellow-300">⚠️ {{ idleCount }} 個閒置超過 7 天</span>
+    <span v-if="idleCount > 0" class="text-xs text-yellow-300">⚠️ {{ idleCount }} 個閒置超過 {{ idleYellowDays }} 天</span>
     <button @click="refresh()" class="ml-auto bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm hover:border-cyan-400/50">🔄 更新</button>
   </div>
 
@@ -88,11 +88,22 @@
             <option value="">全部頻道</option>
             <option v-for="ch in forumChannels" :key="ch.id" :value="ch.id">#{{ ch.name }}</option>
           </select>
+          <select v-model="threadOwnerFilter" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
+            <option value="">全部建立者</option>
+            <option v-for="owner in allOwners" :key="owner.id" :value="owner.id">{{ owner.name }}</option>
+          </select>
           <select v-model="threadSort" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
             <option value="idle">最久未動</option>
             <option value="active">最近活動</option>
             <option value="messages">訊息最多</option>
           </select>
+          <div class="flex items-center gap-1 text-xs text-white/50">
+            <span>閒置</span>
+            <input v-model.number="idleYellowDays" type="number" min="1" max="90" class="w-10 bg-ocean-800 border border-white/20 rounded px-1.5 py-0.5 text-center text-white text-xs">
+            <span>/</span>
+            <input v-model.number="idleRedDays" type="number" min="1" max="90" class="w-10 bg-ocean-800 border border-white/20 rounded px-1.5 py-0.5 text-center text-white text-xs">
+            <span>天</span>
+          </div>
           <span class="text-white/40 text-xs">{{ sortedFilteredThreads.length }} / {{ threads.length }} 個</span>
           <!-- Batch actions -->
           <div v-if="selectedThreads.length" class="ml-auto flex items-center gap-2">
@@ -102,18 +113,40 @@
           </div>
         </div>
 
+        <!-- Cleanup Suggestions -->
+        <div v-if="cleanupThreads.length" class="mb-4 glass rounded-xl border border-amber-500/20 overflow-hidden">
+          <button @click="showCleanup = !showCleanup" class="w-full px-4 py-3 flex items-center gap-2 text-sm font-medium text-amber-300 hover:bg-white/5">
+            <span>🧹 建議清理（{{ cleanupThreads.length }} 個閒置超過 {{ idleRedDays }} 天）</span>
+            <span class="ml-auto text-xs">{{ showCleanup ? '收起 ▲' : '展開 ▼' }}</span>
+          </button>
+          <div v-if="showCleanup" class="px-4 pb-3 space-y-1.5">
+            <div v-for="t in cleanupThreads" :key="t.id" class="flex items-center gap-3 px-3 py-2 rounded bg-red-500/5 border border-red-500/10">
+              <input type="checkbox" :value="t.id" v-model="selectedThreads" class="w-4 h-4 rounded bg-ocean-800 border-white/30">
+              <span v-if="pinnedThreads.has(t.id)" class="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">📌 持續性</span>
+              <span class="flex-1 text-sm truncate">{{ t.name }}</span>
+              <span class="text-xs text-white/40">#{{ getChannelName(t.parent_id) }}</span>
+              <span class="text-xs text-red-300">閒置 {{ getIdleDays(t) }} 天</span>
+              <button @click="closeThread(t)" class="text-xs px-2 py-1 rounded border border-green-400/30 text-green-300 hover:bg-green-400/10">結案</button>
+              <button @click="archiveThread(t.id)" class="text-xs px-2 py-1 rounded border border-white/20 text-white/70 hover:bg-white/10">封存</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Thread List -->
         <div class="space-y-1.5">
           <div v-for="t in sortedFilteredThreads" :key="t.id"
-            class="glass rounded-lg px-4 py-3 flex items-center gap-3"
-            :class="getIdleDays(t) >= 7 ? 'border-l-4 border-yellow-500' : getIdleDays(t) >= 14 ? 'border-l-4 border-red-500' : ''">
+            class="glass rounded-lg px-4 py-3 flex items-center gap-3 group"
+            :class="getIdleDays(t) >= idleRedDays ? 'border-l-4 border-red-500' : getIdleDays(t) >= idleYellowDays ? 'border-l-4 border-yellow-500' : ''">
             <!-- Checkbox -->
             <input type="checkbox" :value="t.id" v-model="selectedThreads" class="w-4 h-4 rounded bg-ocean-800 border-white/30">
+            <!-- Pinned badge -->
+            <button v-if="pinnedThreads.has(t.id)" @click.stop="togglePin(t.id)" class="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30" title="持續性 thread（不建議關閉）">📌</button>
+            <button v-else @click.stop="togglePin(t.id)" class="text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 text-white/30" title="標記為持續性">📌</button>
             <!-- Content (clickable for preview) -->
             <div class="flex-1 min-w-0 cursor-pointer" @click="openPreview(t)">
               <div class="flex items-center gap-2">
                 <span class="font-medium truncate text-sm">{{ t.name }}</span>
-                <span v-if="getIdleDays(t) >= 7" class="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">閒置 {{ getIdleDays(t) }}天</span>
+                <span v-if="getIdleDays(t) >= idleYellowDays" class="text-xs px-1.5 py-0.5 rounded" :class="getIdleDays(t) >= idleRedDays ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'">閒置 {{ getIdleDays(t) }}天</span>
               </div>
               <div class="flex items-center gap-2 mt-1 flex-wrap">
                 <span class="text-xs text-white/40">#{{ getChannelName(t.parent_id) }}</span>
@@ -305,8 +338,13 @@ const tagsMap = ref({})
 const threadFilter = ref('')
 const threadTagFilter = ref('')
 const threadChannelFilter = ref('')
+const threadOwnerFilter = ref('')
 const threadSort = ref('idle')
 const selectedThreads = ref([])
+const idleYellowDays = ref(7)
+const idleRedDays = ref(14)
+const showCleanup = ref(false)
+const pinnedThreads = ref(new Set(JSON.parse(localStorage.getItem('pinnedThreads') || '[]')))
 const previewThread = ref(null)
 const previewMessages = ref([])
 const previewLoading = ref(false)
@@ -475,6 +513,10 @@ const sortedFilteredThreads = computed(() => {
   if (threadChannelFilter.value) {
     list = list.filter(t => t.parent_id === threadChannelFilter.value)
   }
+  // Owner filter
+  if (threadOwnerFilter.value) {
+    list = list.filter(t => t.owner_id === threadOwnerFilter.value)
+  }
   // Sort
   if (threadSort.value === 'idle') {
     list.sort((a, b) => (a.last_activity || '').localeCompare(b.last_activity || ''))
@@ -486,6 +528,30 @@ const sortedFilteredThreads = computed(() => {
   return list
 })
 
+const allOwners = computed(() => {
+  const map = new Map()
+  threads.value.forEach(t => {
+    if (t.owner_id && !map.has(t.owner_id)) {
+      map.set(t.owner_id, { id: t.owner_id, name: getOwnerName(t.owner_id) })
+    }
+  })
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const cleanupThreads = computed(() => {
+  return threads.value
+    .filter(t => getIdleDays(t) >= idleRedDays.value)
+    .sort((a, b) => (a.last_activity || '').localeCompare(b.last_activity || ''))
+})
+
+function togglePin(threadId) {
+  const s = new Set(pinnedThreads.value)
+  if (s.has(threadId)) s.delete(threadId)
+  else s.add(threadId)
+  pinnedThreads.value = s
+  localStorage.setItem('pinnedThreads', JSON.stringify([...s]))
+}
+
 function getIdleDays(t) {
   if (!t.last_activity) return 999
   const last = new Date(t.last_activity)
@@ -493,7 +559,7 @@ function getIdleDays(t) {
   return Math.floor((now - last) / (1000 * 60 * 60 * 24))
 }
 
-const idleCount = computed(() => threads.value.filter(t => getIdleDays(t) >= 7).length)
+const idleCount = computed(() => threads.value.filter(t => getIdleDays(t) >= idleYellowDays.value).length)
 
 async function closeThread(t) {
   if (!confirm(`結案「${t.name}」？將貼上「已完成」標籤並移除進行中標籤`)) return
