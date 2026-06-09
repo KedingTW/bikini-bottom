@@ -640,11 +640,15 @@ async function openPreview(t) {
     previewHasMore.value = res?.has_more || false
   } catch (e) { console.error(e) }
   previewLoading.value = false
+  await nextTick()
+  if (previewScroll.value) previewScroll.value.scrollTop = previewScroll.value.scrollHeight
 }
 
 async function loadMorePreview() {
   if (!previewMessages.value.length || !previewThread.value) return
   const oldest = previewMessages.value[0]
+  const el = previewScroll.value
+  const prevHeight = el ? el.scrollHeight : 0
   previewLoading.value = true
   try {
     const res = await get(`/api/discord/threads/${previewThread.value.id}/messages?limit=10&before=${oldest.id}`)
@@ -653,6 +657,8 @@ async function loadMorePreview() {
     previewHasMore.value = res?.has_more || false
   } catch (e) { console.error(e) }
   previewLoading.value = false
+  await nextTick()
+  if (el) el.scrollTop = el.scrollHeight - prevHeight
 }
 
 function formatMsgTime(ts) {
