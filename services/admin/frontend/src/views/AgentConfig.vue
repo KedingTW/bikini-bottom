@@ -62,7 +62,7 @@
           <div v-if="mcpMode === 'ui'" class="space-y-3">
             <div v-if="!mcpServers.length" class="text-white/50 text-sm py-4">無 MCP Server 配置</div>
             <div v-for="name in mcpServers" :key="name" class="bg-ocean-800/50 rounded-lg p-4">
-              <div class="flex items-center gap-3 mb-2">
+              <div class="flex items-center gap-3 mb-3">
                 <span class="font-medium text-sm" :class="mcpServersMap[name].disabled ? 'text-white/40 line-through' : 'text-cyan-300'">{{ name }}</span>
                 <span v-if="mcpServersMap[name].disabled" class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">停用</span>
                 <span v-else class="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">啟用</span>
@@ -73,22 +73,23 @@
                   <button @click="removeServer(name)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
                 </div>
               </div>
-              <div class="space-y-1 text-xs">
-                <div v-if="mcpServersMap[name].url" class="flex items-center gap-2">
-                  <span class="text-white/40 min-w-[60px]">url</span>
-                  <span class="text-white/80 font-mono truncate">{{ mcpServersMap[name].url }}</span>
+              <!-- Editable fields -->
+              <div class="space-y-2">
+                <div v-if="'url' in mcpServersMap[name]" class="flex items-center gap-2">
+                  <span class="text-white/40 text-xs min-w-[50px]">url</span>
+                  <input :value="mcpServersMap[name].url" @change="updateServerField(name, 'url', $event.target.value)"
+                    class="flex-1 bg-ocean-800 text-white border border-white/10 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-cyan-400/60">
                 </div>
                 <div v-if="mcpServersMap[name].command" class="flex items-center gap-2">
-                  <span class="text-white/40 min-w-[60px]">command</span>
-                  <span class="text-white/80 font-mono">{{ mcpServersMap[name].command }} {{ (mcpServersMap[name].args || []).join(' ') }}</span>
+                  <span class="text-white/40 text-xs min-w-[50px]">cmd</span>
+                  <input :value="mcpServersMap[name].command + ' ' + (mcpServersMap[name].args || []).join(' ')" disabled
+                    class="flex-1 bg-ocean-800/50 text-white/60 border border-white/5 rounded px-2 py-1 text-xs font-mono">
                 </div>
-                <div v-if="mcpServersMap[name].headers" class="flex items-center gap-2">
-                  <span class="text-white/40 min-w-[60px]">headers</span>
-                  <span class="text-white/60 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].headers).join(', ') }}</span>
-                </div>
-                <div v-if="mcpServersMap[name].env" class="flex items-center gap-2">
-                  <span class="text-white/40 min-w-[60px]">env</span>
-                  <span class="text-white/60 font-mono text-[11px]">{{ Object.keys(mcpServersMap[name].env).join(', ') }}</span>
+                <div v-if="mcpServersMap[name].headers" class="flex items-start gap-2">
+                  <span class="text-white/40 text-xs min-w-[50px] mt-1">headers</span>
+                  <div class="flex-1 text-xs font-mono text-white/60">
+                    <div v-for="(val, key) in mcpServersMap[name].headers" :key="key" class="truncate">{{ key }}: {{ val.slice(0, 20) }}...</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -144,6 +145,10 @@
                   <textarea v-model="newServer.env" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono" placeholder="API_KEY=xxx"></textarea>
                 </div>
               </template>
+              <div class="mb-4 flex items-center gap-2">
+                <input type="checkbox" v-model="newServer.enabled" id="srv-enabled" class="w-4 h-4 rounded">
+                <label for="srv-enabled" class="text-sm text-white/70">新增後立即啟用</label>
+              </div>
               <div class="flex gap-3 justify-end">
                 <button @click="showAddServer = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
                 <button @click="addServer()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
@@ -222,7 +227,7 @@ const mcpMode = ref('ui')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
 const showAddServer = ref(false)
-const newServer = ref({ name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '' })
+const newServer = ref({ name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '', enabled: true })
 const cronjobContent = ref('')
 const kbFiles = ref([])
 const fileView = ref(null)
@@ -297,6 +302,17 @@ function toggleServer(name) {
   } catch {}
 }
 
+function updateServerField(name, field, value) {
+  try {
+    const config = JSON.parse(mcpRaw.value)
+    if (config.mcpServers && config.mcpServers[name]) {
+      config.mcpServers[name][field] = value
+      mcpRaw.value = JSON.stringify(config, null, 2)
+      saveMcp()
+    }
+  } catch {}
+}
+
 function removeServer(name) {
   if (!confirm(`確定要刪除 MCP Server「${name}」？`)) return
   try {
@@ -315,7 +331,7 @@ function addServer() {
     const config = JSON.parse(mcpRaw.value) || {}
     if (!config.mcpServers) config.mcpServers = {}
 
-    const srv = { disabled: false }
+    const srv = { disabled: !newServer.value.enabled }
 
     if (newServer.value.mode === 'url') {
       if (!newServer.value.url) return
@@ -343,7 +359,7 @@ function addServer() {
     mcpRaw.value = JSON.stringify(config, null, 2)
     saveMcp()
     showAddServer.value = false
-    newServer.value = { name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '' }
+    newServer.value = { name: '', mode: 'url', url: '', headers: '', command: '', args: '', env: '', enabled: true }
   } catch {}
 }
 
