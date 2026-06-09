@@ -297,8 +297,9 @@
         <span class="text-sm font-normal text-white/50">{{ previewThread.message_count }} 則</span>
         <button @click="previewThread = null" class="ml-auto text-2xl text-white/60 hover:text-white">&times;</button>
       </div>
-      <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3" ref="previewScroll">
-        <button v-if="previewHasMore" @click="loadMorePreview()" class="w-full text-center text-xs text-cyan-400 hover:text-cyan-300 py-2">⬆️ 載入更多</button>
+      <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3" ref="previewScroll" @scroll="onPreviewScroll">
+        <div v-if="previewLoading && previewMessages.length" class="text-center py-2"><div class="w-5 h-5 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin inline-block"></div></div>
+        <div v-if="previewHasMore && !previewLoading" class="text-center text-xs text-white/30 py-1">↑ 往上捲載入更多</div>
         <div v-for="m in previewMessages" :key="m.id" class="flex gap-3">
           <img v-if="m.avatar" :src="m.avatar" class="w-7 h-7 rounded-full shrink-0">
           <div v-else class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" :class="m.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ m.author.charAt(0) }}</div>
@@ -659,6 +660,12 @@ async function loadMorePreview() {
   previewLoading.value = false
   await nextTick()
   if (el) el.scrollTop = el.scrollHeight - prevHeight
+}
+
+function onPreviewScroll() {
+  const el = previewScroll.value
+  if (!el || previewLoading.value || !previewHasMore.value) return
+  if (el.scrollTop < 50) loadMorePreview()
 }
 
 function formatMsgTime(ts) {
