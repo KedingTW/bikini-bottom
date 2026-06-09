@@ -1301,11 +1301,11 @@ async def api_discord_threads(request: Request):
         threads = await list_active_threads()
         channels = await list_channels()
         # 過濾掉舊版頻道
-        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉", "🪨派大星的石頭下面"}
-        old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
+        EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
+        old_channel_ids = EXCLUDED_CHANNEL_IDS
         threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
         # Get tags for forum channels
-        forum_channels = [c for c in channels if c["type"] == 15 and c["name"] not in OLD_CHANNELS]
+        forum_channels = [c for c in channels if c["type"] == 15 and c["id"] not in EXCLUDED_CHANNEL_IDS]
         tags_map = {}
         for fc in forum_channels:
             try:
@@ -1381,7 +1381,7 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
                 author = m.get("author", {})
                 uid = author.get("id", "")
                 display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
-                messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False)})
+                messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False), "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None})
             result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
             conn = sqlite3.connect(METRICS_DB)
             conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
@@ -1402,6 +1402,7 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
                 "author": display,
                 "author_id": uid,
                 "is_bot": author.get("bot", False),
+                "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None,
                 "content": m.get("content", "")[:500],
                 "attachments": len(m.get("attachments", [])),
             })
@@ -1432,12 +1433,12 @@ async def api_discord_activity(request: Request):
         channels = await list_channels()
 
         # 過濾掉舊版（準備關閉）頻道的 threads
-        OLD_CHANNELS = {"🍔蟹堡王-準備關閉", "🗿復活節島會議室-準備關閉", "🪨派大星的石頭下面"}
-        old_channel_ids = {c["id"] for c in channels if c["name"] in OLD_CHANNELS}
+        EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
+        old_channel_ids = EXCLUDED_CHANNEL_IDS
         threads = [t for t in threads if t.get("parent_id") not in old_channel_ids]
 
         # Get tags for forum channels
-        forum_channels = [c for c in channels if c["type"] == 15 and c["name"] not in OLD_CHANNELS]
+        forum_channels = [c for c in channels if c["type"] == 15 and c["id"] not in EXCLUDED_CHANNEL_IDS]
         tags_map = {}
         for fc in forum_channels:
             try:

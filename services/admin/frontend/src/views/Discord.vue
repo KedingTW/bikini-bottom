@@ -1,6 +1,10 @@
 <template>
   <div class="glass px-7 py-3 flex items-center gap-5 border-b border-white/10 text-sm flex-wrap sticky top-0 z-10">
     <span class="font-medium">討論串管理</span>
+    <span class="text-xs px-2.5 py-1 rounded-full" :class="threads.length >= 800 ? 'bg-red-500/20 text-red-300' : threads.length >= 500 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-green-500/20 text-green-300'">
+      {{ threads.length }} / 1000
+    </span>
+    <span v-if="idleCount > 0" class="text-xs text-yellow-300">⚠️ {{ idleCount }} 個閒置超過 7 天</span>
     <button @click="refresh()" class="ml-auto bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm hover:border-cyan-400/50">🔄 更新</button>
   </div>
 
@@ -120,8 +124,8 @@
               </div>
             </div>
             <!-- Actions -->
-            <button @click="closeThread(t)" class="text-xs px-2 py-1 rounded border border-green-400/30 text-green-300 hover:bg-green-400/10" title="結案">🏷️</button>
-            <button @click="archiveThread(t.id)" class="text-xs px-2 py-1 rounded border border-white/20 text-white/70 hover:bg-white/10" title="封存">📦</button>
+            <button @click.stop="closeThread(t)" class="text-xs px-2.5 py-1 rounded border border-green-400/30 text-green-300 hover:bg-green-400/10" title="貼上已完成標籤">🏷️ 結案</button>
+            <button @click.stop="archiveThread(t.id)" class="text-xs px-2.5 py-1 rounded border border-white/20 text-white/70 hover:bg-white/10" title="結案並封存">📦 封存</button>
           </div>
         </div>
       </div>
@@ -263,7 +267,8 @@
       <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3" ref="previewScroll">
         <button v-if="previewHasMore" @click="loadMorePreview()" class="w-full text-center text-xs text-cyan-400 hover:text-cyan-300 py-2">⬆️ 載入更多</button>
         <div v-for="m in previewMessages" :key="m.id" class="flex gap-3">
-          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" :class="m.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ m.is_bot ? '🤖' : m.author.charAt(0) }}</div>
+          <img v-if="m.avatar" :src="m.avatar" class="w-7 h-7 rounded-full shrink-0">
+          <div v-else class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" :class="m.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ m.author.charAt(0) }}</div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium" :class="m.is_bot ? 'text-purple-300' : ''">{{ m.author }}</span>
@@ -487,6 +492,8 @@ function getIdleDays(t) {
   const now = new Date()
   return Math.floor((now - last) / (1000 * 60 * 60 * 24))
 }
+
+const idleCount = computed(() => threads.value.filter(t => getIdleDays(t) >= 7).length)
 
 async function closeThread(t) {
   if (!confirm(`結案「${t.name}」？將貼上「已完成」標籤並移除進行中標籤`)) return

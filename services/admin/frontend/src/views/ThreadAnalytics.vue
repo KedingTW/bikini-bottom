@@ -82,7 +82,8 @@
                 <h4 class="text-sm font-semibold text-cyan-300 mb-3">👥 參與者</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                   <div v-for="a in authorStats" :key="a.name" class="flex items-center gap-2 bg-ocean-800/50 rounded px-3 py-2">
-                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" :class="a.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ a.is_bot ? '🤖' : a.name.charAt(0) }}</div>
+                    <img v-if="a.avatar" :src="a.avatar" class="w-5 h-5 rounded-full">
+                    <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" :class="a.is_bot ? 'bg-purple-700' : 'bg-cyan-700'">{{ a.is_bot ? '🤖' : a.name.charAt(0) }}</div>
                     <span class="text-sm flex-1 truncate">{{ a.name }}</span>
                     <span class="text-xs text-white/60">{{ a.count }}</span>
                   </div>
@@ -120,10 +121,10 @@ const authorStats = computed(() => {
   const counts = {}
   detailMessages.value.forEach(m => {
     const name = m.author || 'unknown'
-    counts[name] = counts[name] || { count: 0, is_bot: m.is_bot }
+    if (!counts[name]) counts[name] = { count: 0, is_bot: m.is_bot, avatar: m.avatar }
     counts[name].count++
   })
-  return Object.entries(counts).map(([name, d]) => ({ name, count: d.count, is_bot: d.is_bot })).sort((a, b) => b.count - a.count)
+  return Object.entries(counts).map(([name, d]) => ({ name, count: d.count, is_bot: d.is_bot, avatar: d.avatar })).sort((a, b) => b.count - a.count)
 })
 
 const autoIndex = computed(() => {
