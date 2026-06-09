@@ -7,10 +7,9 @@ import threading
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from itsdangerous import URLSafeTimedSerializer
 
@@ -245,7 +244,6 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # Serve Vue SPA build output
 DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolve())))
@@ -396,21 +394,18 @@ def require_auth(request: Request):
     """Dependency that enforces authentication."""
     user = get_current_user(request)
     if not user:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return user
 
 
 # ─── Routes ──────────────────────────────────────────────
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    user = get_current_user(request)
-    if user:
-        return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
-
-
-@app.post("/login")
-async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+@app.post("/api/login")
+async def api_login(request: Request):
+    body = await request.json()
+    username = body.get("username", "")
+    password = body.get("password", "")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="請輸入帳號和密碼")
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
     conn = sqlite3.connect(METRICS_DB)
     row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
@@ -418,8 +413,8 @@ async def login_submit(request: Request, username: str = Form(...), password: st
     if row:
         token = serializer.dumps({"user": row[0], "name": row[1]})
         request.session["auth_token"] = token
-        return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": "帳號或密碼錯誤"})
+        return JSONResponse({"ok": True, "name": row[1]})
+    raise HTTPException(status_code=401, detail="帳號或密碼錯誤")
 
 
 @app.get("/logout")
@@ -430,9 +425,6 @@ async def logout(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -606,9 +598,6 @@ async def api_update_role(user_id: str, request: Request):
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request):
     """使用者管理頁面"""
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -850,9 +839,6 @@ async def api_metrics_history(request: Request, hours: int = 6, agent: str = "")
 
 @app.get("/metrics", response_class=HTMLResponse)
 async def metrics_page(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -930,9 +916,6 @@ async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
 
 @app.get("/alerts", response_class=HTMLResponse)
 async def alerts_page(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -1057,9 +1040,6 @@ def _mock_status() -> list:
 @app.get("/costs", response_class=HTMLResponse)
 async def costs_page(request: Request):
     """成本監控頁面"""
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -1162,9 +1142,6 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
 # ─── Discord Management APIs ─────────────────────────────
 @app.get("/threads", response_class=HTMLResponse)
 async def threads_page(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
     return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
@@ -1786,16 +1763,13 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
 
 
 # ─── SPA catch-all for client-side routes ───
-SPA_ROUTES = ["/messaging", "/members", "/threads", "/thread-analytics",
+SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
     @app.get(_route, response_class=HTMLResponse)
     async def _spa_page(request: Request, _r=_route):
-        user = get_current_user(request)
-        if not user:
-            return RedirectResponse(url="/login", status_code=303)
         return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 

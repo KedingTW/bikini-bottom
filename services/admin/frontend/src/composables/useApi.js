@@ -1,9 +1,9 @@
-import { ref } from 'vue'
+import router from '../router.js'
 
 export function useApi() {
   async function get(url) {
     const res = await fetch(url)
-    if (res.status === 401) { location.href = '/login'; return null; }
+    if (res.status === 401) { router.push('/login'); return null; }
     return res.json()
   }
 
@@ -11,6 +11,7 @@ export function useApi() {
     const opts = { method: 'POST' }
     if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
     const res = await fetch(url, opts)
+    if (res.status === 401) { router.push('/login'); return null; }
     return res.json()
   }
 
@@ -18,6 +19,7 @@ export function useApi() {
     const opts = { method: 'PUT' }
     if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
     const res = await fetch(url, opts)
+    if (res.status === 401) { router.push('/login'); return null; }
     return res.json()
   }
 
