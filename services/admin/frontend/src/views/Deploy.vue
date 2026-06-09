@@ -30,8 +30,8 @@
       <div class="flex items-center gap-3 mb-4">
         <select v-model="deployTarget" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-2 text-sm">
           <option value="">選擇部署目標...</option>
-          <option value="admin">admin（管理後台）</option>
-          <option v-for="a in agents" :key="a" :value="a">{{ a }}（Agent）</option>
+          <option value="admin">管理後台（admin）</option>
+          <option v-for="a in agents" :key="a.id" :value="a.id">{{ a.name }}（{{ a.id }}）</option>
         </select>
         <button @click="doDeploy()" :disabled="!deployTarget || deploying"
           class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white px-5 py-2 rounded text-sm font-medium transition">
@@ -90,7 +90,17 @@ const { get, post } = useApi()
 
 const git = ref({ branch: '', log: [], uncommitted: [] })
 const history = ref([])
-const agents = ref(['bob', 'patrick', 'pearl', 'larry', 'squidward', 'sandy', 'puff', 'conch', 'mermaid-man'])
+const agents = ref([
+  { id: 'bob', name: '海綿寶寶' },
+  { id: 'patrick', name: '派大星' },
+  { id: 'pearl', name: '珍珍' },
+  { id: 'larry', name: '蝦霸' },
+  { id: 'squidward', name: '章魚哥' },
+  { id: 'sandy', name: '珊迪' },
+  { id: 'puff', name: '泡芙老師' },
+  { id: 'conch', name: '神奇海螺' },
+  { id: 'mermaid-man', name: '海超人' },
+])
 const deployTarget = ref('')
 const deploying = ref(false)
 const deploySteps = ref([])
