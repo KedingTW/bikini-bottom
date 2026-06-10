@@ -1,9 +1,15 @@
 # 新增 Bot SOP — 比奇堡團隊 (DC)
 
-> 原 `bot-setup-sop.md` 的完整內容，僅適用於比奇堡 DC 伺服器的 AI agent。
-> 科定AI服務 / 科定WeCom 請參考各自的 SOP。
+> 在「比奇堡」DC 伺服器新增一個 AI agent 的完整步驟。
+> 原始完整 SOP 內容保留在本文件（從原 `bot-setup-sop.md` 遷移過來）。
+> 待 agents 搬到 `agents/bikini-bottom/` 後，更新路徑。
 
-本文件內容與原 `bot-setup-sop.md` 相同，不重複貼上。
-請參考 git history 中的 `docs/bot-setup-sop.md`（commit 之前的版本）。
+---
 
-> **TODO**：等比奇堡 agents 搬到 `agents/bikini-bottom/` 後，更新此文件中的路徑。
+**完整 SOP 內容請參考 git history 中原始的 `docs/bot-setup-sop.md`（本次重構前的版本）。**
+
+```bash
+git show HEAD~1:docs/bot-setup-sop.md
+```
+
+> TODO：將原始 SOP 內容貼回此文件（目前保留指向，避免重複維護期間的不一致）。

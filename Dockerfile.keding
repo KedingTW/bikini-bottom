@@ -1,0 +1,16 @@
+# 科定 Bot — Agent Image（精簡版）
+# 只含 git，不含 gh CLI / pandoc / Python 文件套件
+# 用於 keding-dc 和 keding-wecom 的 bot
+# entrypoint 由 K3s deployment command 指定（entrypoint-keding-dc.sh 或 entrypoint-keding-wecom.sh）
+
+FROM ghcr.io/openabdev/openab:0.8.4
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+# Entrypoint scripts
+COPY scripts/entrypoint-keding-dc.sh /usr/local/bin/entrypoint-keding-dc.sh
+COPY scripts/entrypoint-keding-wecom.sh /usr/local/bin/entrypoint-keding-wecom.sh
+RUN chmod +x /usr/local/bin/entrypoint-keding-dc.sh /usr/local/bin/entrypoint-keding-wecom.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-keding-dc.sh"]

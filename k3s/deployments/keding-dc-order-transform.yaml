@@ -23,9 +23,9 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          image: bikini-bottom/agent:latest
+          image: keding/agent:latest
           imagePullPolicy: Never
-          command: ["/usr/local/bin/entrypoint-minimal.sh"]
+          command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
           env:
             - name: DISCORD_BOT_TOKEN
               valueFrom:

@@ -1,6 +1,12 @@
+# 比奇堡團隊 — Agent Image
+# 含 git、gh CLI、pandoc、Python 文件生成套件
+# entrypoint: entrypoint-bikini-bottom.sh（NAS symlink + shared steering/skills + 降權）
+
 FROM ghcr.io/openabdev/openab:0.8.4
 USER root
+
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 # GitHub CLI — Agent 開 PR、管理 PR 用
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -20,15 +26,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         markitdown \
     && rm -rf /var/lib/apt/lists/*
 
-# 共用 steering / skills 文件 symlink 腳本（容器啟動時由 entrypoint wrapper 執行）
+# Entrypoint scripts
 COPY scripts/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
 COPY scripts/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh
-COPY scripts/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
-COPY scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint-minimal.sh
-RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-wrapper.sh /usr/local/bin/entrypoint-minimal.sh
+COPY scripts/entrypoint-bikini-bottom.sh /usr/local/bin/entrypoint-bikini-bottom.sh
+RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-bikini-bottom.sh
 
 # 預建 /nas 目錄
 RUN mkdir -p /nas
 
-# 以 root 啟動，entrypoint 建完 symlink 後降權為 agent
-ENTRYPOINT ["/usr/local/bin/entrypoint-wrapper.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint-bikini-bottom.sh"]
