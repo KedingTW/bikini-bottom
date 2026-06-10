@@ -2260,6 +2260,20 @@ async def api_mcp_registry_delete(mcp_id: int, request: Request):
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/mcp-registry/reseed")
+async def api_mcp_registry_reseed(request: Request):
+    """強制重新匯入 mcp-configs/ 到 Registry"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("DELETE FROM mcp_registry")
+    conn.commit()
+    conn.close()
+    _seed_mcp_registry()
+    return JSONResponse({"ok": True, "message": "已重新匯入"})
+
+
 # ─── MCP Assignment APIs ──────────────────────────────────
 @app.get("/api/mcp-assignments/{agent_name}")
 async def api_mcp_assignments_get(agent_name: str, request: Request):

@@ -3,6 +3,7 @@
     <span class="font-medium">MCP 管理</span>
     <span class="text-white/40 text-xs">{{ servers.length }} 個 Server</span>
     <span class="text-white/30 text-xs" title="系統啟動時自動從 mcp-configs/ 匯入，也可手動新增">ℹ️ 資料來源：mcp-configs/ 自動匯入</span>
+    <button @click="reseed()" class="text-xs px-2 py-1 rounded border border-white/20 text-white/60 hover:bg-white/10">🔄 重新匯入</button>
     <button @click="showAdd = true" class="ml-auto bg-cyan-600 hover:bg-cyan-500 text-white rounded px-3 py-1.5 text-sm">+ 新增</button>
   </div>
 
@@ -50,7 +51,7 @@
         <div><label class="text-sm text-white/70">連線方式</label>
           <select v-model="form.type" class="w-full mt-1 bg-ocean-800 border border-white/20 rounded px-3 py-2 text-sm text-white">
             <option value="http">HTTP / SSE</option>
-            <option value="stdio">stdio</option>
+            <option value="stdio">Stdio</option>
           </select>
         </div>
         <div><label class="text-sm text-white/70">URL</label><input v-model="form.url" class="w-full mt-1 bg-ocean-800 border border-white/20 rounded px-3 py-2 text-sm font-mono text-white" placeholder="http://..."></div>
@@ -65,10 +66,25 @@
             <button @click="form.headers.push({key:'',value:''})" class="text-xs text-cyan-400 hover:text-cyan-300">+ Header</button>
           </div>
         </div>
-        <div><label class="text-sm text-white/70">標籤</label><input v-model="form.tags" class="w-full mt-1 bg-ocean-800 border border-white/20 rounded px-3 py-2 text-sm text-white" placeholder="正式、測試、本地"></div>
+        <div><label class="text-sm text-white/70">標籤（環境）</label>
+          <select v-model="form.tags" class="w-full mt-1 bg-ocean-800 border border-white/20 rounded px-3 py-2 text-sm text-white">
+            <option value="正式">正式</option>
+            <option value="測試">測試</option>
+            <option value="本地">本地</option>
+          </select>
+        </div>
         <div>
           <label class="text-sm text-white/70">可用 Tools</label>
-          <textarea v-model="form.toolsStr" rows="3" class="w-full mt-1 bg-ocean-800 border border-white/20 rounded px-3 py-2 text-xs font-mono text-white" placeholder="每行一個 tool 名稱"></textarea>
+          <div v-if="form.toolsList.length" class="mt-1 max-h-40 overflow-y-auto bg-ocean-800/50 rounded p-2 space-y-1">
+            <label v-for="t in form.toolsList" :key="t" class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 px-2 py-1 rounded">
+              <input type="checkbox" :value="t" v-model="form.selectedTools" class="w-3.5 h-3.5 rounded">
+              <span class="font-mono text-xs">{{ t }}</span>
+            </label>
+          </div>
+          <div v-else class="mt-1">
+            <textarea v-model="form.toolsStr" rows="3" class="w-full bg-ocean-800 border border-white/20 rounded px-3 py-2 text-xs font-mono text-white" placeholder="每行一個 tool 名稱（無法自動取得時手動輸入）"></textarea>
+            <div class="text-xs text-white/30 mt-1">無法連線 Server 時可手動輸入</div>
+          </div>
         </div>
       </div>
       <div class="flex items-center gap-3 mt-5">
@@ -89,7 +105,7 @@ const servers = ref([])
 const tagFilter = ref('')
 const showAdd = ref(false)
 const editingServer = ref(null)
-const form = ref({ key: '', name: '', type: 'http', url: '', headers: [{key:'',value:''}], tags: '', toolsStr: '' })
+const form = ref({ key: '', name: '', type: 'http', url: '', headers: [{key:'',value:''}], tags: '正式', toolsStr: '', toolsList: [], selectedTools: [] })
 const formError = ref('')
 
 const allTags = computed(() => [...new Set(servers.value.map(s => s.tags).filter(Boolean))])
@@ -105,16 +121,17 @@ async function load() {
 function editServer(s) {
   editingServer.value = s
   const hdrs = Object.entries(s.headers || {}).map(([k,v]) => ({key:k, value:String(v)}))
-  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags, toolsStr: (s.available_tools||[]).join('\n') }
+  const tools = s.available_tools || []
+  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags || '正式', toolsStr: '', toolsList: tools, selectedTools: [...tools] }
 }
 
-function closeForm() { showAdd.value = false; editingServer.value = null; formError.value = ''; form.value = { key:'', name:'', type:'http', url:'', headers:[{key:'',value:''}], tags:'', toolsStr:'' } }
+function closeForm() { showAdd.value = false; editingServer.value = null; formError.value = ''; form.value = { key:'', name:'', type:'http', url:'', headers:[{key:'',value:''}], tags:'正式', toolsStr:'', toolsList:[], selectedTools:[] } }
 
 async function submitForm() {
   formError.value = ''
   const headers = {}
   form.value.headers.forEach(h => { if (h.key.trim()) headers[h.key.trim()] = h.value })
-  const tools = form.value.toolsStr.split('\n').map(t => t.trim()).filter(Boolean)
+  const tools = form.value.toolsList.length ? form.value.selectedTools : form.value.toolsStr.split('\n').map(t => t.trim()).filter(Boolean)
   const payload = { key: form.value.key, name: form.value.name, url: form.value.url, headers, available_tools: tools, tags: form.value.tags }
   if (editingServer.value) {
     await put(`/api/mcp-registry/${editingServer.value.id}`, payload)
@@ -123,6 +140,12 @@ async function submitForm() {
     if (res?.detail) { formError.value = res.detail; return }
   }
   closeForm(); load()
+}
+
+async function reseed() {
+  if (!confirm('重新匯入會清除現有資料，確定？')) return
+  await post('/api/mcp-registry/reseed')
+  load()
 }
 
 async function deleteServer(id) {
