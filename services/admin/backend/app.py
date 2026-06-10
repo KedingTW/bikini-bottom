@@ -107,7 +107,6 @@ def _init_db():
             )
         """)
     _seed_users()
-    _seed_mcp_registry()
 
 
 def _seed_users():
@@ -429,6 +428,9 @@ def _seed_mcp_registry():
     except Exception as e:
         logging.error(f"Seed MCP registry 失敗：{e}")
     conn.close()
+
+
+_seed_mcp_registry()
 
 
 def _detect_backend() -> str:
