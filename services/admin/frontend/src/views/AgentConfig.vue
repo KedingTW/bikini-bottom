@@ -313,10 +313,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, put } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const loading = ref(false)
 const agents = ref([])
@@ -368,7 +369,7 @@ function formatBytes(b) {
 
 async function load() {
   loading.value = true
-  const res = await get('/api/agents')
+  const res = await get(`/api/agents?group=${currentGroup.value}`)
   agents.value = res?.agents || []
   loading.value = false
   const hash = window.location.hash.replace('#', '')
@@ -582,5 +583,6 @@ window.addEventListener('hashchange', () => {
   }
 })
 
+watch(currentGroup, () => { selectedAgent.value = null; load() })
 onMounted(load)
 </script>

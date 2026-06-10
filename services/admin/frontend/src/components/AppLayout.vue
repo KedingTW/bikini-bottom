@@ -3,7 +3,11 @@
   <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
-      <h1 class="text-lg font-semibold">比奇堡團隊 - {{ pageTitle }}</h1>
+      <h1 class="text-lg font-semibold">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
+      <!-- Group Switcher -->
+      <select v-model="currentGroup" @change="onGroupChange" class="ml-3 bg-ocean-800 text-white border border-white/20 rounded px-2.5 py-1 text-xs">
+        <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.icon }} {{ g.display }}</option>
+      </select>
     </div>
     <div class="relative flex items-center gap-2 text-sm">
       <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
@@ -58,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 
@@ -71,6 +75,19 @@ const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
 const pwSuccess = ref('')
+const groups = ref([
+  { id: 'bikini-bottom', display: '比奇堡', icon: '🏝️' },
+  { id: 'keding-dc', display: '科定DC', icon: '🏢' },
+  { id: 'keding-wecom', display: '科定WeCom', icon: '💬' },
+])
+const currentGroup = ref(localStorage.getItem('adminGroup') || 'bikini-bottom')
+const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || '比奇堡')
+
+function onGroupChange() {
+  localStorage.setItem('adminGroup', currentGroup.value)
+}
+
+provide('currentGroup', currentGroup)
 
 const pageTitle = computed(() => {
   const map = {

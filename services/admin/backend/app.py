@@ -251,20 +251,44 @@ DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolv
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ─── Agent 角色定義 ───────────────────────────────────────
-AGENTS = [
-    {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
-    {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
-    {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
-    {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
-    {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
-    {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
-    {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
-    {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
-    {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
-    {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
-    {"name": "gateway", "display": "Gateway", "role": "WeCom 閘道", "type": "service", "icon": "🌐"},
-    {"name": "wecom-bot", "display": "企微Bot", "role": "企業微信", "type": "service", "icon": "💬"},
-]
+AGENT_GROUPS = {
+    "bikini-bottom": {
+        "display": "比奇堡",
+        "icon": "🏝️",
+        "agents_subdir": "",
+        "agents": [
+            {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
+            {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
+            {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
+            {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
+            {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
+            {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
+            {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
+            {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
+            {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
+            {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
+        ],
+    },
+    "keding-dc": {
+        "display": "科定DC",
+        "icon": "🏢",
+        "agents_subdir": "keding-dc",
+        "agents": [
+            {"name": "keding-dc-order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋"},
+        ],
+    },
+    "keding-wecom": {
+        "display": "科定WeCom",
+        "icon": "💬",
+        "agents_subdir": "keding-wecom",
+        "agents": [],
+    },
+}
+
+# Flat list for backward compatibility (all agents across groups)
+AGENTS = []
+for g in AGENT_GROUPS.values():
+    AGENTS.extend(g["agents"])
 
 
 # ─── K8s Client ───────────────────────────────────────────
@@ -1843,16 +1867,31 @@ def _read_kb_contexts(kb_path: Path) -> list:
         return []
 
 
+@app.get("/api/groups")
+async def api_groups(request: Request):
+    """列出所有伺服器分組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
+    return JSONResponse({"groups": groups})
+
+
 @app.get("/api/agents")
-async def api_agents_list(request: Request):
-    """列出所有角色及其配置摘要"""
+async def api_agents_list(request: Request, group: str = "bikini-bottom"):
+    """列出角色及其配置摘要（依 group 過濾）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
+    grp = AGENT_GROUPS.get(group)
+    if not grp:
+        raise HTTPException(status_code=400, detail=f"未知分組：{group}")
     agents_dir = AGENTS_DIR
+    if grp["agents_subdir"]:
+        agents_dir = AGENTS_DIR / grp["agents_subdir"]
     result = []
-    for agent in AGENTS:
+    for agent in grp["agents"]:
         name = agent["name"]
         agent_path = agents_dir / name
         if not agent_path.is_dir():
