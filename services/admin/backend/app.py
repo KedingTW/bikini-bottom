@@ -256,6 +256,8 @@ AGENT_GROUPS = {
         "display": "比奇堡",
         "icon": "🏝️",
         "agents_subdir": "",
+        "platform": "discord",
+        "guild_id": os.environ.get("DISCORD_GUILD_ID", ""),
         "agents": [
             {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
             {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
@@ -273,6 +275,8 @@ AGENT_GROUPS = {
         "display": "科定DC",
         "icon": "🏢",
         "agents_subdir": "keding-dc",
+        "platform": "discord",
+        "guild_id": "1513867618899988480",
         "agents": [
             {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
         ],
@@ -281,6 +285,8 @@ AGENT_GROUPS = {
         "display": "科定WeCom",
         "icon": "💬",
         "agents_subdir": "keding-wecom",
+        "platform": "wecom",
+        "guild_id": "",
         "agents": [],
     },
 }
@@ -297,6 +303,12 @@ def _get_deploy_name(agent_name: str) -> str:
         if a["name"] == agent_name:
             return a.get("deployment", agent_name)
     return agent_name
+
+
+def _get_guild_id(group: str) -> str:
+    """Resolve group to Discord Guild ID."""
+    grp = AGENT_GROUPS.get(group)
+    return grp["guild_id"] if grp else ""
 
 
 # ─── K8s Client ───────────────────────────────────────────
@@ -1403,26 +1415,26 @@ async def threads_page(request: Request):
 
 
 @app.get("/api/discord/members")
-async def api_discord_members(request: Request):
+async def api_discord_members(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_members
-        members = await list_members(limit=200)
+        members = await list_members(limit=200, guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "members": members})
     except Exception as e:
         return JSONResponse({"error": str(e), "members": []})
 
 
 @app.get("/api/discord/roles")
-async def api_discord_roles(request: Request):
+async def api_discord_roles(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_roles
-        roles = await list_roles()
+        roles = await list_roles(guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "roles": roles})
     except Exception as e:
         return JSONResponse({"error": str(e), "roles": []})
@@ -1470,13 +1482,13 @@ async def api_discord_set_nick(user_id: str, request: Request):
 
 
 @app.get("/api/discord/channels")
-async def api_discord_channels(request: Request):
+async def api_discord_channels(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_channels
-        channels = await list_channels()
+        channels = await list_channels(guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "channels": channels})
     except Exception as e:
         return JSONResponse({"error": str(e), "channels": []})
@@ -1601,14 +1613,15 @@ async def api_messaging_schedule(request: Request):
 
 
 @app.get("/api/discord/threads")
-async def api_discord_threads(request: Request):
+async def api_discord_threads(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_active_threads, list_channels, list_forum_tags
-        threads = await list_active_threads()
-        channels = await list_channels()
+        gid = _get_guild_id(group)
+        threads = await list_active_threads(guild_id=gid)
+        channels = await list_channels(guild_id=gid)
         # 過濾掉舊版頻道
         EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
         old_channel_ids = EXCLUDED_CHANNEL_IDS
@@ -1736,15 +1749,15 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
 
 
 @app.get("/api/discord/activity")
-async def api_discord_activity(request: Request):
+async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
     """Forum 討論串活躍度分析（有快取）"""
     import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        # Check cache
-        cache_key = "discord_activity"
+        # Check cache (per group)
+        cache_key = f"discord_activity_{group}"
         conn = sqlite3.connect(METRICS_DB)
         conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
         row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
@@ -1753,8 +1766,9 @@ async def api_discord_activity(request: Request):
             return JSONResponse({"error": None, **json_mod.loads(row[0]), "cached": True})
 
         from discord_api import list_active_threads, list_channels, list_forum_tags
-        threads = await list_active_threads()
-        channels = await list_channels()
+        gid = _get_guild_id(group)
+        threads = await list_active_threads(guild_id=gid)
+        channels = await list_channels(guild_id=gid)
 
         # 過濾掉舊版（準備關閉）頻道的 threads
         EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
@@ -1898,7 +1912,7 @@ async def api_groups(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
+    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
     return JSONResponse({"groups": groups})
 
 

@@ -319,11 +319,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, inject } from 'vue'
 import Chart from 'chart.js/auto'
 import { useApi } from '../composables/useApi.js'
 
 const { get, post, put } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const activeTab = ref('threads')
 const loading = ref(false)
@@ -411,9 +412,9 @@ async function refresh() {
   loading.value = true
   try {
     const [mRes, rRes, cRes] = await Promise.all([
-      get('/api/discord/members'),
-      get('/api/discord/roles'),
-      get('/api/discord/channels'),
+      get(`/api/discord/members?group=${currentGroup.value}`),
+      get(`/api/discord/roles?group=${currentGroup.value}`),
+      get(`/api/discord/channels?group=${currentGroup.value}`),
     ])
     members.value = mRes?.members || []
     roles.value = rRes?.roles || []
@@ -424,7 +425,7 @@ async function refresh() {
 
 async function loadThreads() {
   try {
-    const res = await get('/api/discord/threads')
+    const res = await get(`/api/discord/threads?group=${currentGroup.value}`)
     threads.value = res?.threads || []
     tagsMap.value = res?.tags_map || {}
   } catch (e) { console.error(e) }

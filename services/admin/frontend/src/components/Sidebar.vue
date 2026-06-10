@@ -74,7 +74,6 @@ const navGroups = [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
     { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
     { path: '/logs', icon: '📋', label: 'Log 搜尋', admin: true },
-    { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/members', icon: '👥', label: '成員管理', admin: true },
     { path: '/threads', icon: '📌', label: '討論串管理', admin: true, dcOnly: true },
     { path: '/thread-analytics', icon: '📈', label: '討論串分析', admin: true, dcOnly: true },
@@ -83,6 +82,7 @@ const navGroups = [
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
+    { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
     { path: '/api-keys', icon: '🔑', label: 'API Key', admin: true },
     { path: '/users', icon: '👤', label: '使用者', admin: true },

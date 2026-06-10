@@ -71,9 +71,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useApi } from '../composables/useApi.js'
 const { get } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const activeTab = ref('members')
 const loading = ref(false)
@@ -95,7 +96,7 @@ function formatDate(iso) { if (!iso) return '-'; const d = new Date(iso); return
 
 async function refresh() {
   loading.value = true
-  const [mRes, rRes] = await Promise.all([get('/api/discord/members'), get('/api/discord/roles')])
+  const [mRes, rRes] = await Promise.all([get(`/api/discord/members?group=${currentGroup.value}`), get(`/api/discord/roles?group=${currentGroup.value}`)])
   members.value = mRes?.members || []; roles.value = rRes?.roles || []
   loading.value = false
 }
