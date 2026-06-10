@@ -59,10 +59,11 @@
 
 <script setup>
 import { computed, ref, reactive, onMounted, provide } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userName = ref('...')
 const userId = ref('')
 const userRole = ref('viewer')
@@ -79,11 +80,17 @@ const groups = ref([
 const currentGroup = ref(new URLSearchParams(window.location.search).get('group') || localStorage.getItem('adminGroup') || 'bikini-bottom')
 const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 
+const DC_ONLY_PATHS = ['/threads', '/thread-analytics']
+
 function onGroupChange() {
   localStorage.setItem('adminGroup', currentGroup.value)
   const url = new URL(window.location)
   url.searchParams.set('group', currentGroup.value)
   history.replaceState(null, '', url)
+  // If current page is dcOnly and new group is wecom, redirect to home
+  if (currentGroup.value === 'keding-wecom' && DC_ONLY_PATHS.includes(route.path)) {
+    router.push('/')
+  }
   window.dispatchEvent(new CustomEvent('group-changed', { detail: currentGroup.value }))
 }
 
