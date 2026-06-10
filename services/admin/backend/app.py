@@ -468,7 +468,7 @@ async def home(request: Request):
 
 @app.get("/avatar/{agent_name}")
 async def avatar(agent_name: str):
-    """Serve agent avatar image. Falls back to KD logo for non-bikini agents, 404 otherwise."""
+    """Serve agent avatar image."""
     valid_names = {a["name"] for a in AGENTS}
     if agent_name not in valid_names:
         raise HTTPException(status_code=404)
@@ -486,14 +486,6 @@ async def avatar(agent_name: str):
                 media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
                 from fastapi.responses import FileResponse
                 return FileResponse(avatar_path, media_type=media_types.get(ext, "image/png"))
-
-    # Fallback: serve KD logo for non-bikini-bottom agents
-    for g_id, g in AGENT_GROUPS.items():
-        if g_id != "bikini-bottom" and any(a["name"] == agent_name for a in g["agents"]):
-            logo_path = DIST_DIR / "logo.png"
-            if logo_path.is_file():
-                from fastapi.responses import FileResponse
-                return FileResponse(logo_path, media_type="image/png")
 
     raise HTTPException(status_code=404)
 
