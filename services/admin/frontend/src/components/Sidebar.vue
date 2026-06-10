@@ -76,25 +76,31 @@ const navGroups = [
     { path: '/logs', icon: '📋', label: 'Log 搜尋', admin: true },
     { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/members', icon: '👥', label: '成員管理', admin: true },
-    { path: '/threads', icon: '📌', label: '討論串管理', admin: true },
+    { path: '/threads', icon: '📌', label: '討論串管理', admin: true, dcOnly: true },
+    { path: '/thread-analytics', icon: '📈', label: '討論串分析', admin: true, dcOnly: true },
     { path: '/messaging', icon: '📢', label: '訊息推送', admin: true },
   ]},
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
-    { path: '/thread-analytics', icon: '📈', label: '討論串分析', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
     { path: '/api-keys', icon: '🔑', label: 'API Key', admin: true },
     { path: '/users', icon: '👤', label: '使用者', admin: true },
   ]},
 ]
 
+const isWecom = computed(() => currentGroup.value === 'keding-wecom')
+
 const visibleGroups = computed(() => {
   return navGroups.map(g => {
     if (g.divider) return { label: '', divider: true, items: [] }
     return {
       label: g.label,
-      items: g.items.filter(item => !item.admin || props.role === 'admin')
+      items: g.items.filter(item => {
+        if (item.admin && props.role !== 'admin') return false
+        if (item.dcOnly && isWecom.value) return false
+        return true
+      })
     }
   }).filter(g => g.divider || g.items.length > 0)
 })
