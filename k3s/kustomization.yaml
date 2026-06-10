@@ -8,6 +8,8 @@ resources:
   - configmaps/channel-ids.yaml
   - configmaps/common-env.yaml
   - volumes/nas-pv.yaml
+  # ─── 共用服務 ───
+  - deployments/admin.yaml
   # ─── 比奇堡 ───
   - deployments/bikini-bottom/bob.yaml
   - deployments/bikini-bottom/patrick.yaml
@@ -19,8 +21,7 @@ resources:
   - deployments/bikini-bottom/conch.yaml
   - deployments/bikini-bottom/mermaid-man.yaml
   - deployments/bikini-bottom/gary.yaml
-  - deployments/bikini-bottom/admin.yaml
   # ─── 科定DC ───
   - deployments/keding-dc/order-transform.yaml
-  # ─── 科定WeCom（暫停，replicas=0）───
+  # ─── 科定WeCom（暫停）───
   # - deployments/keding-wecom/order-transform.yaml
