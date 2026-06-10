@@ -1,8 +1,8 @@
-"""Discord REST API wrapper using Karen bot token."""
+"""Discord REST API wrapper using admin bot token."""
 import os
 import httpx
 
-BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
+BOT_TOKEN = os.environ.get("DISCORD_ADMIN_BOT_TOKEN", os.environ.get("DISCORD_BOT_TOKEN", ""))
 GUILD_ID = os.environ.get("DISCORD_GUILD_ID", "")
 BASE = "https://discord.com/api/v10"
 
