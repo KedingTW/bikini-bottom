@@ -4,10 +4,6 @@
     <div class="flex items-center gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
       <h1 class="text-lg font-semibold">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
-      <!-- Group Switcher -->
-      <select v-model="currentGroup" @change="onGroupChange" class="ml-3 bg-ocean-800 text-white border border-white/20 rounded px-2.5 py-1 text-xs">
-        <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.icon }} {{ g.display }}</option>
-      </select>
     </div>
     <div class="relative flex items-center gap-2 text-sm">
       <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
@@ -26,7 +22,7 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <Sidebar :role="userRole" />
+    <Sidebar :role="userRole" :groups="groups" />
     <div class="flex-1 flex flex-col overflow-hidden">
       <main class="flex-1 overflow-y-auto" id="main-scroll">
         <slot />
@@ -84,6 +80,7 @@ function onGroupChange() {
 }
 
 provide('currentGroup', currentGroup)
+provide('onGroupChange', onGroupChange)
 
 const pageTitle = computed(() => {
   const map = {

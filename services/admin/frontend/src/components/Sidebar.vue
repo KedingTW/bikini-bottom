@@ -4,6 +4,29 @@
       class="absolute -right-3 top-3 w-7 h-7 bg-ocean-700 border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-ocean-600 flex items-center justify-center text-xs z-10">
       {{ collapsed ? '›' : '‹' }}
     </button>
+
+    <!-- Group Switcher -->
+    <div class="px-3 pt-3 pb-2 border-b border-white/10" v-show="!collapsed">
+      <button @click="groupOpen = !groupOpen" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-600/20 border border-cyan-400/30 hover:bg-cyan-600/30 transition">
+        <span class="text-lg">{{ currentGroupIcon }}</span>
+        <span class="flex-1 text-left text-sm font-medium text-cyan-200 truncate">{{ currentGroupDisplay }}</span>
+        <span class="text-xs text-cyan-400">▾</span>
+      </button>
+      <div v-if="groupOpen" class="mt-1 bg-ocean-700 border border-white/15 rounded-lg shadow-xl overflow-hidden">
+        <button v-for="g in groups" :key="g.id" @click="selectGroup(g.id)"
+          :class="g.id === currentGroup ? 'bg-cyan-600/20 text-cyan-300' : 'text-white/80 hover:bg-white/10'"
+          class="w-full flex items-center gap-2 px-3 py-2 text-sm transition">
+          <span>{{ g.icon }}</span>
+          <span>{{ g.display }}</span>
+          <span v-if="g.id === currentGroup" class="ml-auto text-xs">✓</span>
+        </button>
+      </div>
+    </div>
+    <!-- Collapsed: just show icon -->
+    <div v-show="collapsed" class="px-2 pt-3 pb-2 border-b border-white/10 text-center">
+      <span class="text-lg" :title="currentGroupDisplay">{{ currentGroupIcon }}</span>
+    </div>
+
     <div class="py-3 flex-1 overflow-y-auto">
       <template v-for="group in visibleGroups" :key="group.label">
         <div v-if="group.label" class="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-white/30" v-show="!collapsed">{{ group.label }}</div>
@@ -19,12 +42,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { useRoute } from 'vue-router'
 
-const props = defineProps({ role: { type: String, default: 'viewer' } })
+const props = defineProps({ role: { type: String, default: 'viewer' }, groups: { type: Array, default: () => [] } })
 const route = useRoute()
 const collapsed = ref(false)
+const groupOpen = ref(false)
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
+const onGroupChange = inject('onGroupChange', () => {})
+
+const currentGroupDisplay = computed(() => props.groups.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
+const currentGroupIcon = computed(() => props.groups.find(g => g.id === currentGroup.value)?.icon || '🏝️')
+
+function selectGroup(id) {
+  currentGroup.value = id
+  onGroupChange()
+  groupOpen.value = false
+}
 
 const navGroups = [
   { label: '', items: [
