@@ -584,5 +584,8 @@ window.addEventListener('hashchange', () => {
 })
 
 watch(currentGroup, () => { selectedAgent.value = null; load() })
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('group-changed', load)
+})
 </script>

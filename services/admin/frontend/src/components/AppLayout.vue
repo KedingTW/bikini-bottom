@@ -71,12 +71,18 @@ const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
 const pwSuccess = ref('')
-const groups = ref([])
+const groups = ref([
+  { id: 'bikini-bottom', display: '比奇堡', icon: '🏝️' },
+  { id: 'keding-dc', display: '科定DC', icon: '🏢' },
+  { id: 'keding-wecom', display: '科定WeCom', icon: '💬' },
+])
 const currentGroup = ref(localStorage.getItem('adminGroup') || 'bikini-bottom')
 const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 
 function onGroupChange() {
   localStorage.setItem('adminGroup', currentGroup.value)
+  // Force window event so any page component can react
+  window.dispatchEvent(new CustomEvent('group-changed', { detail: currentGroup.value }))
 }
 
 provide('currentGroup', currentGroup)
