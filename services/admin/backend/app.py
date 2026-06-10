@@ -409,22 +409,30 @@ def _seed_mcp_registry():
         conn.close()
         logging.info("MCP seed: servers.json 未找到，跳過")
         return
-    env_path = servers_path.parent / "environments" / "prod.json"
+    env_dir = servers_path.parent / "environments"
     try:
         servers_data = json_mod.loads(servers_path.read_text())
-        env_data = json_mod.loads(env_path.read_text()) if env_path.exists() else {"baseUrl": "", "token": ""}
-        base_url = env_data.get("baseUrl", "")
-        token = env_data.get("token", "")
+        envs = [("prod", "正式"), ("beta", "測試"), ("local", "本地")]
         tz = timezone(timedelta(hours=8))
         now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-        for key, sdef in servers_data.get("servers", {}).items():
-            url = base_url + sdef.get("path", "")
-            headers = json_mod.dumps({"Authorization": f"Bearer {token}"}) if token else "{}"
-            tools = json_mod.dumps(sdef.get("autoApprove", []))
-            conn.execute("INSERT OR IGNORE INTO mcp_registry (key, name, url, headers, available_tools, tags, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
-                         (key, key, url, headers, tools, "正式", now_str, now_str))
+        count = 0
+        for env_name, tag in envs:
+            env_file = env_dir / f"{env_name}.json"
+            if not env_file.exists():
+                continue
+            env_data = json_mod.loads(env_file.read_text())
+            base_url = env_data.get("baseUrl", "")
+            token = env_data.get("token", "")
+            for key, sdef in servers_data.get("servers", {}).items():
+                db_key = f"{key}-{env_name}" if env_name != "prod" else key
+                url = base_url + sdef.get("path", "")
+                headers = json_mod.dumps({"Authorization": f"Bearer {token}"}) if token else "{}"
+                tools = json_mod.dumps(sdef.get("autoApprove", []))
+                conn.execute("INSERT OR IGNORE INTO mcp_registry (key, name, url, headers, available_tools, tags, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                             (db_key, key, url, headers, tools, tag, now_str, now_str))
+                count += 1
         conn.commit()
-        logging.info(f"✅ 已匯入 {len(servers_data.get('servers', {}))} 個 MCP Server 到 Registry")
+        logging.info(f"✅ 已匯入 {count} 個 MCP Server 到 Registry（3 環境）")
     except Exception as e:
         logging.error(f"Seed MCP registry 失敗：{e}")
     conn.close()
