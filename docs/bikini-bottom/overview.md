@@ -1,14 +1,14 @@
 # 🏝️ 比奇堡開發團隊
 
-![比奇堡 AI 開發團隊](docs/images/readme-team-hero.png)
+![比奇堡 AI 開發團隊](../images/readme-team-hero.png)
 
 基於 [OpenAB](https://github.com/openabdev/openab) 的 Discord AI 開發團隊，每個角色都是獨立的 AI agent，擁有自己的個性、職責和工作空間。
 
 ## 架構
 
-![工作流程](docs/images/readme-workflow.png)
+![工作流程](../images/readme-workflow.png)
 
-![會議室協作](docs/images/readme-meeting-room.png)
+![會議室協作](../images/readme-meeting-room.png)
 
 ```
 Discord Server: 比奇堡
