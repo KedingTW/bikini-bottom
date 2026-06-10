@@ -14,31 +14,18 @@
     </div>
 
     <!-- Server List -->
-    <div class="space-y-3">
-      <div v-for="s in filteredServers" :key="s.id" class="glass rounded-xl p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <span class="font-bold text-base" :class="s.disabled ? 'text-white/40 line-through' : 'text-cyan-300'">{{ s.name }}</span>
-          <span class="text-xs font-mono text-white/40 bg-ocean-800/50 px-2 py-0.5 rounded">{{ s.key }}</span>
-          <span v-if="s.tags" class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">{{ s.tags }}</span>
-          <span :class="s.disabled ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'" class="text-xs px-2 py-0.5 rounded">{{ s.disabled ? '停用' : '啟用' }}</span>
-          <div class="ml-auto flex gap-2">
-            <button @click="testServer(s)" class="text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10">🔗 測試</button>
-            <button @click="editServer(s)" class="text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10">✏️ 編輯</button>
-            <button @click="deleteServer(s.id)" class="text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
-          </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div v-for="s in filteredServers" :key="s.id" @click="editServer(s)"
+        class="glass rounded-lg px-4 py-3 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition border border-white/5 hover:border-cyan-400/30">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="font-bold text-sm text-cyan-300">{{ s.name }}</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
+          <button @click.stop="testServer(s)" class="ml-auto text-xs text-white/40 hover:text-cyan-300" title="測試連線">🔗</button>
         </div>
-        <div v-if="testResults[s.id]" class="mb-2 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
-          {{ testResults[s.id].ok ? `✅ 連線成功（HTTP ${testResults[s.id].status}）` : `❌ ${testResults[s.id].error}` }}
-        </div>
-        <div class="space-y-2 text-sm">
-          <div><span class="text-white/50 min-w-[60px] inline-block">URL</span><span class="font-mono">{{ s.url }}</span></div>
-          <div v-if="s.headers && Object.keys(s.headers).length">
-            <span class="text-white/50">Headers</span>
-            <div class="ml-[60px] space-y-0.5">
-              <div v-for="(v, k) in s.headers" :key="k" class="font-mono text-white/60"><span class="text-white/40">{{ k }}:</span> {{ maskVal(v) }}</div>
-            </div>
-          </div>
-          <div v-if="s.available_tools.length"><span class="text-white/50">Tools</span><span class="ml-2 text-white/60">{{ s.available_tools.length }} 個</span></div>
+        <div class="text-xs font-mono text-white/70 truncate mb-1">{{ s.url }}</div>
+        <div class="text-xs text-white/50">HTTP/SSE · {{ s.available_tools.length }} tools</div>
+        <div v-if="testResults[s.id]" class="mt-1 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
+          {{ testResults[s.id].ok ? '✅ 連線正常' : `❌ ${testResults[s.id].error}` }}
         </div>
       </div>
     </div>
@@ -116,6 +103,12 @@ const allTags = computed(() => [...new Set(servers.value.map(s => s.tags).filter
 const filteredServers = computed(() => tagFilter.value ? servers.value.filter(s => s.tags === tagFilter.value) : servers.value)
 
 function maskVal(v) { const s = String(v); return s.length > 8 ? s.slice(0,4) + '***' + s.slice(-4) : '***' }
+function tagColor(tag) {
+  if (tag === '正式') return 'bg-green-500/20 text-green-300'
+  if (tag === '測試') return 'bg-amber-500/20 text-amber-300'
+  if (tag === '本地') return 'bg-blue-500/20 text-blue-300'
+  return 'bg-white/10 text-white/60'
+}
 
 async function load() {
   const res = await get('/api/mcp-registry')
