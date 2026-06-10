@@ -51,10 +51,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, post, pad } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const agents = ref([])
 const alerts = ref([])
@@ -63,7 +64,8 @@ const agentFilter = ref('')
 
 async function load() {
   const data = await get(`/api/alerts/history?days=${days.value}&agent=${agentFilter.value}`)
-  alerts.value = data?.alerts || []
+  const groupNames = agents.value.map(a => a.name)
+  alerts.value = (data?.alerts || []).filter(a => !groupNames.length || groupNames.includes(a.agent))
 }
 
 async function dismiss(id) {
@@ -82,8 +84,13 @@ function fmtDate(ts) {
 }
 
 onMounted(async () => {
-  const sData = await get('/api/status')
-  agents.value = sData?.agents || []
+  const gData = await get(`/api/agents?group=${currentGroup.value}`)
+  agents.value = gData?.agents || []
   load()
+  window.addEventListener('group-changed', async () => {
+    const g = await get(`/api/agents?group=${currentGroup.value}`)
+    agents.value = g?.agents || []
+    load()
+  })
 })
 </script>

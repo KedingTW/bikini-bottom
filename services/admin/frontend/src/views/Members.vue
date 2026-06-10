@@ -50,7 +50,8 @@
 
     <!-- Roles -->
     <div v-if="!loading && activeTab === 'roles'">
-      <div class="space-y-4">
+      <div v-if="!roles.length" class="text-center py-12 text-white/50">此伺服器尚無身分組</div>
+      <div v-else class="space-y-4">
         <div v-for="r in roles" :key="r.id" class="glass rounded-xl p-4">
           <div class="flex items-center gap-3 mb-2">
             <div v-if="r.color" class="w-3 h-3 rounded-full" :style="{background: '#' + r.color.toString(16).padStart(6, '0')}"></div>
@@ -71,9 +72,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useApi } from '../composables/useApi.js'
 const { get } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const activeTab = ref('members')
 const loading = ref(false)
@@ -95,10 +97,13 @@ function formatDate(iso) { if (!iso) return '-'; const d = new Date(iso); return
 
 async function refresh() {
   loading.value = true
-  const [mRes, rRes] = await Promise.all([get('/api/discord/members'), get('/api/discord/roles')])
+  const [mRes, rRes] = await Promise.all([get(`/api/discord/members?group=${currentGroup.value}`), get(`/api/discord/roles?group=${currentGroup.value}`)])
   members.value = mRes?.members || []; roles.value = rRes?.roles || []
   loading.value = false
 }
 
-onMounted(refresh)
+onMounted(() => {
+  refresh()
+  window.addEventListener('group-changed', refresh)
+})
 </script>

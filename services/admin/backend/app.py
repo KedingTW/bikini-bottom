@@ -251,20 +251,64 @@ DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolv
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ─── Agent 角色定義 ───────────────────────────────────────
-AGENTS = [
-    {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
-    {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
-    {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
-    {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
-    {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
-    {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
-    {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
-    {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
-    {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
-    {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
-    {"name": "gateway", "display": "Gateway", "role": "WeCom 閘道", "type": "service", "icon": "🌐"},
-    {"name": "wecom-bot", "display": "企微Bot", "role": "企業微信", "type": "service", "icon": "💬"},
-]
+AGENT_GROUPS = {
+    "bikini-bottom": {
+        "display": "比奇堡海灘",
+        "icon": "🏝️",
+        "agents_subdir": "",
+        "platform": "discord",
+        "guild_id": os.environ.get("DISCORD_GUILD_ID", ""),
+        "agents": [
+            {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
+            {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
+            {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
+            {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
+            {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
+            {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
+            {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
+            {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
+            {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
+            {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
+        ],
+    },
+    "keding-dc": {
+        "display": "科定AI服務",
+        "icon": "🏢",
+        "agents_subdir": "keding-dc",
+        "platform": "discord",
+        "guild_id": "1513867618899988480",
+        "agents": [
+            {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
+        ],
+    },
+    "keding-wecom": {
+        "display": "科定AI企微",
+        "icon": "💬",
+        "agents_subdir": "keding-wecom",
+        "platform": "wecom",
+        "guild_id": "",
+        "agents": [],
+    },
+}
+
+# Flat list for backward compatibility (all agents across groups)
+AGENTS = []
+for g in AGENT_GROUPS.values():
+    AGENTS.extend(g["agents"])
+
+
+def _get_deploy_name(agent_name: str) -> str:
+    """Resolve agent name to K8s deployment name."""
+    for a in AGENTS:
+        if a["name"] == agent_name:
+            return a.get("deployment", agent_name)
+    return agent_name
+
+
+def _get_guild_id(group: str) -> str:
+    """Resolve group to Discord Guild ID."""
+    grp = AGENT_GROUPS.get(group)
+    return grp["guild_id"] if grp else ""
 
 
 # ─── K8s Client ───────────────────────────────────────────
@@ -334,26 +378,29 @@ def _docker_get_all_status(docker_client) -> list:
     """Get status of all agents via Docker API."""
     result = []
     for agent in AGENTS:
+        deploy_name = agent.get("deployment", agent["name"])
         try:
-            container = docker_client.containers.get(agent["name"])
-            status = container.status  # running, exited, restarting, paused, dead
+            container = docker_client.containers.get(deploy_name)
+            status = container.status
             started_at = container.attrs["State"].get("StartedAt", "")
             restart_count = container.attrs.get("RestartCount", 0)
             uptime = _calc_uptime(started_at) if status == "running" else "-"
             mapped_status = "running" if status == "running" else "failed" if status in ("exited", "dead") else status
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
                 "status": mapped_status,
                 "uptime": uptime,
                 "restarts": restart_count,
-                "pod_name": agent["name"],
+                "pod_name": deploy_name,
             })
         except Exception:
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
@@ -433,20 +480,24 @@ async def home(request: Request):
 
 @app.get("/avatar/{agent_name}")
 async def avatar(agent_name: str):
-    """Serve agent avatar image. Falls back to 404 if not found."""
+    """Serve agent avatar image."""
     valid_names = {a["name"] for a in AGENTS}
-    lookup_name = agent_name
-
     if agent_name not in valid_names:
         raise HTTPException(status_code=404)
 
-    # Search for avatar.png, avatar.jpg
-    for ext in ("png", "jpg", "jpeg", "webp"):
-        avatar_path = AGENTS_DIR / lookup_name / f"avatar.{ext}"
-        if avatar_path.is_file():
-            media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
-            from fastapi.responses import FileResponse
-            return FileResponse(avatar_path, media_type=media_types.get(ext, "image/png"))
+    # Determine search paths (root + group subdir)
+    search_dirs = [AGENTS_DIR / agent_name]
+    for g in AGENT_GROUPS.values():
+        if g["agents_subdir"] and any(a["name"] == agent_name for a in g["agents"]):
+            search_dirs.append(AGENTS_DIR / g["agents_subdir"] / agent_name)
+
+    for d in search_dirs:
+        for ext in ("png", "jpg", "jpeg", "webp"):
+            avatar_path = d / f"avatar.{ext}"
+            if avatar_path.is_file():
+                media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+                from fastapi.responses import FileResponse
+                return FileResponse(avatar_path, media_type=media_types.get(ext, "image/png"))
 
     raise HTTPException(status_code=404)
 
@@ -636,9 +687,11 @@ async def api_status(request: Request):
 
         result = []
         for agent in AGENTS:
-            pod_info = _find_pod_for_agent(agent["name"], pods.items)
+            deploy_name = agent.get("deployment", agent["name"])
+            pod_info = _find_pod_for_agent(deploy_name, pods.items)
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
@@ -693,7 +746,7 @@ async def api_restart(agent_name: str, request: Request):
                 }
             }
             apps_api.patch_namespaced_deployment(
-                name=agent_name,
+                name=_get_deploy_name(agent_name),
                 namespace=NAMESPACE,
                 body=body,
             )
@@ -880,7 +933,7 @@ async def api_logs(agent_name: str, request: Request, lines: int = 50):
         try:
             pods = core_api.list_namespaced_pod(
                 namespace=NAMESPACE,
-                label_selector=f"app={agent_name}",
+                label_selector=f"app={_get_deploy_name(agent_name)}",
             )
             if not pods.items:
                 return JSONResponse({"logs": f"找不到 {agent_name} 的 Pod"})
@@ -1026,7 +1079,15 @@ async def api_metrics_history(request: Request, hours: int = 6, agent: str = "")
 
     try:
         conn = sqlite3.connect(METRICS_DB)
-        if agent:
+        if agent and ',' in agent:
+            # Multiple agents: aggregate sum for the group
+            agent_list = [a.strip() for a in agent.split(',') if a.strip()]
+            placeholders = ','.join('?' * len(agent_list))
+            rows = conn.execute(
+                f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
+                [since] + agent_list,
+            ).fetchall()
+        elif agent:
             rows = conn.execute(
                 "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
                 (since, agent),
@@ -1354,26 +1415,26 @@ async def threads_page(request: Request):
 
 
 @app.get("/api/discord/members")
-async def api_discord_members(request: Request):
+async def api_discord_members(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_members
-        members = await list_members(limit=200)
+        members = await list_members(limit=200, guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "members": members})
     except Exception as e:
         return JSONResponse({"error": str(e), "members": []})
 
 
 @app.get("/api/discord/roles")
-async def api_discord_roles(request: Request):
+async def api_discord_roles(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_roles
-        roles = await list_roles()
+        roles = await list_roles(guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "roles": roles})
     except Exception as e:
         return JSONResponse({"error": str(e), "roles": []})
@@ -1421,13 +1482,13 @@ async def api_discord_set_nick(user_id: str, request: Request):
 
 
 @app.get("/api/discord/channels")
-async def api_discord_channels(request: Request):
+async def api_discord_channels(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_channels
-        channels = await list_channels()
+        channels = await list_channels(guild_id=_get_guild_id(group))
         return JSONResponse({"error": None, "channels": channels})
     except Exception as e:
         return JSONResponse({"error": str(e), "channels": []})
@@ -1552,14 +1613,15 @@ async def api_messaging_schedule(request: Request):
 
 
 @app.get("/api/discord/threads")
-async def api_discord_threads(request: Request):
+async def api_discord_threads(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from discord_api import list_active_threads, list_channels, list_forum_tags
-        threads = await list_active_threads()
-        channels = await list_channels()
+        gid = _get_guild_id(group)
+        threads = await list_active_threads(guild_id=gid)
+        channels = await list_channels(guild_id=gid)
         # 過濾掉舊版頻道
         EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
         old_channel_ids = EXCLUDED_CHANNEL_IDS
@@ -1687,15 +1749,15 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
 
 
 @app.get("/api/discord/activity")
-async def api_discord_activity(request: Request):
+async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
     """Forum 討論串活躍度分析（有快取）"""
     import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        # Check cache
-        cache_key = "discord_activity"
+        # Check cache (per group)
+        cache_key = f"discord_activity_{group}"
         conn = sqlite3.connect(METRICS_DB)
         conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
         row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
@@ -1704,8 +1766,9 @@ async def api_discord_activity(request: Request):
             return JSONResponse({"error": None, **json_mod.loads(row[0]), "cached": True})
 
         from discord_api import list_active_threads, list_channels, list_forum_tags
-        threads = await list_active_threads()
-        channels = await list_channels()
+        gid = _get_guild_id(group)
+        threads = await list_active_threads(guild_id=gid)
+        channels = await list_channels(guild_id=gid)
 
         # 過濾掉舊版（準備關閉）頻道的 threads
         EXCLUDED_CHANNEL_IDS = {"1492090122257170526", "1503703338800382002", "1508387929364631562"}
@@ -1843,16 +1906,32 @@ def _read_kb_contexts(kb_path: Path) -> list:
         return []
 
 
+@app.get("/api/groups")
+async def api_groups(request: Request):
+    """列出所有伺服器分組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png"}
+    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "image": GROUP_IMAGES.get(k, ""), "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
+    return JSONResponse({"groups": groups})
+
+
 @app.get("/api/agents")
-async def api_agents_list(request: Request):
-    """列出所有角色及其配置摘要"""
+async def api_agents_list(request: Request, group: str = "bikini-bottom"):
+    """列出角色及其配置摘要（依 group 過濾）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
+    grp = AGENT_GROUPS.get(group)
+    if not grp:
+        raise HTTPException(status_code=400, detail=f"未知分組：{group}")
     agents_dir = AGENTS_DIR
+    if grp["agents_subdir"]:
+        agents_dir = AGENTS_DIR / grp["agents_subdir"]
     result = []
-    for agent in AGENTS:
+    for agent in grp["agents"]:
         name = agent["name"]
         agent_path = agents_dir / name
         if not agent_path.is_dir():

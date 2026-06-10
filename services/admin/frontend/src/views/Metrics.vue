@@ -31,7 +31,11 @@
     </div>
 
     <!-- Per Agent -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div v-if="!sortedAgents.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📊</div>
+      <div>此伺服器尚無監控資料</div>
+    </div>
+    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div v-for="agent in sortedAgents" :key="agent.name" :id="'section-' + agent.name">
         <div class="flex items-center gap-3 mb-2">
           <img :src="'/avatar/' + agent.name" class="w-8 h-8 rounded-full object-cover border border-white/20" @error="$event.target.style.display='none'">
@@ -76,12 +80,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, inject } from 'vue'
 import Chart from 'chart.js/auto'
 import StatusBar from '../components/StatusBar.vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, formatMem, pad, formatTime24, parseCpuRaw, parseMemRaw } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const hours = ref('6')
 const sortedAgents = ref([])
@@ -106,12 +111,16 @@ async function loadAll() {
   let metrics = {}
   try { const r = await get('/api/metrics'); metrics = r?.metrics || {} } catch {}
 
+  const gData = await get(`/api/agents?group=${currentGroup.value}`)
+  const groupNames = (gData?.agents || []).map(a => a.name)
+
   let tc = 0, tm = 0
-  const items = (await get('/api/status'))?.agents?.map(a => {
-    const m = metrics[a.name]; let cpu = 0, mem = 0
+  const allAgents = (await get('/api/status'))?.agents || []
+  const items = allAgents.filter(a => groupNames.includes(a.name)).map(a => {
+    const m = metrics[a.deployment || a.name]; let cpu = 0, mem = 0
     if (m) { cpu = parseCpuRaw(m.cpu_raw); mem = parseMemRaw(m.memory_raw); tc += cpu; tm += mem }
     return { ...a, _mem: mem, stats: `💻 ${(cpu/10).toFixed(1)}%  🧠 ${formatMem(mem)}` }
-  }) || []
+  })
 
   items.sort((a, b) => b._mem - a._mem)
   sortedAgents.value = items
@@ -119,9 +128,11 @@ async function loadAll() {
   totalMem.value = formatMem(tm)
 
   await nextTick()
-  await loadHistory('_total', '', cpuTotal.value, memTotal.value)
+  // Total history: pass comma-separated deployment names for group filtering
+  const deployNames = items.map(a => a.deployment || a.name).join(',')
+  await loadHistory('_total', deployNames, cpuTotal.value, memTotal.value)
   for (const a of items) {
-    await loadHistory(a.name, a.name, canvasRefs['cpu-' + a.name], canvasRefs['mem-' + a.name])
+    await loadHistory(a.name, a.deployment || a.name, canvasRefs['cpu-' + a.name], canvasRefs['mem-' + a.name])
   }
   lastUpdate.value = `最後更新：${formatTime24(new Date())}`
   countdown.value = 60
@@ -152,8 +163,14 @@ function renderSmall(id, canvas, labels, data, color, unit) {
 async function expand(key, type, name) {
   dialog.value = { title: name, key, stats: '' }
   await nextTick()
-  const agentName = key === '_total' ? '' : key
-  const json = await get(`/api/metrics/history?hours=${hours.value}&agent=${agentName}`)
+  let agentQuery = ''
+  if (key === '_total') {
+    agentQuery = sortedAgents.value.map(a => a.deployment || a.name).join(',')
+  } else {
+    const found = sortedAgents.value.find(a => a.name === key)
+    agentQuery = found?.deployment || key
+  }
+  const json = await get(`/api/metrics/history?hours=${hours.value}&agent=${agentQuery}`)
   const data = json?.data || []
 
   // Show current stats from the latest data point
@@ -201,6 +218,7 @@ let timer
 onMounted(() => {
   loadAll()
   timer = setInterval(() => { countdown.value--; if (countdown.value <= 0) loadAll() }, 1000)
+  window.addEventListener('group-changed', loadAll)
   const hash = location.hash.replace('#', '')
   if (hash) {
     setTimeout(() => {

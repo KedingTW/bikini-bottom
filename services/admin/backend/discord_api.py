@@ -1,8 +1,8 @@
-"""Discord REST API wrapper using Karen bot token."""
+"""Discord REST API wrapper using admin bot token."""
 import os
 import httpx
 
-BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
+BOT_TOKEN = os.environ.get("DISCORD_ADMIN_BOT_TOKEN", os.environ.get("DISCORD_BOT_TOKEN", ""))
 GUILD_ID = os.environ.get("DISCORD_GUILD_ID", "")
 BASE = "https://discord.com/api/v10"
 
@@ -23,20 +23,19 @@ def _headers():
     return {"Authorization": f"Bot {BOT_TOKEN}", "Content-Type": "application/json"}
 
 
-async def list_members(limit=100, after=None):
+async def list_members(limit=100, after=None, guild_id=None):
     """List guild members."""
-    # Bot 角色 ID 需要過濾
+    gid = guild_id or GUILD_ID
     BOT_ROLE_NAMES = {"海綿寶寶", "派大星", "泡芙老師", "章魚哥", "珊迪", "神奇海螺", "小蝸", "珍珍", "蝦霸", "凱倫", "海超人"}
 
     params = {"limit": min(limit, 1000)}
     if after:
         params["after"] = after
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{BASE}/guilds/{GUILD_ID}/members", headers=_headers(), params=params)
+        r = await client.get(f"{BASE}/guilds/{gid}/members", headers=_headers(), params=params)
         r.raise_for_status()
         members = r.json()
-        # Get roles to find bot role IDs
-        r2 = await client.get(f"{BASE}/guilds/{GUILD_ID}/roles", headers=_headers())
+        r2 = await client.get(f"{BASE}/guilds/{gid}/roles", headers=_headers())
         r2.raise_for_status()
         all_roles = r2.json()
 
@@ -56,13 +55,13 @@ async def list_members(limit=100, after=None):
     ]
 
 
-async def list_roles():
+async def list_roles(guild_id=None):
     """List guild roles, excluding bot-specific and @everyone."""
-    # Bot 角色名稱（需要過濾的）
+    gid = guild_id or GUILD_ID
     BOT_ROLE_NAMES = {"海綿寶寶", "派大星", "泡芙老師", "章魚哥", "珊迪", "神奇海螺", "小蝸", "珍珍", "蝦霸", "凱倫", "海超人"}
 
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{BASE}/guilds/{GUILD_ID}/roles", headers=_headers())
+        r = await client.get(f"{BASE}/guilds/{gid}/roles", headers=_headers())
         r.raise_for_status()
         roles = r.json()
     return sorted(
@@ -88,10 +87,11 @@ async def remove_role(user_id: str, role_id: str):
         r.raise_for_status()
 
 
-async def list_channels():
+async def list_channels(guild_id=None):
     """List guild text channels."""
+    gid = guild_id or GUILD_ID
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{BASE}/guilds/{GUILD_ID}/channels", headers=_headers())
+        r = await client.get(f"{BASE}/guilds/{gid}/channels", headers=_headers())
         r.raise_for_status()
         channels = r.json()
     # Only text channels (0) and announcements (5)
@@ -124,10 +124,11 @@ async def set_nickname(user_id: str, nick: str):
         r.raise_for_status()
 
 
-async def list_active_threads():
+async def list_active_threads(guild_id=None):
     """List all active threads in guild."""
+    gid = guild_id or GUILD_ID
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{BASE}/guilds/{GUILD_ID}/threads/active", headers=_headers())
+        r = await client.get(f"{BASE}/guilds/{gid}/threads/active", headers=_headers())
         r.raise_for_status()
         data = r.json()
     threads = data.get("threads", [])

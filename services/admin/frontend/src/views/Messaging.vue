@@ -129,9 +129,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useApi } from '../composables/useApi.js'
 const { get, post } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const EXCLUDED_IDS = new Set(['1492090122257170526', '1503703338800382002', '1508387929364631562'])
 const tabs = [
@@ -193,7 +194,11 @@ async function loadHistory() {
 }
 
 onMounted(async () => {
-  const [chRes] = await Promise.all([get('/api/discord/channels'), loadHistory()])
+  const [chRes] = await Promise.all([get(`/api/discord/channels?group=${currentGroup.value}`), loadHistory()])
   channels.value = chRes?.channels || []
+  window.addEventListener('group-changed', async () => {
+    const r = await get(`/api/discord/channels?group=${currentGroup.value}`)
+    channels.value = r?.channels || []
+  })
 })
 </script>

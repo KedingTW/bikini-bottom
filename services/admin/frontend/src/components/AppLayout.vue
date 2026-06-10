@@ -1,10 +1,10 @@
 <template>
   <!-- Top Header -->
-  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between">
+  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between relative">
     <div class="flex items-center gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
-      <h1 class="text-lg font-semibold">比奇堡團隊 - {{ pageTitle }}</h1>
     </div>
+    <h1 class="absolute left-1/2 -translate-x-1/2 text-lg font-semibold whitespace-nowrap">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
     <div class="relative flex items-center gap-2 text-sm">
       <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
         <span>👤 {{ userName }}({{ userId }})</span>
@@ -22,7 +22,7 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <Sidebar :role="userRole" />
+    <Sidebar :role="userRole" :groups="groups" />
     <div class="flex-1 flex flex-col overflow-hidden">
       <main class="flex-1 overflow-y-auto" id="main-scroll">
         <slot />
@@ -58,11 +58,12 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, reactive, onMounted, provide } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userName = ref('...')
 const userId = ref('')
 const userRole = ref('viewer')
@@ -71,6 +72,30 @@ const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
 const pwSuccess = ref('')
+const groups = ref([
+  { id: 'bikini-bottom', display: '比奇堡', icon: '🏝️' },
+  { id: 'keding-dc', display: '科定DC', icon: '🏢' },
+  { id: 'keding-wecom', display: '科定WeCom', icon: '💬' },
+])
+const currentGroup = ref(new URLSearchParams(window.location.search).get('group') || localStorage.getItem('adminGroup') || 'bikini-bottom')
+const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
+
+const DC_ONLY_PATHS = ['/members', '/threads', '/thread-analytics', '/messaging']
+
+function onGroupChange() {
+  localStorage.setItem('adminGroup', currentGroup.value)
+  const url = new URL(window.location)
+  url.searchParams.set('group', currentGroup.value)
+  history.replaceState(null, '', url)
+  // If current page is dcOnly and new group is wecom, redirect to home
+  if (currentGroup.value === 'keding-wecom' && DC_ONLY_PATHS.includes(route.path)) {
+    router.push('/')
+  }
+  window.dispatchEvent(new CustomEvent('group-changed', { detail: currentGroup.value }))
+}
+
+provide('currentGroup', currentGroup)
+provide('onGroupChange', onGroupChange)
 
 const pageTitle = computed(() => {
   const map = {
@@ -91,6 +116,13 @@ onMounted(async () => {
       userName.value = data.name
       userId.value = data.id
       userRole.value = data.role || 'viewer'
+    }
+  } catch {}
+  try {
+    const res = await fetch('/api/groups')
+    if (res.ok) {
+      const data = await res.json()
+      groups.value = data.groups || []
     }
   } catch {}
 })

@@ -4,6 +4,11 @@
   </div>
 
   <div class="p-7 space-y-4">
+    <div v-if="!agentList.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📋</div>
+      <div>此伺服器尚未配置角色</div>
+    </div>
+    <template v-else>
     <!-- Filters -->
     <div class="glass rounded-xl p-4 flex items-center gap-3 flex-wrap">
       <input v-model="keyword" placeholder="關鍵字..." @keyup.enter="search()"
@@ -61,33 +66,32 @@
       </div>
     </div>
     <div v-else-if="searched && !searching" class="text-center py-8 text-white/50">沒有找到符合的 log</div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, inject } from 'vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
-const agentList = [
-  { id: 'bob', name: '海綿寶寶' },
-  { id: 'patrick', name: '派大星' },
-  { id: 'pearl', name: '珍珍' },
-  { id: 'larry', name: '蝦霸' },
-  { id: 'squidward', name: '章魚哥' },
-  { id: 'sandy', name: '珊迪' },
-  { id: 'puff', name: '泡芙老師' },
-  { id: 'conch', name: '神奇海螺' },
-  { id: 'mermaid-man', name: '海超人' },
-  { id: 'admin', name: '管理後台' },
-]
+const agentList = ref([])
 const keyword = ref('')
 const sinceHours = ref(24)
-const selectedAgents = ref(agentList.map(a => a.id))
+const selectedAgents = ref([])
 const searching = ref(false)
 const searched = ref(false)
 const results = ref([])
+
+async function loadAgents() {
+  const res = await get(`/api/agents?group=${currentGroup.value}`)
+  const agents = res?.agents || []
+  agentList.value = agents.map(a => ({ id: a.deployment || a.name, name: a.display }))
+  agentList.value.push({ id: 'admin', name: '管理後台' })
+  selectedAgents.value = agentList.value.map(a => a.id)
+}
 
 // Tail mode
 const tailAgent = ref('')
@@ -99,7 +103,7 @@ let tailInterval = null
 const totalLines = computed(() => results.value.reduce((s, r) => s + r.total, 0))
 const exportUrl = computed(() => `/api/logs/export?agents=${selectedAgents.value.join(',')}&since_hours=${sinceHours.value}`)
 
-function selectAll() { selectedAgents.value = agentList.map(a => a.id) }
+function selectAll() { selectedAgents.value = agentList.value.map(a => a.id) }
 
 async function search() {
   searching.value = true
@@ -142,5 +146,9 @@ async function fetchTail() {
   }
 }
 
+onMounted(() => {
+  loadAgents()
+  window.addEventListener('group-changed', loadAgents)
+})
 onUnmounted(() => { if (tailInterval) clearInterval(tailInterval) })
 </script>

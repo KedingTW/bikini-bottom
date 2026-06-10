@@ -21,7 +21,11 @@
 
   <!-- Agent Grid -->
   <div class="p-7">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div v-if="!agents.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📭</div>
+      <div>此伺服器尚未配置角色</div>
+    </div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <div v-for="agent in sortedAgents" :key="agent.name"
         class="glass rounded-xl p-5 border-l-4 transition hover:-translate-y-0.5 hover:shadow-lg"
         :class="borderClass(agent.status)">
@@ -68,13 +72,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import StatusBar from '../components/StatusBar.vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, post, formatMem, pad, formatTime24, parseCpuRaw, parseMemRaw } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const agents = ref([])
+const allAgents = ref([])
+const groupAgentNames = ref([])
 const alerts = ref([])
 const running = ref(0)
 const down = ref(0)
@@ -91,12 +98,14 @@ const userRole = ref('viewer')
 const sortedAgents = computed(() => [...agents.value].sort((a, b) => (b._memMb || 0) - (a._memMb || 0)))
 
 async function fetchAll() {
-  const [sData, mData] = await Promise.all([get('/api/status'), get('/api/metrics')])
+  const [sData, mData, gData] = await Promise.all([get('/api/status'), get('/api/metrics'), get(`/api/agents?group=${currentGroup.value}`)])
   if (!sData || !mData) return
+  groupAgentNames.value = (gData?.agents || []).map(a => a.name)
   const metrics = mData.metrics || {}
   let tc = 0, tm = 0, r = 0, d = 0
-  agents.value = (sData.agents || []).map(a => {
-    const m = metrics[a.name]
+  const filtered = (sData.agents || []).filter(a => groupAgentNames.value.includes(a.name))
+  agents.value = filtered.map(a => {
+    const m = metrics[a.deployment || a.name]
     let cpuMilli = 0, memMb = 0
     if (m) {
       cpuMilli = parseCpuRaw(m.cpu_raw)
@@ -115,7 +124,7 @@ async function fetchAll() {
 
 async function fetchAlerts() {
   const data = await get('/api/alerts')
-  if (data) alerts.value = data.alerts || []
+  if (data) alerts.value = (data.alerts || []).filter(a => !groupAgentNames.value.length || groupAgentNames.value.includes(a.agent))
 }
 
 async function dismissAlert(id) {
@@ -165,6 +174,7 @@ onMounted(async () => {
   interval2 = setInterval(fetchAlerts, 30000)
   interval3 = setInterval(() => { countdown.value = Math.max(0, countdown.value - 1) }, 1000)
   try { const me = await get('/api/me'); if (me) userRole.value = me.role || 'viewer' } catch {}
+  window.addEventListener('group-changed', () => { fetchAll(); fetchAlerts() })
 })
 onUnmounted(() => { clearInterval(interval1); clearInterval(interval2); clearInterval(interval3) })
 </script>

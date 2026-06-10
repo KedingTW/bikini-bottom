@@ -9,6 +9,11 @@
       <div class="w-10 h-10 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"></div>
     </div>
 
+    <div v-else-if="!agents.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📭</div>
+      <div>此伺服器尚未配置角色</div>
+    </div>
+
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <div v-for="a in agents" :key="a.name" :id="'agent-' + a.name"
         class="glass rounded-xl p-5 border-l-4 border-cyan-500/50 transition hover:-translate-y-0.5 hover:shadow-lg flex flex-col">
@@ -313,10 +318,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, put } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const loading = ref(false)
 const agents = ref([])
@@ -368,7 +374,7 @@ function formatBytes(b) {
 
 async function load() {
   loading.value = true
-  const res = await get('/api/agents')
+  const res = await get(`/api/agents?group=${currentGroup.value}`)
   agents.value = res?.agents || []
   loading.value = false
   const hash = window.location.hash.replace('#', '')
@@ -582,5 +588,9 @@ window.addEventListener('hashchange', () => {
   }
 })
 
-onMounted(load)
+watch(currentGroup, () => { selectedAgent.value = null; load() })
+onMounted(() => {
+  load()
+  window.addEventListener('group-changed', load)
+})
 </script>

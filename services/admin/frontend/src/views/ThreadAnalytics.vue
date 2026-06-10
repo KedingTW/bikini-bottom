@@ -98,11 +98,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, inject } from 'vue'
 import Chart from 'chart.js/auto'
 import { useApi } from '../composables/useApi.js'
 
 const { get } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const loading = ref(false)
 const data = ref(null)
@@ -136,7 +137,7 @@ const autoIndex = computed(() => {
 
 async function load() {
   loading.value = true
-  try { data.value = await get('/api/discord/activity') } catch (e) { console.error(e) }
+  try { data.value = await get(`/api/discord/activity?group=${currentGroup.value}`) } catch (e) { console.error(e) }
   loading.value = false
 }
 
@@ -201,5 +202,8 @@ watch(detailMessages, async (msgs) => {
   if (msgs.length) { await nextTick(); setTimeout(renderDetailChart, 200) }
 })
 
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('group-changed', load)
+})
 </script>

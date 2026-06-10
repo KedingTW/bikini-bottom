@@ -95,11 +95,11 @@ spec:
                 secretKeyRef:
                   name: gary-secrets
                   key: OPENAI_ORG_ID
-            - name: DISCORD_BOT_TOKEN
+            - name: DISCORD_ADMIN_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: admin-discord-secrets
-                  key: DISCORD_BOT_TOKEN_KAREN
+                  key: DISCORD_ADMIN_BOT_TOKEN
             - name: DISCORD_GUILD_ID
               valueFrom:
                 secretKeyRef:
