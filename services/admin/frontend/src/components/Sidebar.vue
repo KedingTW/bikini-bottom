@@ -77,10 +77,10 @@ const navGroups = [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
     { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
     { path: '/logs', icon: '📋', label: 'Log 搜尋', admin: true },
-    { path: '/members', icon: '👥', label: '成員管理', admin: true },
+    { path: '/members', icon: '👥', label: '成員管理', admin: true, dcOnly: true },
     { path: '/threads', icon: '📌', label: '討論串管理', admin: true, dcOnly: true },
     { path: '/thread-analytics', icon: '📈', label: '討論串分析', admin: true, dcOnly: true },
-    { path: '/messaging', icon: '📢', label: '訊息推送', admin: true },
+    { path: '/messaging', icon: '📢', label: '訊息推送', admin: true, dcOnly: true },
   ]},
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [

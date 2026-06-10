@@ -80,7 +80,7 @@ const groups = ref([
 const currentGroup = ref(new URLSearchParams(window.location.search).get('group') || localStorage.getItem('adminGroup') || 'bikini-bottom')
 const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 
-const DC_ONLY_PATHS = ['/threads', '/thread-analytics']
+const DC_ONLY_PATHS = ['/members', '/threads', '/thread-analytics', '/messaging']
 
 function onGroupChange() {
   localStorage.setItem('adminGroup', currentGroup.value)
