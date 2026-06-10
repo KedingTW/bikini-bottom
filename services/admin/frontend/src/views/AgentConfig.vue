@@ -124,21 +124,41 @@
           <div class="flex items-center gap-2 mb-4">
             <button @click="mcpMode = 'assign'" :class="mcpMode === 'assign' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">分配模式</button>
             <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">JSON 進階</button>
-            <span v-if="mcpHasDraft" class="ml-2 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">有未發佈變更</span>
           </div>
 
-          <div v-if="mcpMode === 'assign'" class="space-y-2">
+          <div v-if="mcpMode === 'assign'">
             <div v-if="!mcpRegistryList.length" class="text-white/50 text-sm py-4">Registry 無 MCP Server，請先到「MCP 管理」新增</div>
-            <div v-for="s in mcpRegistryList" :key="s.key" class="bg-ocean-800/50 rounded-lg px-4 py-3 flex items-center gap-3">
-              <input type="checkbox" :checked="isMcpAssigned(s.key)" @change="toggleMcpAssign(s.key, $event.target.checked)" class="w-4 h-4 rounded">
-              <div class="flex-1">
-                <span class="font-medium text-sm text-cyan-300">{{ s.name }}</span>
-                <span class="text-xs text-white/40 ml-2 font-mono">{{ s.key }}</span>
+            <div v-else class="flex gap-3" style="height: 360px">
+              <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">可用 MCP</div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                  <div v-for="s in availableMcps" :key="s.key" @click="toggleLeftSelect(s.key)"
+                    :class="leftSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                    class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
+                    <span class="text-sm">{{ s.name }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
+                  </div>
+                </div>
               </div>
-              <span class="text-xs text-white/40">{{ (s.available_tools || []).length }} tools</span>
+              <div class="flex flex-col items-center justify-center gap-2 w-10">
+                <button @click="moveRight()" :disabled="!leftSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">›</button>
+                <button @click="moveLeft()" :disabled="!rightSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">‹</button>
+              </div>
+              <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">已分配 MCP</div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                  <div v-for="s in assignedMcps" :key="s.key" @click="toggleRightSelect(s.key)"
+                    :class="rightSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                    class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
+                    <span class="text-sm">{{ s.name }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
+                  </div>
+                  <div v-if="!assignedMcps.length" class="text-center text-white/30 text-sm py-8">尚未分配</div>
+                </div>
+              </div>
             </div>
-            <div class="flex items-center gap-3 pt-3">
-              <button @click="publishMcpAssignments()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded text-sm font-medium">🚀 發佈到角色</button>
+            <div class="flex items-center gap-3 mt-4">
+              <button @click="publishMcpAssignments()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded text-sm font-medium">🚀 發佈到角色</button>
               <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
             </div>
           </div>
@@ -467,14 +487,45 @@ async function saveConfig() {
 
 function isMcpAssigned(key) { return mcpAssignedKeys.value.has(key) }
 
+const leftSelected = ref(new Set())
+const rightSelected = ref(new Set())
+const availableMcps = computed(() => mcpRegistryList.value.filter(s => !mcpAssignedKeys.value.has(s.key)))
+const assignedMcps = computed(() => mcpRegistryList.value.filter(s => mcpAssignedKeys.value.has(s.key)))
+
+function tagColor(tag) {
+  if (tag === '正式') return 'bg-green-500/20 text-green-300'
+  if (tag === '測試') return 'bg-amber-500/20 text-amber-300'
+  if (tag === '本地') return 'bg-blue-500/20 text-blue-300'
+  return 'bg-white/10 text-white/60'
+}
+
+function toggleLeftSelect(key) { const s = new Set(leftSelected.value); s.has(key) ? s.delete(key) : s.add(key); leftSelected.value = s }
+function toggleRightSelect(key) { const s = new Set(rightSelected.value); s.has(key) ? s.delete(key) : s.add(key); rightSelected.value = s }
+
+function moveRight() {
+  const s = new Set(mcpAssignedKeys.value)
+  leftSelected.value.forEach(k => s.add(k))
+  mcpAssignedKeys.value = s
+  leftSelected.value = new Set()
+  saveDraft()
+}
+function moveLeft() {
+  const s = new Set(mcpAssignedKeys.value)
+  rightSelected.value.forEach(k => s.delete(k))
+  mcpAssignedKeys.value = s
+  rightSelected.value = new Set()
+  saveDraft()
+}
+function saveDraft() {
+  const assignments = [...mcpAssignedKeys.value].map(k => ({ mcp_key: k, enabled: true, allowed_tools: [] }))
+  put(`/api/mcp-assignments/${selectedAgent.value.name}`, { assignments })
+}
+
 function toggleMcpAssign(key, checked) {
   const s = new Set(mcpAssignedKeys.value)
   if (checked) s.add(key); else s.delete(key)
   mcpAssignedKeys.value = s
-  mcpHasDraft.value = true
-  // Auto-save draft
-  const assignments = [...s].map(k => ({ mcp_key: k, enabled: true, allowed_tools: [] }))
-  put(`/api/mcp-assignments/${selectedAgent.value.name}`, { assignments })
+  saveDraft()
 }
 
 async function publishMcpAssignments() {
