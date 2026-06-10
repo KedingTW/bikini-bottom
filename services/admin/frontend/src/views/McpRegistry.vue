@@ -105,7 +105,7 @@ async function submitForm() {
 
 async function deleteServer(id) {
   if (!confirm('確定刪除？')) return
-  await fetch(`/api/mcp-registry/${id}`, { method: 'DELETE' })
+  await fetch(`/api/mcp-registry/${id}`, { method: 'DELETE', credentials: 'same-origin' })
   load()
 }
 

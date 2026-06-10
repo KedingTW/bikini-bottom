@@ -2196,8 +2196,10 @@ async def api_mcp_registry_delete(mcp_id: int, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     conn = sqlite3.connect(METRICS_DB)
+    row = conn.execute("SELECT key FROM mcp_registry WHERE id=?", (mcp_id,)).fetchone()
+    if row:
+        conn.execute("DELETE FROM mcp_assignments WHERE mcp_key=?", (row[0],))
     conn.execute("DELETE FROM mcp_registry WHERE id=?", (mcp_id,))
-    conn.execute("DELETE FROM mcp_assignments WHERE mcp_key = (SELECT key FROM mcp_registry WHERE id=?)", (mcp_id,))
     conn.commit()
     conn.close()
     return JSONResponse({"ok": True})
