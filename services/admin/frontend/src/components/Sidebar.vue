@@ -35,7 +35,7 @@
         <div v-if="group.divider" class="my-3 mx-4 border-t-2 border-cyan-400/30" v-show="!collapsed"></div>
         <div v-if="group.divider && collapsed" class="my-3 mx-2 border-t-2 border-cyan-400/30"></div>
         <!-- Group label -->
-        <div v-if="group.label" class="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-white/30" v-show="!collapsed">{{ group.label }}</div>
+        <div v-if="group.label" class="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-white/60" v-show="!collapsed">{{ group.label }}</div>
         <router-link v-for="item in group.items" :key="item.path" :to="item.path"
           class="flex items-center gap-3 px-5 py-2 text-sm border-l-[3px] transition"
           :class="isActive(item.path) ? 'text-cyan-400 bg-cyan-500/10 border-cyan-400' : 'text-white/80 hover:text-white hover:bg-white/5 border-transparent'">
