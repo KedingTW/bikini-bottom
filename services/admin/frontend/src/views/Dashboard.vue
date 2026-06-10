@@ -101,7 +101,7 @@ async function fetchAll() {
   let tc = 0, tm = 0, r = 0, d = 0
   const filtered = (sData.agents || []).filter(a => groupAgentNames.value.includes(a.name))
   agents.value = filtered.map(a => {
-    const m = metrics[a.name]
+    const m = metrics[a.deployment || a.name]
     let cpuMilli = 0, memMb = 0
     if (m) {
       cpuMilli = parseCpuRaw(m.cpu_raw)

@@ -274,7 +274,7 @@ AGENT_GROUPS = {
         "icon": "🏢",
         "agents_subdir": "keding-dc",
         "agents": [
-            {"name": "order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋"},
+            {"name": "order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
         ],
     },
     "keding-wecom": {
@@ -289,6 +289,14 @@ AGENT_GROUPS = {
 AGENTS = []
 for g in AGENT_GROUPS.values():
     AGENTS.extend(g["agents"])
+
+
+def _get_deploy_name(agent_name: str) -> str:
+    """Resolve agent name to K8s deployment name."""
+    for a in AGENTS:
+        if a["name"] == agent_name:
+            return a.get("deployment", agent_name)
+    return agent_name
 
 
 # ─── K8s Client ───────────────────────────────────────────
@@ -660,9 +668,11 @@ async def api_status(request: Request):
 
         result = []
         for agent in AGENTS:
-            pod_info = _find_pod_for_agent(agent["name"], pods.items)
+            deploy_name = agent.get("deployment", agent["name"])
+            pod_info = _find_pod_for_agent(deploy_name, pods.items)
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
@@ -717,7 +727,7 @@ async def api_restart(agent_name: str, request: Request):
                 }
             }
             apps_api.patch_namespaced_deployment(
-                name=agent_name,
+                name=_get_deploy_name(agent_name),
                 namespace=NAMESPACE,
                 body=body,
             )
@@ -904,7 +914,7 @@ async def api_logs(agent_name: str, request: Request, lines: int = 50):
         try:
             pods = core_api.list_namespaced_pod(
                 namespace=NAMESPACE,
-                label_selector=f"app={agent_name}",
+                label_selector=f"app={_get_deploy_name(agent_name)}",
             )
             if not pods.items:
                 return JSONResponse({"logs": f"找不到 {agent_name} 的 Pod"})
