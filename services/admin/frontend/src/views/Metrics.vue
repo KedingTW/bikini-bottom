@@ -124,9 +124,11 @@ async function loadAll() {
   totalMem.value = formatMem(tm)
 
   await nextTick()
-  await loadHistory('_total', '', cpuTotal.value, memTotal.value)
+  // Total history: pass comma-separated deployment names for group filtering
+  const deployNames = items.map(a => a.deployment || a.name).join(',')
+  await loadHistory('_total', deployNames, cpuTotal.value, memTotal.value)
   for (const a of items) {
-    await loadHistory(a.name, a.name, canvasRefs['cpu-' + a.name], canvasRefs['mem-' + a.name])
+    await loadHistory(a.name, a.deployment || a.name, canvasRefs['cpu-' + a.name], canvasRefs['mem-' + a.name])
   }
   lastUpdate.value = `最後更新：${formatTime24(new Date())}`
   countdown.value = 60

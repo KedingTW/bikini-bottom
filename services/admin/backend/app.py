@@ -1060,7 +1060,15 @@ async def api_metrics_history(request: Request, hours: int = 6, agent: str = "")
 
     try:
         conn = sqlite3.connect(METRICS_DB)
-        if agent:
+        if agent and ',' in agent:
+            # Multiple agents: aggregate sum for the group
+            agent_list = [a.strip() for a in agent.split(',') if a.strip()]
+            placeholders = ','.join('?' * len(agent_list))
+            rows = conn.execute(
+                f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
+                [since] + agent_list,
+            ).fetchall()
+        elif agent:
             rows = conn.execute(
                 "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
                 (since, agent),
