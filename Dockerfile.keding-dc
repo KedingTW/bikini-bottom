@@ -1,0 +1,13 @@
+# 科定AI服務 (DC) — Agent Image
+# 精簡版：只含 git，不含 gh CLI / pandoc / Python 文件套件
+# Image tag: keding-dc/agent:latest
+
+FROM ghcr.io/openabdev/openab:0.8.4
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/entrypoint-keding-dc.sh /usr/local/bin/entrypoint-keding-dc.sh
+RUN chmod +x /usr/local/bin/entrypoint-keding-dc.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-keding-dc.sh"]

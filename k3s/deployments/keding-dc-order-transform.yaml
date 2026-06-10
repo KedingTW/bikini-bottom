@@ -23,7 +23,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          image: keding/agent:latest
+          image: keding-dc/agent:latest
           imagePullPolicy: Never
           command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
           env:
