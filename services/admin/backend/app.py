@@ -395,12 +395,22 @@ def _seed_mcp_registry():
     if count > 0:
         conn.close()
         return
-    # Read servers.json and prod environment
-    servers_path = Path(__file__).resolve().parent / ".." / ".." / ".." / "mcp-configs" / "servers.json"
-    env_path = Path(__file__).resolve().parent / ".." / ".." / ".." / "mcp-configs" / "environments" / "prod.json"
-    if not servers_path.exists():
+    # Try multiple paths to find servers.json
+    candidates = [
+        Path(os.environ.get("REPO_DIR", "/data/repo")) / "mcp-configs" / "servers.json",
+        Path(__file__).resolve().parent / ".." / ".." / ".." / "mcp-configs" / "servers.json",
+        Path("/data/repo/mcp-configs/servers.json"),
+    ]
+    servers_path = None
+    for p in candidates:
+        if p.exists():
+            servers_path = p
+            break
+    if not servers_path:
         conn.close()
+        logging.info("MCP seed: servers.json 未找到，跳過")
         return
+    env_path = servers_path.parent / "environments" / "prod.json"
     try:
         servers_data = json_mod.loads(servers_path.read_text())
         env_data = json_mod.loads(env_path.read_text()) if env_path.exists() else {"baseUrl": "", "token": ""}
@@ -2321,7 +2331,11 @@ async def api_mcp_assignments_publish(agent_name: str, request: Request):
 
 
 # ─── Skills Registry APIs ─────────────────────────────────
-SKILLS_DIR = Path(os.environ.get("SKILLS_DIR", str((Path(__file__).resolve().parent / ".." / ".." / ".." / "shared" / "skills").resolve())))
+SKILLS_DIR = Path(os.environ.get("SKILLS_DIR", "/opt/skills"))
+if not SKILLS_DIR.exists():
+    _alt = Path(os.environ.get("REPO_DIR", "/data/repo")) / "shared" / "skills"
+    if _alt.exists():
+        SKILLS_DIR = _alt
 
 
 @app.get("/api/skills-registry")
@@ -2534,7 +2548,8 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/cronjobs", "/knowledge",
-              "/system", "/logs", "/deploy", "/api-keys"]
+              "/system", "/logs", "/deploy", "/api-keys",
+              "/mcp-registry", "/skill-registry"]
 
 for _route in SPA_ROUTES:
     @app.get(_route, response_class=HTMLResponse)
