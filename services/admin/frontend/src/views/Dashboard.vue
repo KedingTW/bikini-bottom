@@ -21,7 +21,11 @@
 
   <!-- Agent Grid -->
   <div class="p-7">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div v-if="!agents.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📭</div>
+      <div>此伺服器尚未配置角色</div>
+    </div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <div v-for="agent in sortedAgents" :key="agent.name"
         class="glass rounded-xl p-5 border-l-4 transition hover:-translate-y-0.5 hover:shadow-lg"
         :class="borderClass(agent.status)">

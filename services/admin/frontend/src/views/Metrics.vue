@@ -31,7 +31,11 @@
     </div>
 
     <!-- Per Agent -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div v-if="!sortedAgents.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📊</div>
+      <div>此伺服器尚無監控資料</div>
+    </div>
+    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div v-for="agent in sortedAgents" :key="agent.name" :id="'section-' + agent.name">
         <div class="flex items-center gap-3 mb-2">
           <img :src="'/avatar/' + agent.name" class="w-8 h-8 rounded-full object-cover border border-white/20" @error="$event.target.style.display='none'">

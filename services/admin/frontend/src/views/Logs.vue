@@ -4,6 +4,11 @@
   </div>
 
   <div class="p-7 space-y-4">
+    <div v-if="!agentList.length" class="text-center py-20 text-white/50">
+      <div class="text-4xl mb-3">📋</div>
+      <div>此伺服器尚未配置角色</div>
+    </div>
+    <template v-else>
     <!-- Filters -->
     <div class="glass rounded-xl p-4 flex items-center gap-3 flex-wrap">
       <input v-model="keyword" placeholder="關鍵字..." @keyup.enter="search()"
@@ -61,6 +66,7 @@
       </div>
     </div>
     <div v-else-if="searched && !searching" class="text-center py-8 text-white/50">沒有找到符合的 log</div>
+    </template>
   </div>
 </template>
 
