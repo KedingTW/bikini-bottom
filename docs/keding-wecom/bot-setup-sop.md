@@ -14,11 +14,11 @@ WeCom 應用 ──HTTPS──▶ Zeabur gateway ◀══wss══ 地端 K3s w
 
 ## 完整部署文件
 
-參考 [wecom-zeabur-setup.md](./wecom-zeabur-setup.md)
+參考 [wecom-zeabur-setup.md](./setup.md)
 
 ## 管理工具
 
-參考 [services/zeabur-gateway/README.md](../services/zeabur-gateway/README.md)
+參考 [services/zeabur-gateway/README.md](../../services/zeabur-gateway/README.md)
 
 ## 現有 Bot
 

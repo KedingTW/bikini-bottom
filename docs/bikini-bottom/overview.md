@@ -158,17 +158,17 @@ docker compose up -d
 
 | 文件 | 對象 | 內容 |
 |------|------|------|
-| [docs/usage-guide.md](docs/usage-guide.md) | 交辦人（非工程師） | 怎麼跟 AI 角色互動、流程圖、指令說明（含神奇海螺監控指令） |
-| [docs/new-agent-sop.md](docs/new-agent-sop.md) | 維運人員 | 新增 AI 角色的步驟 |
-| [docs/bot-setup-sop.md](docs/bot-setup-sop.md) | 維運人員 | Discord Bot 建立與設定 |
-| [docs/git-flow-sop.md](docs/git-flow-sop.md) | 開發者 | Git 分支與 PR 規範 |
-| [docs/discord-channels.md](docs/discord-channels.md) | 所有人 | Discord 頻道用途說明 |
-| [docs/k3s-operations-guide.md](docs/k3s-operations-guide.md) | 維運人員 | K3s 維運指南（含插畫） |
-| [docs/k3s-migration-plan.md](docs/k3s-migration-plan.md) | 維運人員 | K3s 遷移規劃 |
+| [docs/usage-guide.md](./usage-guide.md) | 交辦人（非工程師） | 怎麼跟 AI 角色互動、流程圖、指令說明（含神奇海螺監控指令） |
+| [docs/new-agent-sop.md](./new-agent-sop.md) | 維運人員 | 新增 AI 角色的步驟 |
+| [docs/bot-setup-sop.md](../shared/bot-setup-sop-index.md) | 維運人員 | Discord Bot 建立與設定 |
+| [docs/git-flow-sop.md](./git-flow-sop.md) | 開發者 | Git 分支與 PR 規範 |
+| [docs/discord-channels.md](./discord-channels.md) | 所有人 | Discord 頻道用途說明 |
+| [docs/k3s-operations-guide.md](./k3s-operations-guide.md) | 維運人員 | K3s 維運指南（含插畫） |
+| [docs/k3s-migration-plan.md](./k3s-migration-plan.md) | 維運人員 | K3s 遷移規劃 |
 
 ## 新增角色
 
-參考 [docs/new-agent-sop.md](docs/new-agent-sop.md)。
+參考 [docs/new-agent-sop.md](./new-agent-sop.md)。
 
 ## 授權
 

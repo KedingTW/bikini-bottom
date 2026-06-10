@@ -130,7 +130,7 @@ bot 應回覆品號/數量/對花備註三段。
 
 ## 新增第二個 bot（以 `complaint` 為例）
 
-照 [services/zeabur-gateway/README.md](../services/zeabur-gateway/README.md) 的「新增一個 wecom bot 的完整流程」走：
+照 [services/zeabur-gateway/README.md](../../services/zeabur-gateway/README.md) 的「新增一個 wecom bot 的完整流程」走：
 
 1. `cp services/zeabur-gateway/bots/_template.yaml services/zeabur-gateway/bots/complaint.yaml` → 編輯
 2. `cp -r agents/wecom-bot-order-transform/ agents/wecom-bot-complaint/` → 改 personality/order-rules/mcp/config
@@ -169,5 +169,5 @@ bot 應回覆品號/數量/對花備註三段。
 
 ## 延伸閱讀
 
-- 模組設計：[services/zeabur-gateway/README.md](../services/zeabur-gateway/README.md)
-- 舊文件（地端 docker compose 模式）：[wecom-setup.md](./wecom-setup.md) — 已淘汰，僅供歷史參考
+- 模組設計：[services/zeabur-gateway/README.md](../../services/zeabur-gateway/README.md)
+- 舊文件（地端 docker compose 模式）：[wecom-setup.md](（已刪除）) — 已淘汰，僅供歷史參考

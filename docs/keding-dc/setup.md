@@ -2,7 +2,7 @@
 
 > Discord 伺服器，提供科定同事使用的專用 AI bot。
 > 每個 bot 只做一件事，不閒聊、不跨業務。
-> 新增 bot 請參考 [bot-setup-sop-keding-dc.md](./bot-setup-sop-keding-dc.md)
+> 新增 bot 請參考 [bot-setup-sop-keding-dc.md](./bot-setup-sop.md)
 
 ---
 

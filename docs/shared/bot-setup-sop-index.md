@@ -4,9 +4,9 @@
 
 | 伺服器 | 用途 | 使用者 | SOP 文件 |
 |--------|------|--------|---------|
-| 比奇堡 (DC) | AI 開發團隊（通用 agent） | 開發者 | [bot-setup-sop-bikini-bottom.md](./bot-setup-sop-bikini-bottom.md) |
-| 科定AI服務 (DC) | 業務專用 bot（單一職責） | 同事 | [bot-setup-sop-keding-dc.md](./bot-setup-sop-keding-dc.md) |
-| 科定WeCom | WeCom bot（暫停） | 同事 | [bot-setup-sop-keding-wecom.md](./bot-setup-sop-keding-wecom.md) |
+| 比奇堡 (DC) | AI 開發團隊（通用 agent） | 開發者 | [bot-setup-sop-bikini-bottom.md](../bikini-bottom/bot-setup-sop.md) |
+| 科定AI服務 (DC) | 業務專用 bot（單一職責） | 同事 | [bot-setup-sop-keding-dc.md](../keding-dc/bot-setup-sop.md) |
+| 科定WeCom | WeCom bot（暫停） | 同事 | [bot-setup-sop-keding-wecom.md](../keding-wecom/bot-setup-sop.md) |
 
 ---
 

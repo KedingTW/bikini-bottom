@@ -147,7 +147,7 @@ kubectl logs -f deployment/keding-dc-<new-bot-name> -n bikini-bottom
 
 ### 7. 文件更新
 
-- `docs/keding-dc-setup.md` — 加入新頻道 + bot 資訊
+- `./setup.md` — 加入新頻道 + bot 資訊
 - `.env.example` / `.env.new` — 加入新變數
 - `k3s/kustomization.yaml` — 加入新 deployment
 
