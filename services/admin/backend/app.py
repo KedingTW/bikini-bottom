@@ -253,7 +253,7 @@ serializer = URLSafeTimedSerializer(SECRET_KEY)
 # ─── Agent 角色定義 ───────────────────────────────────────
 AGENT_GROUPS = {
     "bikini-bottom": {
-        "display": "比奇堡",
+        "display": "比奇堡海灘",
         "icon": "🏝️",
         "agents_subdir": "",
         "platform": "discord",
@@ -272,7 +272,7 @@ AGENT_GROUPS = {
         ],
     },
     "keding-dc": {
-        "display": "科定DC",
+        "display": "科定AI服務",
         "icon": "🏢",
         "agents_subdir": "keding-dc",
         "platform": "discord",
@@ -282,7 +282,7 @@ AGENT_GROUPS = {
         ],
     },
     "keding-wecom": {
-        "display": "科定WeCom",
+        "display": "科定AI企微",
         "icon": "💬",
         "agents_subdir": "keding-wecom",
         "platform": "wecom",
@@ -1912,7 +1912,8 @@ async def api_groups(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
+    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png"}
+    groups = [{"id": k, "display": v["display"], "icon": v["icon"], "image": GROUP_IMAGES.get(k, ""), "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
     return JSONResponse({"groups": groups})
 
 

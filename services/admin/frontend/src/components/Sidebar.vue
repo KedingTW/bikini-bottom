@@ -8,7 +8,8 @@
     <!-- Group Switcher -->
     <div class="px-3 pt-3 pb-2 border-b border-white/10" v-show="!collapsed">
       <button @click="groupOpen = !groupOpen" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-600/20 border border-cyan-400/30 hover:bg-cyan-600/30 transition">
-        <span class="text-lg">{{ currentGroupIcon }}</span>
+        <img v-if="currentGroupImage" :src="currentGroupImage" class="w-6 h-6 rounded object-cover">
+        <span v-else class="text-lg">{{ currentGroupIcon }}</span>
         <span class="flex-1 text-left text-sm font-medium text-cyan-200 truncate">{{ currentGroupDisplay }}</span>
         <span class="text-xs text-cyan-400">▾</span>
       </button>
@@ -16,7 +17,8 @@
         <button v-for="g in groups" :key="g.id" @click="selectGroup(g.id)"
           :class="g.id === currentGroup ? 'bg-cyan-600/20 text-cyan-300' : 'text-white/80 hover:bg-white/10'"
           class="w-full flex items-center gap-2 px-3 py-2 text-sm transition">
-          <span>{{ g.icon }}</span>
+          <img v-if="g.image" :src="g.image" class="w-5 h-5 rounded object-cover">
+          <span v-else>{{ g.icon }}</span>
           <span>{{ g.display }}</span>
           <span v-if="g.id === currentGroup" class="ml-auto text-xs">✓</span>
         </button>
@@ -58,6 +60,7 @@ const onGroupChange = inject('onGroupChange', () => {})
 
 const currentGroupDisplay = computed(() => props.groups.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 const currentGroupIcon = computed(() => props.groups.find(g => g.id === currentGroup.value)?.icon || '🏝️')
+const currentGroupImage = computed(() => props.groups.find(g => g.id === currentGroup.value)?.image || '')
 
 function selectGroup(id) {
   currentGroup.value = id
