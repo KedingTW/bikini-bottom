@@ -50,7 +50,8 @@
 
     <!-- Roles -->
     <div v-if="!loading && activeTab === 'roles'">
-      <div class="space-y-4">
+      <div v-if="!roles.length" class="text-center py-12 text-white/50">此伺服器尚無身分組</div>
+      <div v-else class="space-y-4">
         <div v-for="r in roles" :key="r.id" class="glass rounded-xl p-4">
           <div class="flex items-center gap-3 mb-2">
             <div v-if="r.color" class="w-3 h-3 rounded-full" :style="{background: '#' + r.color.toString(16).padStart(6, '0')}"></div>
