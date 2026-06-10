@@ -2274,6 +2274,29 @@ async def api_mcp_registry_reseed(request: Request):
     return JSONResponse({"ok": True, "message": "已重新匯入"})
 
 
+@app.post("/api/mcp-registry/{mcp_id}/test")
+async def api_mcp_registry_test(mcp_id: int, request: Request):
+    """測試 MCP Server 連線"""
+    import httpx
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    row = conn.execute("SELECT url, headers FROM mcp_registry WHERE id=?", (mcp_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Server 不存在")
+    import json as json_mod
+    url = row[0]
+    headers = json_mod.loads(row[1]) if row[1] else {}
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(url, headers=headers)
+            return JSONResponse({"ok": True, "status": r.status_code})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
 # ─── MCP Assignment APIs ──────────────────────────────────
 @app.get("/api/mcp-assignments/{agent_name}")
 async def api_mcp_assignments_get(agent_name: str, request: Request):

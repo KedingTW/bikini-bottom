@@ -2,8 +2,7 @@
   <div class="glass px-7 py-3 flex items-center gap-5 border-b border-white/10 text-sm sticky top-0 z-10">
     <span class="font-medium">MCP 管理</span>
     <span class="text-white/40 text-xs">{{ servers.length }} 個 Server</span>
-    <span class="text-white/30 text-xs" title="系統啟動時自動從 mcp-configs/ 匯入，也可手動新增">ℹ️ 資料來源：mcp-configs/ 自動匯入</span>
-    <button @click="reseed()" class="text-xs px-2 py-1 rounded border border-white/20 text-white/60 hover:bg-white/10">🔄 重新匯入</button>
+    <span class="text-white/30 text-xs">ℹ️ 資料來源：mcp-configs/ 自動匯入</span>
     <button @click="showAdd = true" class="ml-auto bg-cyan-600 hover:bg-cyan-500 text-white rounded px-3 py-1.5 text-sm">+ 新增</button>
   </div>
 
@@ -23,9 +22,13 @@
           <span v-if="s.tags" class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">{{ s.tags }}</span>
           <span :class="s.disabled ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'" class="text-xs px-2 py-0.5 rounded">{{ s.disabled ? '停用' : '啟用' }}</span>
           <div class="ml-auto flex gap-2">
+            <button @click="testServer(s)" class="text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10">🔗 測試</button>
             <button @click="editServer(s)" class="text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10">✏️ 編輯</button>
             <button @click="deleteServer(s.id)" class="text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
           </div>
+        </div>
+        <div v-if="testResults[s.id]" class="mb-2 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
+          {{ testResults[s.id].ok ? `✅ 連線成功（HTTP ${testResults[s.id].status}）` : `❌ ${testResults[s.id].error}` }}
         </div>
         <div class="space-y-2 text-sm">
           <div><span class="text-white/50 min-w-[60px] inline-block">URL</span><span class="font-mono">{{ s.url }}</span></div>
@@ -107,6 +110,7 @@ const showAdd = ref(false)
 const editingServer = ref(null)
 const form = ref({ key: '', name: '', type: 'http', url: '', headers: [{key:'',value:''}], tags: '正式', toolsStr: '', toolsList: [], selectedTools: [] })
 const formError = ref('')
+const testResults = ref({})
 
 const allTags = computed(() => [...new Set(servers.value.map(s => s.tags).filter(Boolean))])
 const filteredServers = computed(() => tagFilter.value ? servers.value.filter(s => s.tags === tagFilter.value) : servers.value)
@@ -152,6 +156,12 @@ async function deleteServer(id) {
   if (!confirm('確定刪除？')) return
   await fetch(`/api/mcp-registry/${id}`, { method: 'DELETE', credentials: 'same-origin' })
   load()
+}
+
+async function testServer(s) {
+  testResults.value = { ...testResults.value, [s.id]: null }
+  const res = await post(`/api/mcp-registry/${s.id}/test`)
+  testResults.value = { ...testResults.value, [s.id]: res }
 }
 
 onMounted(load)
