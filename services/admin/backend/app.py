@@ -2186,8 +2186,23 @@ async def api_mcp_registry_list(request: Request):
     rows = conn.execute("SELECT * FROM mcp_registry ORDER BY name").fetchall()
     conn.close()
     import json as json_mod
+
+    # Scan all agents' mcp.json to find usage
+    usage_map = {}  # key -> [agent display names]
+    for g in AGENT_GROUPS.values():
+        agents_dir = AGENTS_DIR / g["agents_subdir"] if g["agents_subdir"] else AGENTS_DIR
+        for ag in g["agents"]:
+            mcp_path = agents_dir / ag["name"] / ".kiro" / "settings" / "mcp.json"
+            if mcp_path.exists():
+                try:
+                    data = json_mod.loads(mcp_path.read_text())
+                    for srv_key in (data.get("mcpServers") or {}).keys():
+                        usage_map.setdefault(srv_key, []).append(ag["display"])
+                except Exception:
+                    pass
+
     return JSONResponse({"servers": [
-        {**dict(r), "headers": json_mod.loads(r["headers"]), "available_tools": json_mod.loads(r["available_tools"])}
+        {**dict(r), "headers": json_mod.loads(r["headers"]), "available_tools": json_mod.loads(r["available_tools"]), "used_by": usage_map.get(r["key"], [])}
         for r in rows
     ]})
 

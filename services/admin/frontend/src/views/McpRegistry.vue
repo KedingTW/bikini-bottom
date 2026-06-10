@@ -24,6 +24,7 @@
         </div>
         <div class="text-xs font-mono text-white/70 truncate mb-1">{{ s.url }}</div>
         <div class="text-xs text-white/50">HTTP/SSE · {{ s.available_tools.length }} tools</div>
+        <div v-if="s.used_by && s.used_by.length" class="text-xs text-white/60 mt-1">👤 {{ s.used_by.join(' · ') }}</div>
         <div v-if="testResults[s.id]" class="mt-1 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
           {{ testResults[s.id].ok ? '✅ 連線正常' : `❌ ${testResults[s.id].error}` }}
         </div>
