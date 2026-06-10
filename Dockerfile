@@ -27,9 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Entrypoint scripts
-COPY scripts/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
-COPY scripts/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh
-COPY scripts/entrypoint-bikini-bottom.sh /usr/local/bin/entrypoint-bikini-bottom.sh
+COPY scripts/bikini-bottom/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
+COPY scripts/bikini-bottom/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh
+COPY scripts/bikini-bottom/entrypoint.sh /usr/local/bin/entrypoint-bikini-bottom.sh
 RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-bikini-bottom.sh
 
 # 預建 /nas 目錄

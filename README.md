@@ -20,12 +20,12 @@
 
 | 文件 | 用途 |
 |------|------|
-| [新增 Bot SOP（索引）](docs/bot-setup-sop.md) | 決定加哪組、照哪份 SOP |
-| [比奇堡總覽](docs/bikini-bottom-overview.md) | 比奇堡架構、角色、頻道 |
-| [科定DC 設定](docs/keding-dc-setup.md) | 伺服器 / 頻道 / Bot 配置 |
-| [科定WeCom 部署](docs/wecom-zeabur-setup.md) | Zeabur gateway 部署（暫停） |
-| [.env 遷移 SOP](docs/env-rename-migration-sop.md) | 環境變數改名流程 |
-| [K3s 遷移規劃](docs/k3s-migration-plan.md) | Docker Compose → K3s |
+| [新增 Bot SOP（索引）](docs/shared/bot-setup-sop-index.md) | 決定加哪組、照哪份 SOP |
+| [比奇堡總覽](docs/bikini-bottom/overview.md) | 比奇堡架構、角色、頻道 |
+| [科定DC 設定](docs/keding-dc/setup.md) | 伺服器 / 頻道 / Bot 配置 |
+| [科定WeCom 部署](docs/keding-wecom/setup.md) | Zeabur gateway 部署（暫停） |
+| [.env 遷移 SOP](docs/shared/env-rename-migration-sop.md) | 環境變數改名流程 |
+| [K3s 遷移規劃](docs/bikini-bottom/k3s-migration-plan.md) | Docker Compose → K3s |
 | [CHANGELOG](CHANGELOG.md) | 變更紀錄 |
 
 ### 管理工具
