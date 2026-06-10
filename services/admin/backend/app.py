@@ -2197,7 +2197,7 @@ async def api_mcp_registry_list(request: Request):
                 try:
                     data = json_mod.loads(mcp_path.read_text())
                     for srv_key in (data.get("mcpServers") or {}).keys():
-                        usage_map.setdefault(srv_key, []).append(ag["display"])
+                        usage_map.setdefault(srv_key, []).append({"name": ag["name"], "display": ag["display"]})
                 except Exception:
                     pass
 

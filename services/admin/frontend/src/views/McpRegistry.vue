@@ -24,7 +24,10 @@
         </div>
         <div class="text-xs font-mono text-white/70 truncate mb-1">{{ s.url }}</div>
         <div class="text-xs text-white/50">HTTP/SSE · {{ s.available_tools.length }} tools</div>
-        <div v-if="s.used_by && s.used_by.length" class="text-xs text-white/60 mt-1">👤 {{ s.used_by.join(' · ') }}</div>
+        <div v-if="s.used_by && s.used_by.length" class="flex items-center gap-1 mt-1.5">
+          <img v-for="u in s.used_by" :key="u.name" :src="'/avatar/' + u.name" :title="u.display"
+            class="w-6 h-6 rounded-full object-cover border border-white/20" @error="$event.target.style.display='none'">
+        </div>
         <div v-if="testResults[s.id]" class="mt-1 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
           {{ testResults[s.id].ok ? '✅ 連線正常' : `❌ ${testResults[s.id].error}` }}
         </div>
