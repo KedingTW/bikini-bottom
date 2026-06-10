@@ -121,55 +121,50 @@
 
         <!-- MCP Tab -->
         <div v-if="detailTab === 'mcp'">
-          <div class="flex items-center gap-2 mb-4">
-            <button @click="mcpMode = 'assign'" :class="mcpMode === 'assign' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">分配模式</button>
-            <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">JSON 進階</button>
-          </div>
-
-          <div v-if="mcpMode === 'assign'">
-            <div v-if="!mcpRegistryList.length" class="text-white/50 text-sm py-4">Registry 無 MCP Server，請先到「MCP 管理」新增</div>
-            <div v-else class="flex gap-3" style="height: 360px">
-              <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
-                <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">可用 MCP</div>
-                <div class="flex-1 overflow-y-auto p-2 space-y-1">
-                  <div v-for="s in availableMcps" :key="s.key" @click="toggleLeftSelect(s.key)"
-                    :class="leftSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
-                    class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
-                    <span class="text-sm">{{ s.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col items-center justify-center gap-2 w-10">
-                <button @click="moveRight()" :disabled="!leftSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">›</button>
-                <button @click="moveLeft()" :disabled="!rightSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">‹</button>
-              </div>
-              <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
-                <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">已分配 MCP</div>
-                <div class="flex-1 overflow-y-auto p-2 space-y-1">
-                  <div v-for="s in assignedMcps" :key="s.key" @click="toggleRightSelect(s.key)"
-                    :class="rightSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
-                    class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
-                    <span class="text-sm">{{ s.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
-                  </div>
-                  <div v-if="!assignedMcps.length" class="text-center text-white/30 text-sm py-8">尚未分配</div>
+          <!-- Shuttle UI -->
+          <div v-if="!mcpRegistryList.length" class="text-white/50 text-sm py-4">Registry 無 MCP Server，請先到「MCP 管理」新增</div>
+          <div v-else class="flex gap-3" style="height: 340px">
+            <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
+              <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">可用 MCP</div>
+              <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                <div v-for="s in availableMcps" :key="s.key" @click="toggleLeftSelect(s.key)"
+                  :class="leftSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                  class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
+                  <span class="text-sm">{{ s.name }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-3 mt-4">
-              <button @click="publishMcpAssignments()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded text-sm font-medium">🚀 發佈到角色</button>
-              <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
+            <div class="flex flex-col items-center justify-center gap-2 w-10">
+              <button @click="moveRight()" :disabled="!leftSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">›</button>
+              <button @click="moveLeft()" :disabled="!rightSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">‹</button>
             </div>
+            <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
+              <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">已分配 MCP</div>
+              <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                <div v-for="s in assignedMcps" :key="s.key" @click="toggleRightSelect(s.key)"
+                  :class="rightSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                  class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
+                  <span class="text-sm">{{ s.name }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
+                </div>
+                <div v-if="!assignedMcps.length" class="text-center text-white/30 text-sm py-8">尚未分配</div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-4">
+            <button @click="publishMcpAssignments()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded text-sm font-medium">🚀 發佈到角色</button>
+            <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
           </div>
 
-          <div v-if="mcpMode === 'raw'">
-            <textarea v-model="mcpRaw" rows="20" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-sm font-mono leading-relaxed resize-y"></textarea>
-            <div class="flex items-center gap-3 mt-3">
-              <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded text-sm font-medium">💾 儲存</button>
-              <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
+          <!-- Collapsible JSON -->
+          <details class="mt-5">
+            <summary class="text-sm text-white/50 cursor-pointer hover:text-white/70">進階：直接編輯 JSON</summary>
+            <div class="mt-2">
+              <textarea v-model="mcpRaw" rows="16" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-sm font-mono leading-relaxed resize-y"></textarea>
+              <button @click="saveMcp()" class="mt-2 bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-sm font-medium">💾 儲存 JSON</button>
             </div>
-          </div>
+          </details>
         </div>
 
         <!-- Skills Tab -->
@@ -319,7 +314,6 @@ const selectedAgent = ref(null)
 const detailTab = ref('config')
 
 // MCP state
-const mcpMode = ref('assign')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
 const mcpRegistryList = ref([])
@@ -396,13 +390,24 @@ async function openAgent(a) {
     const cfgRes = await get(`/api/agents/${a.name}/config`)
     configRaw.value = cfgRes?.raw || ''
   } catch { configRaw.value = '' }
-  // Load MCP registry + assignments
+  // Load MCP registry + assignments (fallback to current mcp.json)
   try {
     const regRes = await get('/api/mcp-registry')
     mcpRegistryList.value = regRes?.servers || []
     const assRes = await get(`/api/mcp-assignments/${a.name}`)
-    mcpAssignedKeys.value = new Set((assRes?.assignments || []).map(x => x.mcp_key))
-    mcpHasDraft.value = (assRes?.assignments || []).some(x => x.is_draft)
+    const dbAssignments = assRes?.assignments || []
+    if (dbAssignments.length) {
+      mcpAssignedKeys.value = new Set(dbAssignments.map(x => x.mcp_key))
+    } else {
+      // Fallback: read current mcp.json and match keys to registry
+      try {
+        const raw = JSON.parse(mcpRaw.value || '{}')
+        const existingKeys = Object.keys(raw.mcpServers || {})
+        const registryKeys = new Set(mcpRegistryList.value.map(s => s.key))
+        mcpAssignedKeys.value = new Set(existingKeys.filter(k => registryKeys.has(k)))
+      } catch { mcpAssignedKeys.value = new Set() }
+    }
+    mcpHasDraft.value = dbAssignments.some(x => x.is_draft)
   } catch { mcpRegistryList.value = []; mcpAssignedKeys.value = new Set() }
   // Load MCP
   const res = await get(`/api/agents/${a.name}/mcp`)
