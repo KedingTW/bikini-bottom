@@ -76,12 +76,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, inject } from 'vue'
 import Chart from 'chart.js/auto'
 import StatusBar from '../components/StatusBar.vue'
 import { useApi } from '../composables/useApi.js'
 
 const { get, formatMem, pad, formatTime24, parseCpuRaw, parseMemRaw } = useApi()
+const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const hours = ref('6')
 const sortedAgents = ref([])
@@ -106,12 +107,16 @@ async function loadAll() {
   let metrics = {}
   try { const r = await get('/api/metrics'); metrics = r?.metrics || {} } catch {}
 
+  const gData = await get(`/api/agents?group=${currentGroup.value}`)
+  const groupNames = (gData?.agents || []).map(a => a.name)
+
   let tc = 0, tm = 0
-  const items = (await get('/api/status'))?.agents?.map(a => {
-    const m = metrics[a.name]; let cpu = 0, mem = 0
+  const allAgents = (await get('/api/status'))?.agents || []
+  const items = allAgents.filter(a => groupNames.includes(a.name)).map(a => {
+    const m = metrics[a.deployment || a.name]; let cpu = 0, mem = 0
     if (m) { cpu = parseCpuRaw(m.cpu_raw); mem = parseMemRaw(m.memory_raw); tc += cpu; tm += mem }
     return { ...a, _mem: mem, stats: `💻 ${(cpu/10).toFixed(1)}%  🧠 ${formatMem(mem)}` }
-  }) || []
+  })
 
   items.sort((a, b) => b._mem - a._mem)
   sortedAgents.value = items
@@ -201,6 +206,7 @@ let timer
 onMounted(() => {
   loadAll()
   timer = setInterval(() => { countdown.value--; if (countdown.value <= 0) loadAll() }, 1000)
+  window.addEventListener('group-changed', loadAll)
   const hash = location.hash.replace('#', '')
   if (hash) {
     setTimeout(() => {
