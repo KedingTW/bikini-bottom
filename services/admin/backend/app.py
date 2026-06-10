@@ -366,26 +366,29 @@ def _docker_get_all_status(docker_client) -> list:
     """Get status of all agents via Docker API."""
     result = []
     for agent in AGENTS:
+        deploy_name = agent.get("deployment", agent["name"])
         try:
-            container = docker_client.containers.get(agent["name"])
-            status = container.status  # running, exited, restarting, paused, dead
+            container = docker_client.containers.get(deploy_name)
+            status = container.status
             started_at = container.attrs["State"].get("StartedAt", "")
             restart_count = container.attrs.get("RestartCount", 0)
             uptime = _calc_uptime(started_at) if status == "running" else "-"
             mapped_status = "running" if status == "running" else "failed" if status in ("exited", "dead") else status
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
                 "status": mapped_status,
                 "uptime": uptime,
                 "restarts": restart_count,
-                "pod_name": agent["name"],
+                "pod_name": deploy_name,
             })
         except Exception:
             result.append({
                 "name": agent["name"],
+                "deployment": deploy_name,
                 "display": agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
