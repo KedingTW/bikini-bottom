@@ -3,6 +3,7 @@
     <span class="font-medium">MCP 管理</span>
     <span class="text-white/40 text-xs">{{ servers.length }} 個 Server</span>
     <span class="text-white/30 text-xs">ℹ️ 資料來源：mcp-configs/ 自動匯入</span>
+    <button @click="testAll()" class="text-xs px-3 py-1 rounded border border-white/20 text-white/60 hover:bg-white/10">🔗 全部測試</button>
     <button @click="showAdd = true" class="ml-auto bg-cyan-600 hover:bg-cyan-500 text-white rounded px-3 py-1.5 text-sm">+ 新增</button>
   </div>
 
@@ -21,15 +22,13 @@
           <span class="font-bold text-sm text-cyan-300">{{ s.name }}</span>
           <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
           <button @click.stop="testServer(s)" class="ml-auto text-xs text-white/40 hover:text-cyan-300" title="測試連線">🔗</button>
+          <span v-if="testResults[s.id]" class="text-xs" :title="testResults[s.id].error || ''">{{ testResults[s.id].ok ? '✅' : '❌' }}</span>
         </div>
         <div class="text-xs font-mono text-white/70 truncate mb-1">{{ s.url }}</div>
         <div class="text-xs text-white/50">HTTP/SSE · {{ s.available_tools.length }} tools</div>
         <div v-if="s.used_by && s.used_by.length" class="flex items-center gap-1 mt-1.5">
           <img v-for="u in s.used_by" :key="u.name" :src="'/avatar/' + u.name" :title="u.display"
             class="w-6 h-6 rounded-full object-cover border border-white/20" @error="$event.target.style.display='none'">
-        </div>
-        <div v-if="testResults[s.id]" class="mt-1 text-xs" :class="testResults[s.id].ok ? 'text-green-400' : 'text-red-400'">
-          {{ testResults[s.id].ok ? '✅ 連線正常' : `❌ ${testResults[s.id].error}` }}
         </div>
       </div>
     </div>
@@ -159,6 +158,13 @@ async function testServer(s) {
   testResults.value = { ...testResults.value, [s.id]: null }
   const res = await post(`/api/mcp-registry/${s.id}/test`)
   testResults.value = { ...testResults.value, [s.id]: res }
+}
+
+async function testAll() {
+  for (const s of servers.value) {
+    const res = await post(`/api/mcp-registry/${s.id}/test`)
+    testResults.value = { ...testResults.value, [s.id]: res }
+  }
 }
 
 onMounted(load)
