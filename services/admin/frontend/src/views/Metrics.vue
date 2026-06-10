@@ -159,8 +159,14 @@ function renderSmall(id, canvas, labels, data, color, unit) {
 async function expand(key, type, name) {
   dialog.value = { title: name, key, stats: '' }
   await nextTick()
-  const agentName = key === '_total' ? '' : key
-  const json = await get(`/api/metrics/history?hours=${hours.value}&agent=${agentName}`)
+  let agentQuery = ''
+  if (key === '_total') {
+    agentQuery = sortedAgents.value.map(a => a.deployment || a.name).join(',')
+  } else {
+    const found = sortedAgents.value.find(a => a.name === key)
+    agentQuery = found?.deployment || key
+  }
+  const json = await get(`/api/metrics/history?hours=${hours.value}&agent=${agentQuery}`)
   const data = json?.data || []
 
   // Show current stats from the latest data point

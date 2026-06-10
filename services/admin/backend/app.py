@@ -274,7 +274,7 @@ AGENT_GROUPS = {
         "icon": "🏢",
         "agents_subdir": "keding-dc",
         "agents": [
-            {"name": "order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
+            {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
         ],
     },
     "keding-wecom": {
@@ -468,20 +468,32 @@ async def home(request: Request):
 
 @app.get("/avatar/{agent_name}")
 async def avatar(agent_name: str):
-    """Serve agent avatar image. Falls back to 404 if not found."""
+    """Serve agent avatar image. Falls back to KD logo for non-bikini agents, 404 otherwise."""
     valid_names = {a["name"] for a in AGENTS}
-    lookup_name = agent_name
-
     if agent_name not in valid_names:
         raise HTTPException(status_code=404)
 
-    # Search for avatar.png, avatar.jpg
-    for ext in ("png", "jpg", "jpeg", "webp"):
-        avatar_path = AGENTS_DIR / lookup_name / f"avatar.{ext}"
-        if avatar_path.is_file():
-            media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
-            from fastapi.responses import FileResponse
-            return FileResponse(avatar_path, media_type=media_types.get(ext, "image/png"))
+    # Determine search paths (root + group subdir)
+    search_dirs = [AGENTS_DIR / agent_name]
+    for g in AGENT_GROUPS.values():
+        if g["agents_subdir"] and any(a["name"] == agent_name for a in g["agents"]):
+            search_dirs.append(AGENTS_DIR / g["agents_subdir"] / agent_name)
+
+    for d in search_dirs:
+        for ext in ("png", "jpg", "jpeg", "webp"):
+            avatar_path = d / f"avatar.{ext}"
+            if avatar_path.is_file():
+                media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+                from fastapi.responses import FileResponse
+                return FileResponse(avatar_path, media_type=media_types.get(ext, "image/png"))
+
+    # Fallback: serve KD logo for non-bikini-bottom agents
+    for g_id, g in AGENT_GROUPS.items():
+        if g_id != "bikini-bottom" and any(a["name"] == agent_name for a in g["agents"]):
+            logo_path = DIST_DIR / "logo.png"
+            if logo_path.is_file():
+                from fastapi.responses import FileResponse
+                return FileResponse(logo_path, media_type="image/png")
 
     raise HTTPException(status_code=404)
 
