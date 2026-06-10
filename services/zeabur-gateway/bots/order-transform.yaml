@@ -1,0 +1,16 @@
+name: order-transform
+displayName: 下單小幫手
+description: 把客戶下單訊息轉成科定品號 + 數量 + 對花備註
+domain: order-transform.ikd.ink
+agent: wecom-bot-order-transform
+envVarPrefix: ORDER_TRANSFORM
+wecom:
+  secretKeys:
+    - WECOM_CORP_ID
+    - WECOM_AGENT_ID
+    - WECOM_SECRET
+    - WECOM_TOKEN
+    - WECOM_ENCODING_AES_KEY
+pool:
+  maxSessions: 15
+enabled: true

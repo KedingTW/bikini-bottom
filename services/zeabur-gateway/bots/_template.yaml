@@ -1,0 +1,39 @@
+# WeCom Bot Gateway 設定範本
+# 新增 bot 步驟：
+#   1. cp _template.yaml <bot-shortname>.yaml
+#   2. 填入欄位
+#   3. ../scripts/deploy.sh <bot-shortname>
+
+# bot 短名（kebab-case），用於 Zeabur service 名稱
+name: <bot-shortname>
+
+# 業務名稱（中文），顯示用
+displayName: <業務名稱>
+
+# 這個 bot 處理的業務範圍（單一句話描述）
+description: <這個 bot 做什麼>
+
+# 對應的自家 domain。WeCom callback URL = https://{domain}/webhook/wecom
+domain: <subdomain>.ikd.ink
+
+# 對應的地端 wecom-bot agent 目錄名（agents/<agent>/）
+agent: wecom-bot-<bot-shortname>
+
+# WeCom 密鑰在 .env 的前綴。例：ORDER → ORDER_WECOM_CORP_ID
+envVarPrefix: <UPPER_PREFIX>
+
+# WeCom 必要密鑰（會與 envVarPrefix 組合成 .env 變數名）
+wecom:
+  secretKeys:
+    - WECOM_CORP_ID
+    - WECOM_AGENT_ID
+    - WECOM_SECRET
+    - WECOM_TOKEN
+    - WECOM_ENCODING_AES_KEY
+
+# 地端 wecom-bot agent 端 session pool 上限
+pool:
+  maxSessions: 10
+
+# 是否啟用部署。false 時 deploy.sh 跳過
+enabled: false

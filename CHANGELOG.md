@@ -157,3 +157,30 @@
 - **chore**: steering 改為手動載入，節省 usage
 - **docs**: 新增 slash-bot IAM 最小權限 policy
 - 🎉 **First commit** — 比奇堡 AI 開發團隊誕生
+
+## 2026-06-10
+
+- **feat**: 科定AI服務 (DC) 上線 — 第一個 bot「下單小幫手」（訂單資料轉換）
+  - 新 DC 伺服器 `1513867618899988480`，Forum 頻道模式
+  - Agent: `agents/keding-dc/order-transform/`
+  - 使用 `entrypoint-minimal.sh`（不做 NAS/steering/skills link）
+  - 權限控制：管理員（馥寧 + 米哥）可訓練，一般同事只能用
+  - 糾正紀錄機制：同事指出錯誤 → 記錄 → 待馥寧確認
+- **feat**: WeCom Bot 基礎架構完成（gateway 部署到 Zeabur `kd-wecom` project）
+  - 通過 WeCom callback 驗證 + 成功收發訊息
+  - 因缺乏表情反應體驗差，**暫停使用**，改走 DC 方式
+- **refactor**: Agent 目錄分組
+  - `agents/keding-dc/` — 科定AI服務
+  - `agents/keding-wecom/` — 科定WeCom（暫停）
+  - 比奇堡 agents 待搬到 `agents/bikini-bottom/`（下班時間）
+- **refactor**: 文件拆分
+  - `README.md` 改為精簡索引頁
+  - `docs/bikini-bottom-overview.md` — 比奇堡總覽
+  - `docs/bot-setup-sop.md` 改為索引頁 → 指向各組 SOP
+  - `docs/bot-setup-sop-keding-dc.md` — 科定DC 新增 bot 完整步驟
+  - `docs/keding-dc-setup.md` — 伺服器設定文件
+- **refactor**: `.env.example` 重新命名分組（`BIKINI_BOTTOM_*` / `KEDING_DC_*` / `KEDING_WECOM_*`）
+- **feat**: `scripts/entrypoint-minimal.sh` — 精簡 entrypoint（不做 NAS/steering/skills link）
+- **feat**: `services/zeabur-gateway/` — Zeabur gateway 模組化管理工具（BotConfig / ZeaburClient / deploy scripts）
+- **chore**: 移除地端 gateway deployment（改用 Zeabur）
+- **fix**: K3s `kustomization.yaml` 修正 dashboard.yaml → admin.yaml 引用

@@ -8,16 +8,20 @@ resources:
   - configmaps/channel-ids.yaml
   - configmaps/common-env.yaml
   - volumes/nas-pv.yaml
-  - deployments/bob.yaml
-  - deployments/patrick.yaml
-  - deployments/puff.yaml
-  - deployments/squidward.yaml
-  - deployments/sandy.yaml
-  - deployments/pearl.yaml
-  - deployments/larry.yaml
-  - deployments/conch.yaml
-  - deployments/mermaid-man.yaml
-  - deployments/gary.yaml
-  - deployments/gateway.yaml
-  - deployments/wecom-bot.yaml
-  - deployments/dashboard.yaml
+  # ─── 共用服務 ───
+  - deployments/admin.yaml
+  # ─── 比奇堡 ───
+  - deployments/bikini-bottom/bob.yaml
+  - deployments/bikini-bottom/patrick.yaml
+  - deployments/bikini-bottom/puff.yaml
+  - deployments/bikini-bottom/squidward.yaml
+  - deployments/bikini-bottom/sandy.yaml
+  - deployments/bikini-bottom/pearl.yaml
+  - deployments/bikini-bottom/larry.yaml
+  - deployments/bikini-bottom/conch.yaml
+  - deployments/bikini-bottom/mermaid-man.yaml
+  - deployments/bikini-bottom/gary.yaml
+  # ─── 科定DC ───
+  - deployments/keding-dc/order-transform.yaml
+  # ─── 科定WeCom（暫停）───
+  # - deployments/keding-wecom/order-transform.yaml
