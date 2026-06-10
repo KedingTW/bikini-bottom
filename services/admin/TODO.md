@@ -110,6 +110,49 @@
 
 ---
 
+## 伺服器分組架構（2026/06/10 規劃）
+
+> 頂層加「伺服器切換」，功能選單統一，共用區塊不分伺服器。
+
+### 架構設計
+
+- 頂層 context：伺服器切換（比奇堡 / 科定DC / 科定WeCom）
+- 切換後影響的是「看到的角色列表」和「對應平台 API」
+- 功能選單每個伺服器相同，WeCom 無討論串則隱藏該項
+- API 帶 `?group=<group>` 過濾
+
+### 分伺服器功能（切換後看到不同資料）
+
+- [ ] 伺服器切換 UI（頂部 dropdown 或 tab）
+- [ ] 🤖 角色管理：根據 group 讀 `agents/<group>/`
+- [ ] ⏰ Cronjob 管理：根據 group 過濾
+- [ ] 📚 Knowledge Base：根據 group 過濾
+- [ ] 💬 訊息推送：DC 走 Discord API，WeCom 走 wecom-push-mcp
+- [ ] 👥 成員管理：用對應 guild ID
+- [ ] 📌 討論串管理：只有 DC 伺服器顯示
+- [ ] 📈 討論串分析：只有 DC 伺服器顯示
+
+### 共用功能（不分伺服器）
+
+- [ ] 🏠 總覽（三組摘要卡片）
+- [ ] 📊 資源監控（全部 pod，可篩 group）
+- [ ] 💰 成本監控（含 Zeabur $5/mo）
+- [ ] 🔔 異常通知
+- [ ] 🖥️ 系統資源
+- [ ] 📋 Log 搜尋
+- [ ] 🚀 部署管理
+- [ ] 🔑 API Key 管理
+- [ ] 👤 使用者管理
+
+### 本次調整需跟進
+
+- [ ] AGENTS 列表更新：加 `keding-dc-order-transform`，移除 `gateway`
+- [ ] deployment 名稱對應：`wecom-bot` → 已刪、`keding-dc-order-transform` → 新增
+- [ ] 移除 gateway 相關 status/restart 邏輯
+- [ ] `.env` 改名後 admin 讀的 env var name 同步（等 .env 正式切換時）
+
+---
+
 ## WeCom Bot 管理（未來）
 - [ ] 訊息推送整合
 - [ ] 成員管理
