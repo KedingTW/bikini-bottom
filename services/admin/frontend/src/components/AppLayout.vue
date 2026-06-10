@@ -75,13 +75,9 @@ const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
 const pwSuccess = ref('')
-const groups = ref([
-  { id: 'bikini-bottom', display: '比奇堡', icon: '🏝️' },
-  { id: 'keding-dc', display: '科定DC', icon: '🏢' },
-  { id: 'keding-wecom', display: '科定WeCom', icon: '💬' },
-])
+const groups = ref([])
 const currentGroup = ref(localStorage.getItem('adminGroup') || 'bikini-bottom')
-const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || '比奇堡')
+const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 
 function onGroupChange() {
   localStorage.setItem('adminGroup', currentGroup.value)
@@ -108,6 +104,13 @@ onMounted(async () => {
       userName.value = data.name
       userId.value = data.id
       userRole.value = data.role || 'viewer'
+    }
+  } catch {}
+  try {
+    const res = await fetch('/api/groups')
+    if (res.ok) {
+      const data = await res.json()
+      groups.value = data.groups || []
     }
   } catch {}
 })
