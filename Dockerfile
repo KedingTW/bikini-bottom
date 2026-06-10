@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
 COPY scripts/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh
 COPY scripts/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
-RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-wrapper.sh
+COPY scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint-minimal.sh
+RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-wrapper.sh /usr/local/bin/entrypoint-minimal.sh
 
 # 預建 /nas 目錄
 RUN mkdir -p /nas

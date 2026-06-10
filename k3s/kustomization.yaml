@@ -18,6 +18,6 @@ resources:
   - deployments/conch.yaml
   - deployments/mermaid-man.yaml
   - deployments/gary.yaml
-  - deployments/gateway.yaml
-  - deployments/wecom-bot.yaml
-  - deployments/dashboard.yaml
+  - deployments/wecom-bot-order-transform.yaml
+  - deployments/keding-dc-order-transform.yaml
+  - deployments/admin.yaml

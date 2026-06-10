@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keding-dc-order-transform
+  namespace: bikini-bottom
+  labels:
+    app: keding-dc-order-transform
+    type: agent
+    group: keding-dc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keding-dc-order-transform
+  template:
+    metadata:
+      labels:
+        app: keding-dc-order-transform
+        type: agent
+        group: keding-dc
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: agent
+          image: bikini-bottom/agent:latest
+          imagePullPolicy: Never
+          command: ["/usr/local/bin/entrypoint-minimal.sh"]
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: keding-dc-secrets
+                  key: ORDER_TRANSFORM_BOT_TOKEN
+            - name: KIRO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: keding-dc-secrets
+                  key: ORDER_TRANSFORM_KIRO_KEY
+            - name: GIT_AUTHOR_NAME
+              value: "Order Transform Bot"
+            - name: GIT_COMMITTER_NAME
+              value: "Order Transform Bot"
+            - name: GIT_AUTHOR_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: GIT_COMMITTER_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: common-env
+                  key: GIT_EMAIL
+            - name: AGENT_NAME
+              value: "keding-dc-order-transform"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/openab/config.toml
+              readOnly: true
+            - name: agent-home
+              mountPath: /home/agent
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform/config.toml
+            type: File
+        - name: agent-home
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform
+            type: Directory
