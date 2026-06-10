@@ -71,6 +71,41 @@ def _init_db():
                 role TEXT DEFAULT 'admin'
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_registry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL,
+                headers TEXT DEFAULT '{}',
+                available_tools TEXT DEFAULT '[]',
+                tags TEXT DEFAULT '',
+                disabled INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_assignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_name TEXT NOT NULL,
+                mcp_key TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                allowed_tools TEXT DEFAULT '[]',
+                is_draft INTEGER DEFAULT 1,
+                UNIQUE(agent_name, mcp_key)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS skill_assignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_name TEXT NOT NULL,
+                skill_name TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                is_draft INTEGER DEFAULT 1,
+                UNIQUE(agent_name, skill_name)
+            )
+        """)
     _seed_users()
 
 
@@ -2083,6 +2118,267 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     if not skill_md.exists():
         raise HTTPException(status_code=404, detail="SKILL.md 不存在")
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
+
+
+# ─── MCP Registry APIs ────────────────────────────────────
+@app.get("/api/mcp-registry")
+async def api_mcp_registry_list(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM mcp_registry ORDER BY name").fetchall()
+    conn.close()
+    import json as json_mod
+    return JSONResponse({"servers": [
+        {**dict(r), "headers": json_mod.loads(r["headers"]), "available_tools": json_mod.loads(r["available_tools"])}
+        for r in rows
+    ]})
+
+
+@app.post("/api/mcp-registry")
+async def api_mcp_registry_create(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    key = body.get("key", "").strip()
+    name = body.get("name", "").strip()
+    url = body.get("url", "").strip()
+    if not key or not name or not url:
+        raise HTTPException(status_code=400, detail="key、name、url 為必填")
+    tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = sqlite3.connect(METRICS_DB)
+        conn.execute("INSERT INTO mcp_registry (key, name, url, headers, available_tools, tags, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                     (key, name, url, json_mod.dumps(body.get("headers", {})), json_mod.dumps(body.get("available_tools", [])), body.get("tags", ""), now_str, now_str))
+        conn.commit()
+        conn.close()
+        return JSONResponse({"ok": True})
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail=f"key '{key}' 已存在")
+
+
+@app.put("/api/mcp-registry/{mcp_id}")
+async def api_mcp_registry_update(mcp_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("UPDATE mcp_registry SET name=?, url=?, headers=?, available_tools=?, tags=?, disabled=?, updated_at=? WHERE id=?",
+                 (body.get("name", ""), body.get("url", ""), json_mod.dumps(body.get("headers", {})),
+                  json_mod.dumps(body.get("available_tools", [])), body.get("tags", ""), body.get("disabled", 0), now_str, mcp_id))
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/mcp-registry/{mcp_id}")
+async def api_mcp_registry_delete(mcp_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("DELETE FROM mcp_registry WHERE id=?", (mcp_id,))
+    conn.execute("DELETE FROM mcp_assignments WHERE mcp_key = (SELECT key FROM mcp_registry WHERE id=?)", (mcp_id,))
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True})
+
+
+# ─── MCP Assignment APIs ──────────────────────────────────
+@app.get("/api/mcp-assignments/{agent_name}")
+async def api_mcp_assignments_get(agent_name: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    conn = sqlite3.connect(METRICS_DB)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM mcp_assignments WHERE agent_name=?", (agent_name,)).fetchall()
+    conn.close()
+    return JSONResponse({"assignments": [
+        {**dict(r), "allowed_tools": json_mod.loads(r["allowed_tools"])} for r in rows
+    ]})
+
+
+@app.put("/api/mcp-assignments/{agent_name}")
+async def api_mcp_assignments_save(agent_name: str, request: Request):
+    """儲存角色的 MCP 分配（草稿）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    assignments = body.get("assignments", []) if isinstance(body, dict) else []
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("DELETE FROM mcp_assignments WHERE agent_name=?", (agent_name,))
+    for a in assignments:
+        conn.execute("INSERT INTO mcp_assignments (agent_name, mcp_key, enabled, allowed_tools, is_draft) VALUES (?,?,?,?,1)",
+                     (agent_name, a["mcp_key"], 1 if a.get("enabled", True) else 0, json_mod.dumps(a.get("allowed_tools", []))))
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/mcp-assignments/{agent_name}/publish")
+async def api_mcp_assignments_publish(agent_name: str, request: Request):
+    """發佈：根據分配產生 mcp.json 寫入角色目錄"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    conn = sqlite3.connect(METRICS_DB)
+    conn.row_factory = sqlite3.Row
+    assignments = conn.execute("SELECT a.*, r.url, r.headers FROM mcp_assignments a JOIN mcp_registry r ON a.mcp_key = r.key WHERE a.agent_name=? AND a.enabled=1", (agent_name,)).fetchall()
+    conn.execute("UPDATE mcp_assignments SET is_draft=0 WHERE agent_name=?", (agent_name,))
+    conn.commit()
+    conn.close()
+
+    # Build mcp.json
+    mcp_servers = {}
+    for a in assignments:
+        server_config = {"url": a["url"], "headers": json_mod.loads(a["headers"])}
+        tools = json_mod.loads(a["allowed_tools"])
+        if tools:
+            server_config["autoApprove"] = tools
+        mcp_servers[a["mcp_key"]] = server_config
+
+    mcp_json = json_mod.dumps({"mcpServers": mcp_servers}, indent=2, ensure_ascii=False)
+
+    # Find agent dir
+    agent_dir = None
+    for g in AGENT_GROUPS.values():
+        for ag in g["agents"]:
+            if ag["name"] == agent_name:
+                subdir = g["agents_subdir"]
+                agent_dir = (AGENTS_DIR / subdir / agent_name) if subdir else (AGENTS_DIR / agent_name)
+                break
+    if not agent_dir or not agent_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Agent 目錄不存在：{agent_name}")
+
+    mcp_path = agent_dir / ".kiro" / "settings" / "mcp.json"
+    mcp_path.parent.mkdir(parents=True, exist_ok=True)
+    mcp_path.write_text(mcp_json)
+    return JSONResponse({"ok": True, "message": f"已發佈到 {agent_name}"})
+
+
+# ─── Skills Registry APIs ─────────────────────────────────
+SKILLS_DIR = Path(os.environ.get("SKILLS_DIR", str((Path(__file__).resolve().parent / ".." / ".." / ".." / "shared" / "skills").resolve())))
+
+
+@app.get("/api/skills-registry")
+async def api_skills_registry(request: Request):
+    """列出所有可用技能"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    skills = []
+    if SKILLS_DIR.exists():
+        for d in sorted(SKILLS_DIR.iterdir()):
+            if d.is_dir() and (d / "SKILL.md").exists():
+                desc = ""
+                try:
+                    content = (d / "SKILL.md").read_text()
+                    for line in content.split("\n"):
+                        if line.strip() and not line.startswith("#") and not line.startswith("---"):
+                            desc = line.strip()[:100]
+                            break
+                except Exception:
+                    pass
+                skills.append({"name": d.name, "description": desc})
+    return JSONResponse({"skills": skills})
+
+
+@app.get("/api/skill-assignments/{agent_name}")
+async def api_skill_assignments_get(agent_name: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM skill_assignments WHERE agent_name=?", (agent_name,)).fetchall()
+    conn.close()
+    return JSONResponse({"assignments": [dict(r) for r in rows]})
+
+
+@app.put("/api/skill-assignments/{agent_name}")
+async def api_skill_assignments_save(agent_name: str, request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    assignments = body.get("assignments", []) if isinstance(body, dict) else []
+    conn = sqlite3.connect(METRICS_DB)
+    conn.execute("DELETE FROM skill_assignments WHERE agent_name=?", (agent_name,))
+    for a in assignments:
+        conn.execute("INSERT INTO skill_assignments (agent_name, skill_name, enabled, is_draft) VALUES (?,?,?,1)",
+                     (agent_name, a["skill_name"], 1 if a.get("enabled", True) else 0))
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/skill-assignments/{agent_name}/publish")
+async def api_skill_assignments_publish(agent_name: str, request: Request):
+    """發佈：建立 symlink 到角色的 skills 目錄"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(METRICS_DB)
+    conn.row_factory = sqlite3.Row
+    assignments = conn.execute("SELECT * FROM skill_assignments WHERE agent_name=? AND enabled=1", (agent_name,)).fetchall()
+    conn.execute("UPDATE skill_assignments SET is_draft=0 WHERE agent_name=?", (agent_name,))
+    conn.commit()
+    conn.close()
+
+    # Find agent dir
+    agent_dir = None
+    for g in AGENT_GROUPS.values():
+        for ag in g["agents"]:
+            if ag["name"] == agent_name:
+                subdir = g["agents_subdir"]
+                agent_dir = (AGENTS_DIR / subdir / agent_name) if subdir else (AGENTS_DIR / agent_name)
+                break
+    if not agent_dir or not agent_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Agent 目錄不存在：{agent_name}")
+
+    skills_dir = agent_dir / ".kiro" / "skills"
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    # Remove existing symlinks
+    for item in skills_dir.iterdir():
+        if item.is_symlink():
+            item.unlink()
+    # Create new symlinks
+    for a in assignments:
+        src = SKILLS_DIR / a["skill_name"]
+        dst = skills_dir / a["skill_name"]
+        if src.exists() and not dst.exists():
+            dst.symlink_to(src)
+    return JSONResponse({"ok": True, "message": f"已發佈 {len(assignments)} 個技能到 {agent_name}"})
 
 
 @app.get("/api/agents/{agent_name}/cronjob")
