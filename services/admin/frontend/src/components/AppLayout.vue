@@ -1,10 +1,10 @@
 <template>
   <!-- Top Header -->
-  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between">
+  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between relative">
     <div class="flex items-center gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
-      <h1 class="text-lg font-semibold">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
     </div>
+    <h1 class="absolute left-1/2 -translate-x-1/2 text-lg font-semibold whitespace-nowrap">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
     <div class="relative flex items-center gap-2 text-sm">
       <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
         <span>👤 {{ userName }}({{ userId }})</span>
