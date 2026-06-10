@@ -68,22 +68,23 @@
         </div>
         <div>
           <label class="text-sm text-white/70">可用 Tools</label>
-          <div v-if="form.toolsList.length" class="mt-1 max-h-40 overflow-y-auto bg-ocean-800/50 rounded p-2 space-y-1">
+          <div v-if="form.tested && form.toolsList.length" class="mt-1 max-h-40 overflow-y-auto bg-ocean-800/50 rounded p-2 space-y-1">
             <label v-for="t in form.toolsList" :key="t" class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 px-2 py-1 rounded">
               <input type="checkbox" :value="t" v-model="form.selectedTools" class="w-3.5 h-3.5 rounded">
               <span class="font-mono text-xs">{{ t }}</span>
             </label>
           </div>
-          <div v-else class="mt-1">
-            <textarea v-model="form.toolsStr" rows="3" class="w-full bg-ocean-800 border border-white/20 rounded px-3 py-2 text-xs font-mono text-white" placeholder="每行一個 tool 名稱（無法自動取得時手動輸入）"></textarea>
-            <div class="text-xs text-white/30 mt-1">無法連線 Server 時可手動輸入</div>
-          </div>
+          <div v-else-if="form.tested && !form.toolsList.length" class="mt-1 text-xs text-amber-300">⚠️ 連線成功但未取得 tools（Server 可能不支援 tools/list）</div>
+          <div v-else class="mt-1 text-xs text-white/30">請先測試連線取得 tools 列表</div>
         </div>
       </div>
       <div class="flex items-center gap-3 mt-5">
-        <button @click="submitForm()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded text-sm font-medium">{{ editingServer ? '更新' : '建立' }}</button>
+        <button v-if="!form.tested" @click="testForm()" class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded text-sm font-medium">🔗 測試連線</button>
+        <button v-else @click="submitForm()" :disabled="form.toolsList.length > 0 && !form.selectedTools.length"
+          class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white px-5 py-2 rounded text-sm font-medium">{{ editingServer ? '更新' : '建立' }}</button>
         <button @click="closeForm()" class="text-white/60 text-sm">取消</button>
-        <span v-if="formError" class="text-red-400 text-sm ml-2">{{ formError }}</span>
+        <span v-if="formError" class="text-red-400 text-sm">{{ formError }}</span>
+        <span v-if="form.testOk" class="text-green-400 text-sm">✅ 連線成功</span>
       </div>
     </div>
   </div>
@@ -98,7 +99,7 @@ const servers = ref([])
 const tagFilter = ref('')
 const showAdd = ref(false)
 const editingServer = ref(null)
-const form = ref({ key: '', name: '', type: 'http', url: '', headers: [{key:'',value:''}], tags: '正式', toolsStr: '', toolsList: [], selectedTools: [] })
+const form = ref({ key: '', name: '', type: 'http', url: '', headers: [{key:'',value:''}], tags: '正式', toolsStr: '', toolsList: [], selectedTools: [], tested: false, testOk: false })
 const formError = ref('')
 const testResults = ref({})
 
@@ -122,16 +123,33 @@ function editServer(s) {
   editingServer.value = s
   const hdrs = Object.entries(s.headers || {}).map(([k,v]) => ({key:k, value:String(v)}))
   const tools = s.available_tools || []
-  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags || '正式', toolsStr: '', toolsList: tools, selectedTools: [...tools] }
+  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags || '正式', toolsStr: '', toolsList: tools, selectedTools: [...tools], tested: true, testOk: true }
 }
 
-function closeForm() { showAdd.value = false; editingServer.value = null; formError.value = ''; form.value = { key:'', name:'', type:'http', url:'', headers:[{key:'',value:''}], tags:'正式', toolsStr:'', toolsList:[], selectedTools:[] } }
+function closeForm() { showAdd.value = false; editingServer.value = null; formError.value = ''; form.value = { key:'', name:'', type:'http', url:'', headers:[{key:'',value:''}], tags:'正式', toolsStr:'', toolsList:[], selectedTools:[], tested: false, testOk: false } }
+
+async function testForm() {
+  formError.value = ''
+  form.value.tested = false
+  form.value.testOk = false
+  const headers = {}
+  form.value.headers.forEach(h => { if (h.key.trim()) headers[h.key.trim()] = h.value })
+  const res = await post('/api/mcp-registry/test-url', { url: form.value.url, headers })
+  if (res?.ok) {
+    form.value.tested = true
+    form.value.testOk = true
+    form.value.toolsList = res.tools || []
+    form.value.selectedTools = [...(res.tools || [])]
+  } else {
+    formError.value = `連線失敗：${res?.error || '未知錯誤'}`
+  }
+}
 
 async function submitForm() {
   formError.value = ''
   const headers = {}
   form.value.headers.forEach(h => { if (h.key.trim()) headers[h.key.trim()] = h.value })
-  const tools = form.value.toolsList.length ? form.value.selectedTools : form.value.toolsStr.split('\n').map(t => t.trim()).filter(Boolean)
+  const tools = form.value.selectedTools
   const payload = { key: form.value.key, name: form.value.name, url: form.value.url, headers, available_tools: tools, tags: form.value.tags }
   if (editingServer.value) {
     await put(`/api/mcp-registry/${editingServer.value.id}`, payload)

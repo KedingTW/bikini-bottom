@@ -2312,6 +2312,49 @@ async def api_mcp_registry_test(mcp_id: int, request: Request):
         return JSONResponse({"ok": False, "error": str(e)})
 
 
+@app.post("/api/mcp-registry/test-url")
+async def api_mcp_registry_test_url(request: Request):
+    """測試 URL 連線 + 嘗試取得 tools 列表"""
+    import httpx
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    url = body.get("url", "").strip()
+    headers = body.get("headers", {})
+    if not url:
+        raise HTTPException(status_code=400, detail="請提供 URL")
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            # Try to get tools via /tools/list (JSON-RPC style) or just test connectivity
+            tools = []
+            # First test connectivity
+            r = await client.get(url, headers=headers)
+            # Try JSON-RPC tools/list
+            try:
+                tr = await client.post(url, headers=headers, json={"jsonrpc": "2.0", "method": "tools/list", "id": 1})
+                if tr.status_code == 200:
+                    data = tr.json()
+                    tools_data = data.get("result", {}).get("tools", [])
+                    tools = [t.get("name", "") for t in tools_data if t.get("name")]
+            except Exception:
+                pass
+            # If no tools from JSON-RPC, try reading from /sse endpoint info
+            if not tools:
+                try:
+                    sr = await client.get(url.rstrip('/') + '/sse', headers=headers, timeout=3)
+                except Exception:
+                    pass
+            return JSONResponse({"ok": True, "status": r.status_code, "tools": tools})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e), "tools": []})
+
+
 # ─── MCP Assignment APIs ──────────────────────────────────
 @app.get("/api/mcp-assignments/{agent_name}")
 async def api_mcp_assignments_get(agent_name: str, request: Request):
