@@ -107,6 +107,7 @@ def _init_db():
             )
         """)
     _seed_users()
+    _seed_mcp_registry()
 
 
 def _seed_users():
@@ -384,6 +385,40 @@ def get_docker_client():
         return docker.DockerClient(base_url="unix:///var/run/docker.sock")
     except Exception:
         return None
+
+
+def _seed_mcp_registry():
+    """Seed MCP Registry from mcp-configs/servers.json if DB is empty."""
+    import json as json_mod
+    conn = sqlite3.connect(METRICS_DB)
+    count = conn.execute("SELECT COUNT(*) FROM mcp_registry").fetchone()[0]
+    if count > 0:
+        conn.close()
+        return
+    # Read servers.json and prod environment
+    servers_path = Path(__file__).resolve().parent / ".." / ".." / ".." / "mcp-configs" / "servers.json"
+    env_path = Path(__file__).resolve().parent / ".." / ".." / ".." / "mcp-configs" / "environments" / "prod.json"
+    if not servers_path.exists():
+        conn.close()
+        return
+    try:
+        servers_data = json_mod.loads(servers_path.read_text())
+        env_data = json_mod.loads(env_path.read_text()) if env_path.exists() else {"baseUrl": "", "token": ""}
+        base_url = env_data.get("baseUrl", "")
+        token = env_data.get("token", "")
+        tz = timezone(timedelta(hours=8))
+        now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        for key, sdef in servers_data.get("servers", {}).items():
+            url = base_url + sdef.get("path", "")
+            headers = json_mod.dumps({"Authorization": f"Bearer {token}"}) if token else "{}"
+            tools = json_mod.dumps(sdef.get("autoApprove", []))
+            conn.execute("INSERT OR IGNORE INTO mcp_registry (key, name, url, headers, available_tools, tags, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                         (key, key, url, headers, tools, "正式", now_str, now_str))
+        conn.commit()
+        logging.info(f"✅ 已匯入 {len(servers_data.get('servers', {}))} 個 MCP Server 到 Registry")
+    except Exception as e:
+        logging.error(f"Seed MCP registry 失敗：{e}")
+    conn.close()
 
 
 def _detect_backend() -> str:

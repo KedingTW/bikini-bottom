@@ -16,39 +16,22 @@
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <div v-for="a in agents" :key="a.name" :id="'agent-' + a.name"
-        class="glass rounded-xl p-6 border-l-4 border-cyan-500/50 transition hover:-translate-y-0.5 hover:shadow-lg flex flex-col">
-        <div class="flex items-center gap-3 mb-4">
-          <img :src="'/avatar/' + a.name" class="w-14 h-14 rounded-full object-cover border-2 border-white/20" @error="$event.target.style.display='none'">
+        class="glass rounded-xl p-4 border-l-4 border-cyan-500/50 transition hover:-translate-y-0.5 hover:shadow-lg flex flex-col">
+        <div class="flex items-center gap-3 mb-3">
+          <img :src="'/avatar/' + a.name" class="w-11 h-11 rounded-full object-cover border-2 border-white/20" @error="$event.target.style.display='none'">
           <div class="flex-1 min-w-0">
-            <div class="font-semibold text-base truncate">{{ a.display }}</div>
-            <div class="text-sm text-white/60 truncate" :title="a.role">{{ a.role }}</div>
+            <div class="font-bold text-base truncate">{{ a.display }}</div>
+            <div class="text-sm text-white/50">{{ a.role }}</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2.5 text-sm mb-5 flex-1">
-          <div class="bg-ocean-800/40 rounded px-3 py-2">
-            <div class="text-white/50 text-xs">🔌 MCP</div>
-            <div class="font-semibold">{{ a.mcp_enabled }}/{{ a.mcp_servers }}</div>
-          </div>
-          <div class="bg-ocean-800/40 rounded px-3 py-2">
-            <div class="text-white/50 text-xs">🧠 技能</div>
-            <div class="font-semibold">{{ a.skills_count }}</div>
-          </div>
-          <div class="bg-ocean-800/40 rounded px-3 py-2">
-            <div class="text-white/50 text-xs">📋 指引</div>
-            <div class="font-semibold">{{ a.steering_count }}</div>
-          </div>
-          <div class="bg-ocean-800/40 rounded px-3 py-2">
-            <div class="text-white/50 text-xs">⏰ 排程</div>
-            <div class="font-semibold">{{ a.cronjob_enabled }}/{{ a.cronjob_count }}</div>
-          </div>
-          <div class="bg-ocean-800/40 rounded px-3 py-2 col-span-2">
-            <div class="text-white/50 text-xs">📚 知識庫</div>
-            <div class="font-semibold">{{ a.kb_count }} 個 context</div>
-          </div>
+        <div class="grid grid-cols-3 gap-2 text-sm mb-3">
+          <div class="text-center"><div class="text-lg font-bold text-cyan-300">{{ a.mcp_enabled }}</div><div class="text-[11px] text-white/40">MCP</div></div>
+          <div class="text-center"><div class="text-lg font-bold text-cyan-300">{{ a.skills_count }}</div><div class="text-[11px] text-white/40">技能</div></div>
+          <div class="text-center"><div class="text-lg font-bold text-cyan-300">{{ a.cronjob_enabled }}</div><div class="text-[11px] text-white/40">排程</div></div>
         </div>
 
-        <button @click="openAgent(a)" class="w-full px-3 py-2 text-sm rounded border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10 font-medium">⚙️ 設定</button>
+        <button @click="openAgent(a)" class="w-full py-2 text-sm rounded bg-cyan-600/20 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-600/30 font-medium">⚙️ 設定</button>
       </div>
     </div>
   </div>
@@ -139,44 +122,23 @@
         <!-- MCP Tab -->
         <div v-if="detailTab === 'mcp'">
           <div class="flex items-center gap-2 mb-4">
-            <button @click="mcpMode = 'ui'" :class="mcpMode === 'ui' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">管理模式</button>
-            <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-xs">JSON</button>
-            <button v-if="mcpMode === 'ui'" @click="showAddServer = true" class="ml-auto text-xs px-3 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white">+ 新增 Server</button>
+            <button @click="mcpMode = 'assign'" :class="mcpMode === 'assign' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">分配模式</button>
+            <button @click="mcpMode = 'raw'" :class="mcpMode === 'raw' ? 'bg-cyan-600 text-white' : 'text-white/60'" class="px-3 py-1 rounded text-sm">JSON 進階</button>
+            <span v-if="mcpHasDraft" class="ml-2 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">有未發佈變更</span>
           </div>
 
-          <div v-if="mcpMode === 'ui'" class="space-y-3">
-            <div v-if="!mcpServers.length" class="text-white/50 text-sm py-4">無 MCP Server 配置</div>
-            <div v-for="name in mcpServers" :key="name" class="bg-ocean-800/50 rounded-lg p-4">
-              <div class="flex items-center gap-3 mb-3">
-                <span class="font-medium text-sm" :class="mcpServersMap[name].disabled ? 'text-white/40 line-through' : 'text-cyan-300'">{{ name }}</span>
-                <span v-if="mcpServersMap[name].disabled" class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">停用</span>
-                <span v-else class="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">啟用</span>
-                <div class="ml-auto flex gap-2">
-                  <button @click="toggleServer(name)" class="text-xs px-2 py-1 rounded border border-white/20 hover:bg-white/10">
-                    {{ mcpServersMap[name].disabled ? '啟用' : '停用' }}
-                  </button>
-                  <button @click="removeServer(name)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
-                </div>
+          <div v-if="mcpMode === 'assign'" class="space-y-2">
+            <div v-if="!mcpRegistryList.length" class="text-white/50 text-sm py-4">Registry 無 MCP Server，請先到「MCP 管理」新增</div>
+            <div v-for="s in mcpRegistryList" :key="s.key" class="bg-ocean-800/50 rounded-lg px-4 py-3 flex items-center gap-3">
+              <input type="checkbox" :checked="isMcpAssigned(s.key)" @change="toggleMcpAssign(s.key, $event.target.checked)" class="w-4 h-4 rounded">
+              <div class="flex-1">
+                <span class="font-medium text-sm text-cyan-300">{{ s.name }}</span>
+                <span class="text-xs text-white/40 ml-2 font-mono">{{ s.key }}</span>
               </div>
-              <div class="space-y-2.5">
-                <div v-if="'url' in mcpServersMap[name]" class="flex items-center gap-2">
-                  <span class="text-white/40 text-sm min-w-[70px]">URL</span>
-                  <input :value="mcpServersMap[name].url" @change="updateServerField(name, 'url', $event.target.value)"
-                    class="flex-1 bg-ocean-800 text-white border border-white/10 rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-cyan-400/60">
-                </div>
-                <div v-if="mcpServersMap[name].headers" class="flex items-start gap-2">
-                  <span class="text-white/40 text-sm min-w-[70px] mt-1.5">Headers</span>
-                  <div class="flex-1 space-y-1.5">
-                    <div v-for="(val, key) in mcpServersMap[name].headers" :key="key" class="flex items-center gap-2">
-                      <span class="text-xs text-white/60 min-w-[80px] font-mono">{{ key }}:</span>
-                      <span class="text-sm font-mono text-white/40">{{ maskToken(String(val)) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <span class="text-xs text-white/40">{{ (s.available_tools || []).length }} tools</span>
             </div>
-            <div class="flex items-center gap-3 pt-2">
-              <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-sm font-medium">💾 儲存變更</button>
+            <div class="flex items-center gap-3 pt-3">
+              <button @click="publishMcpAssignments()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded text-sm font-medium">🚀 發佈到角色</button>
               <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
             </div>
           </div>
@@ -184,8 +146,8 @@
           <div v-if="mcpMode === 'raw'">
             <textarea v-model="mcpRaw" rows="20" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-sm font-mono leading-relaxed resize-y"></textarea>
             <div class="flex items-center gap-3 mt-3">
-              <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-medium">💾 儲存</button>
-              <span v-if="mcpStatus" class="text-xs" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
+              <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded text-sm font-medium">💾 儲存</button>
+              <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
             </div>
           </div>
         </div>
@@ -328,7 +290,7 @@
 import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useApi } from '../composables/useApi.js'
 
-const { get, put } = useApi()
+const { get, put, post } = useApi()
 const currentGroup = inject('currentGroup', ref('bikini-bottom'))
 
 const loading = ref(false)
@@ -337,9 +299,12 @@ const selectedAgent = ref(null)
 const detailTab = ref('config')
 
 // MCP state
-const mcpMode = ref('ui')
+const mcpMode = ref('assign')
 const mcpRaw = ref('')
 const mcpStatus = ref(null)
+const mcpRegistryList = ref([])
+const mcpAssignedKeys = ref(new Set())
+const mcpHasDraft = ref(false)
 const configMode = ref('ui')
 const configRaw = ref('')
 const configStatus = ref(null)
@@ -411,6 +376,14 @@ async function openAgent(a) {
     const cfgRes = await get(`/api/agents/${a.name}/config`)
     configRaw.value = cfgRes?.raw || ''
   } catch { configRaw.value = '' }
+  // Load MCP registry + assignments
+  try {
+    const regRes = await get('/api/mcp-registry')
+    mcpRegistryList.value = regRes?.servers || []
+    const assRes = await get(`/api/mcp-assignments/${a.name}`)
+    mcpAssignedKeys.value = new Set((assRes?.assignments || []).map(x => x.mcp_key))
+    mcpHasDraft.value = (assRes?.assignments || []).some(x => x.is_draft)
+  } catch { mcpRegistryList.value = []; mcpAssignedKeys.value = new Set() }
   // Load MCP
   const res = await get(`/api/agents/${a.name}/mcp`)
   mcpRaw.value = res?.raw || '{}'
@@ -490,6 +463,25 @@ async function saveConfig() {
   const res = await put(`/api/agents/${selectedAgent.value.name}/config`, { raw: configRaw.value })
   if (res?.ok) configStatus.value = { ok: true, text: '✅ 已儲存' }
   else configStatus.value = { ok: false, text: '❌ ' + (res?.detail || '儲存失敗') }
+}
+
+function isMcpAssigned(key) { return mcpAssignedKeys.value.has(key) }
+
+function toggleMcpAssign(key, checked) {
+  const s = new Set(mcpAssignedKeys.value)
+  if (checked) s.add(key); else s.delete(key)
+  mcpAssignedKeys.value = s
+  mcpHasDraft.value = true
+  // Auto-save draft
+  const assignments = [...s].map(k => ({ mcp_key: k, enabled: true, allowed_tools: [] }))
+  put(`/api/mcp-assignments/${selectedAgent.value.name}`, { assignments })
+}
+
+async function publishMcpAssignments() {
+  mcpStatus.value = null
+  const res = await post(`/api/mcp-assignments/${selectedAgent.value.name}/publish`)
+  if (res?.ok) { mcpStatus.value = { ok: true, text: '✅ 已發佈' }; mcpHasDraft.value = false }
+  else mcpStatus.value = { ok: false, text: '❌ ' + (res?.detail || '發佈失敗') }
 }
 
 function toggleServer(name) {
