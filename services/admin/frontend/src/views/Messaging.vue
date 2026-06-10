@@ -196,5 +196,9 @@ async function loadHistory() {
 onMounted(async () => {
   const [chRes] = await Promise.all([get(`/api/discord/channels?group=${currentGroup.value}`), loadHistory()])
   channels.value = chRes?.channels || []
+  window.addEventListener('group-changed', async () => {
+    const r = await get(`/api/discord/channels?group=${currentGroup.value}`)
+    channels.value = r?.channels || []
+  })
 })
 </script>

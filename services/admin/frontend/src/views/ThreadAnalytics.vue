@@ -202,5 +202,8 @@ watch(detailMessages, async (msgs) => {
   if (msgs.length) { await nextTick(); setTimeout(renderDetailChart, 200) }
 })
 
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('group-changed', load)
+})
 </script>

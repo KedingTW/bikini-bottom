@@ -101,5 +101,8 @@ async function refresh() {
   loading.value = false
 }
 
-onMounted(refresh)
+onMounted(() => {
+  refresh()
+  window.addEventListener('group-changed', refresh)
+})
 </script>

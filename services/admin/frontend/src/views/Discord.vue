@@ -808,5 +808,6 @@ onMounted(() => {
   refresh()
   if (activeTab.value === 'threads') loadThreads()
   if (activeTab.value === 'activity') loadActivity()
+  window.addEventListener('group-changed', () => { refresh(); loadThreads() })
 })
 </script>
