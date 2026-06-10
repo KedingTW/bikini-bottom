@@ -76,11 +76,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/wecom-bot-order-transform/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-wecom/order-transform/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/wecom-bot-order-transform
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-wecom/order-transform
             type: Directory
         - name: shared-steering
           hostPath:
