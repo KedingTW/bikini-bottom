@@ -16,39 +16,39 @@
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <div v-for="a in agents" :key="a.name" :id="'agent-' + a.name"
-        class="glass rounded-xl p-5 border-l-4 border-cyan-500/50 transition hover:-translate-y-0.5 hover:shadow-lg flex flex-col">
+        class="glass rounded-xl p-6 border-l-4 border-cyan-500/50 transition hover:-translate-y-0.5 hover:shadow-lg flex flex-col">
         <div class="flex items-center gap-3 mb-4">
-          <img :src="'/avatar/' + a.name" class="w-12 h-12 rounded-full object-cover border-2 border-white/20" @error="$event.target.style.display='none'">
+          <img :src="'/avatar/' + a.name" class="w-14 h-14 rounded-full object-cover border-2 border-white/20" @error="$event.target.style.display='none'">
           <div class="flex-1 min-w-0">
-            <div class="font-semibold truncate">{{ a.display }}</div>
+            <div class="font-semibold text-base truncate">{{ a.display }}</div>
             <div class="text-sm text-white/60 truncate" :title="a.role">{{ a.role }}</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 text-xs mb-4 flex-1">
-          <div class="bg-ocean-800/40 rounded px-2 py-1.5">
-            <div class="text-white/50 text-[10px]">🔌 MCP</div>
+        <div class="grid grid-cols-2 gap-2.5 text-sm mb-5 flex-1">
+          <div class="bg-ocean-800/40 rounded px-3 py-2">
+            <div class="text-white/50 text-xs">🔌 MCP</div>
             <div class="font-semibold">{{ a.mcp_enabled }}/{{ a.mcp_servers }}</div>
           </div>
-          <div class="bg-ocean-800/40 rounded px-2 py-1.5">
-            <div class="text-white/50 text-[10px]">🧠 技能</div>
+          <div class="bg-ocean-800/40 rounded px-3 py-2">
+            <div class="text-white/50 text-xs">🧠 技能</div>
             <div class="font-semibold">{{ a.skills_count }}</div>
           </div>
-          <div class="bg-ocean-800/40 rounded px-2 py-1.5">
-            <div class="text-white/50 text-[10px]">📋 指引</div>
+          <div class="bg-ocean-800/40 rounded px-3 py-2">
+            <div class="text-white/50 text-xs">📋 指引</div>
             <div class="font-semibold">{{ a.steering_count }}</div>
           </div>
-          <div class="bg-ocean-800/40 rounded px-2 py-1.5">
-            <div class="text-white/50 text-[10px]">⏰ 排程</div>
+          <div class="bg-ocean-800/40 rounded px-3 py-2">
+            <div class="text-white/50 text-xs">⏰ 排程</div>
             <div class="font-semibold">{{ a.cronjob_enabled }}/{{ a.cronjob_count }}</div>
           </div>
-          <div class="bg-ocean-800/40 rounded px-2 py-1.5 col-span-2">
-            <div class="text-white/50 text-[10px]">📚 知識庫</div>
+          <div class="bg-ocean-800/40 rounded px-3 py-2 col-span-2">
+            <div class="text-white/50 text-xs">📚 知識庫</div>
             <div class="font-semibold">{{ a.kb_count }} 個 context</div>
           </div>
         </div>
 
-        <button @click="openAgent(a)" class="w-full px-3 py-1.5 text-xs rounded border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10">⚙️ 設定</button>
+        <button @click="openAgent(a)" class="w-full px-3 py-2 text-sm rounded border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10 font-medium">⚙️ 設定</button>
       </div>
     </div>
   </div>
@@ -128,7 +128,7 @@
           </div>
 
           <div v-if="configMode === 'raw'">
-            <textarea v-model="configRaw" rows="25" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-xs font-mono leading-relaxed resize-y"></textarea>
+            <textarea v-model="configRaw" rows="25" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-sm font-mono leading-relaxed resize-y"></textarea>
             <div class="flex items-center gap-3 mt-3">
               <button @click="saveConfig()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-medium">💾 儲存</button>
               <span v-if="configStatus" class="text-xs" :class="configStatus.ok ? 'text-green-400' : 'text-red-400'">{{ configStatus.text }}</span>
@@ -158,24 +158,31 @@
                   <button @click="removeServer(name)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">刪除</button>
                 </div>
               </div>
-              <div class="space-y-2">
+              <div class="space-y-2.5">
                 <div v-if="'url' in mcpServersMap[name]" class="flex items-center gap-2">
-                  <span class="text-white/40 text-xs min-w-[50px]">url</span>
+                  <span class="text-white/40 text-sm min-w-[70px]">URL</span>
                   <input :value="mcpServersMap[name].url" @change="updateServerField(name, 'url', $event.target.value)"
-                    class="flex-1 bg-ocean-800 text-white border border-white/10 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-cyan-400/60">
+                    class="flex-1 bg-ocean-800 text-white border border-white/10 rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-cyan-400/60">
                 </div>
                 <div v-if="mcpServersMap[name].headers" class="flex items-start gap-2">
-                  <span class="text-white/40 text-xs min-w-[50px] mt-1">headers</span>
-                  <div class="flex-1 text-xs font-mono text-white/60">
-                    <div v-for="(val, key) in mcpServersMap[name].headers" :key="key" class="truncate">{{ key }}: {{ String(val).slice(0, 25) }}…</div>
+                  <span class="text-white/40 text-sm min-w-[70px] mt-1.5">Headers</span>
+                  <div class="flex-1 space-y-1.5">
+                    <div v-for="(val, key) in mcpServersMap[name].headers" :key="key" class="flex items-center gap-2">
+                      <span class="text-xs text-white/60 min-w-[80px] font-mono">{{ key }}:</span>
+                      <span class="text-sm font-mono text-white/40">{{ maskToken(String(val)) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            <div class="flex items-center gap-3 pt-2">
+              <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-sm font-medium">💾 儲存變更</button>
+              <span v-if="mcpStatus" class="text-sm" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
+            </div>
           </div>
 
           <div v-if="mcpMode === 'raw'">
-            <textarea v-model="mcpRaw" rows="20" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-xs font-mono leading-relaxed resize-y"></textarea>
+            <textarea v-model="mcpRaw" rows="20" class="w-full bg-ocean-800 text-white border border-white/20 rounded-lg px-4 py-3 text-sm font-mono leading-relaxed resize-y"></textarea>
             <div class="flex items-center gap-3 mt-3">
               <button @click="saveMcp()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-medium">💾 儲存</button>
               <span v-if="mcpStatus" class="text-xs" :class="mcpStatus.ok ? 'text-green-400' : 'text-red-400'">{{ mcpStatus.text }}</span>
@@ -364,6 +371,11 @@ const mcpServersMap = computed(() => {
   try { return JSON.parse(mcpRaw.value)?.mcpServers || {} } catch { return {} }
 })
 const mcpServers = computed(() => Object.keys(mcpServersMap.value))
+
+function maskToken(val) {
+  if (!val || val.length < 8) return '***'
+  return val.slice(0, 4) + '***' + val.slice(-4)
+}
 
 function formatBytes(b) {
   if (!b) return '0 B'
