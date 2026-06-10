@@ -128,7 +128,7 @@
               <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">可用 MCP</div>
               <div class="flex-1 overflow-y-auto p-2 space-y-1">
                 <div v-for="s in availableMcps" :key="s.key" @click="toggleLeftSelect(s.key)"
-                  :class="leftSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                  :class="leftSelected.includes(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
                   class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
                   <span class="text-sm">{{ s.name }}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
@@ -136,14 +136,14 @@
               </div>
             </div>
             <div class="flex flex-col items-center justify-center gap-2 w-10">
-              <button @click="moveRight()" :disabled="!leftSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">›</button>
-              <button @click="moveLeft()" :disabled="!rightSelected.size" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">‹</button>
+              <button @click="moveRight()" :disabled="!leftSelected.length" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">›</button>
+              <button @click="moveLeft()" :disabled="!rightSelected.length" class="w-8 h-8 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 text-white font-bold">‹</button>
             </div>
             <div class="flex-1 glass rounded-xl flex flex-col overflow-hidden">
               <div class="px-4 py-2 bg-ocean-800/60 text-sm font-medium border-b border-white/10">已分配 MCP</div>
               <div class="flex-1 overflow-y-auto p-2 space-y-1">
                 <div v-for="s in assignedMcps" :key="s.key" @click="toggleRightSelect(s.key)"
-                  :class="rightSelected.has(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
+                  :class="rightSelected.includes(s.key) ? 'bg-cyan-600/20 border-cyan-400/50' : 'border-transparent hover:bg-white/5'"
                   class="px-3 py-2 rounded border cursor-pointer flex items-center gap-2">
                   <span class="text-sm">{{ s.name }}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
@@ -492,8 +492,8 @@ async function saveConfig() {
 
 function isMcpAssigned(key) { return mcpAssignedKeys.value.has(key) }
 
-const leftSelected = ref(new Set())
-const rightSelected = ref(new Set())
+const leftSelected = ref([])
+const rightSelected = ref([])
 const availableMcps = computed(() => mcpRegistryList.value.filter(s => !mcpAssignedKeys.value.has(s.key)))
 const assignedMcps = computed(() => mcpRegistryList.value.filter(s => mcpAssignedKeys.value.has(s.key)))
 
@@ -504,21 +504,21 @@ function tagColor(tag) {
   return 'bg-white/10 text-white/60'
 }
 
-function toggleLeftSelect(key) { const s = new Set(leftSelected.value); s.has(key) ? s.delete(key) : s.add(key); leftSelected.value = s }
-function toggleRightSelect(key) { const s = new Set(rightSelected.value); s.has(key) ? s.delete(key) : s.add(key); rightSelected.value = s }
+function toggleLeftSelect(key) { const i = leftSelected.value.indexOf(key); i >= 0 ? leftSelected.value.splice(i, 1) : leftSelected.value.push(key) }
+function toggleRightSelect(key) { const i = rightSelected.value.indexOf(key); i >= 0 ? rightSelected.value.splice(i, 1) : rightSelected.value.push(key) }
 
 function moveRight() {
   const s = new Set(mcpAssignedKeys.value)
   leftSelected.value.forEach(k => s.add(k))
   mcpAssignedKeys.value = s
-  leftSelected.value = new Set()
+  leftSelected.value = []
   saveDraft()
 }
 function moveLeft() {
   const s = new Set(mcpAssignedKeys.value)
   rightSelected.value.forEach(k => s.delete(k))
   mcpAssignedKeys.value = s
-  rightSelected.value = new Set()
+  rightSelected.value = []
   saveDraft()
 }
 function saveDraft() {

@@ -2117,8 +2117,16 @@ async def api_agent_mcp(agent_name: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
-    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
-    if not mcp_path.exists():
+    # Find agent dir (check group subdirs)
+    mcp_path = None
+    for g in AGENT_GROUPS.values():
+        if any(a["name"] == agent_name for a in g["agents"]):
+            d = (AGENTS_DIR / g["agents_subdir"] / agent_name) if g["agents_subdir"] else (AGENTS_DIR / agent_name)
+            p = d / ".kiro" / "settings" / "mcp.json"
+            if p.exists():
+                mcp_path = p
+            break
+    if not mcp_path or not mcp_path.exists():
         return JSONResponse({"error": None, "config": {}, "raw": "{}"})
     try:
         raw = mcp_path.read_text()

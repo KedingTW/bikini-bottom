@@ -21,8 +21,8 @@
         <div class="flex items-center gap-2 mb-1.5">
           <span class="font-bold text-sm text-cyan-300">{{ s.name }}</span>
           <span class="text-[10px] px-1.5 py-0.5 rounded" :class="tagColor(s.tags)">{{ s.tags }}</span>
-          <button @click.stop="testServer(s)" class="ml-auto text-xs text-white/40 hover:text-cyan-300" title="測試連線">🔗</button>
-          <span v-if="testResults[s.id]" class="text-xs" :title="testResults[s.id].error || ''">{{ testResults[s.id].ok ? '✅' : '❌' }}</span>
+          <span v-if="testResults[s.id]" class="ml-auto text-xs" :title="testResults[s.id].error || ''">{{ testResults[s.id].ok ? '✅' : '❌' }}</span>
+          <button @click.stop="testServer(s)" class="text-xs text-white/40 hover:text-cyan-300" :class="{'ml-auto': !testResults[s.id]}" title="測試連線">🔗</button>
         </div>
         <div class="text-xs font-mono text-white/70 truncate mb-1">{{ s.url }}</div>
         <div class="text-xs text-white/50">HTTP/SSE · {{ s.available_tools.length }} tools</div>
@@ -104,7 +104,11 @@ const formError = ref('')
 const testResults = ref({})
 
 const allTags = computed(() => [...new Set(servers.value.map(s => s.tags).filter(Boolean))])
-const filteredServers = computed(() => tagFilter.value ? servers.value.filter(s => s.tags === tagFilter.value) : servers.value)
+const filteredServers = computed(() => {
+  const tagOrder = {'正式': 0, '測試': 1, '本地': 2}
+  let list = tagFilter.value ? servers.value.filter(s => s.tags === tagFilter.value) : [...servers.value]
+  return list.sort((a, b) => a.name.localeCompare(b.name) || (tagOrder[a.tags] ?? 9) - (tagOrder[b.tags] ?? 9))
+})
 
 function maskVal(v) { const s = String(v); return s.length > 8 ? s.slice(0,4) + '***' + s.slice(-4) : '***' }
 function tagColor(tag) {
