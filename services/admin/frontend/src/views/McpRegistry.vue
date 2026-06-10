@@ -127,7 +127,7 @@ function editServer(s) {
   editingServer.value = s
   const hdrs = Object.entries(s.headers || {}).map(([k,v]) => ({key:k, value:String(v)}))
   const tools = s.available_tools || []
-  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags || '正式', toolsStr: '', toolsList: tools, selectedTools: [...tools], tested: true, testOk: true }
+  form.value = { key: s.key, name: s.name, type: 'http', url: s.url, headers: hdrs.length ? hdrs : [{key:'',value:''}], tags: s.tags || '正式', toolsStr: '', toolsList: tools, selectedTools: [...tools], tested: tools.length > 0, testOk: false }
 }
 
 function closeForm() { showAdd.value = false; editingServer.value = null; formError.value = ''; form.value = { key:'', name:'', type:'http', url:'', headers:[{key:'',value:''}], tags:'正式', toolsStr:'', toolsList:[], selectedTools:[], tested: false, testOk: false } }
