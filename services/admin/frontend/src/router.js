@@ -13,6 +13,8 @@ import ComingSoon from './views/ComingSoon.vue'
 import Deploy from './views/Deploy.vue'
 import Logs from './views/Logs.vue'
 import Login from './views/Login.vue'
+import McpRegistry from './views/McpRegistry.vue'
+import SkillRegistry from './views/SkillRegistry.vue'
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
@@ -34,6 +36,8 @@ const routes = [
   { path: '/logs', name: 'logs', component: Logs },
   { path: '/deploy', name: 'deploy', component: Deploy },
   { path: '/api-keys', name: 'api-keys', component: ComingSoon },
+  { path: '/mcp-registry', name: 'mcp-registry', component: McpRegistry },
+  { path: '/skill-registry', name: 'skill-registry', component: SkillRegistry },
   // 系統管理
   { path: '/users', name: 'users', component: Users },
 ]

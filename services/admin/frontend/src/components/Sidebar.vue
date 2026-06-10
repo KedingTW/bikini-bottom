@@ -84,6 +84,8 @@ const navGroups = [
   ]},
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [
+    { path: '/mcp-registry', icon: '🔧', label: 'MCP 管理', admin: true },
+    { path: '/skill-registry', icon: '🎯', label: '技能管理', admin: true },
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
     { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
