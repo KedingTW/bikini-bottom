@@ -274,7 +274,7 @@ AGENT_GROUPS = {
         "icon": "🏢",
         "agents_subdir": "keding-dc",
         "agents": [
-            {"name": "keding-dc-order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋"},
+            {"name": "order-transform", "display": "訂單轉換", "role": "訂單處理", "type": "agent", "icon": "📋"},
         ],
     },
     "keding-wecom": {

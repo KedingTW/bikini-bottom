@@ -76,12 +76,14 @@ const groups = ref([
   { id: 'keding-dc', display: '科定DC', icon: '🏢' },
   { id: 'keding-wecom', display: '科定WeCom', icon: '💬' },
 ])
-const currentGroup = ref(localStorage.getItem('adminGroup') || 'bikini-bottom')
+const currentGroup = ref(new URLSearchParams(window.location.search).get('group') || localStorage.getItem('adminGroup') || 'bikini-bottom')
 const currentGroupDisplay = computed(() => groups.value.find(g => g.id === currentGroup.value)?.display || currentGroup.value)
 
 function onGroupChange() {
   localStorage.setItem('adminGroup', currentGroup.value)
-  // Force window event so any page component can react
+  const url = new URL(window.location)
+  url.searchParams.set('group', currentGroup.value)
+  history.replaceState(null, '', url)
   window.dispatchEvent(new CustomEvent('group-changed', { detail: currentGroup.value }))
 }
 
