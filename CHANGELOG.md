@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-06-11
+
+- **feat**: 小蝸（gary）角色升級為專案經理（PM）— 與章魚哥完全相同職責，移除原本的維運助手/usage report 定位
+- **docs**: 更新 overview、team-announcement、usage-guide、discord、project steering 等文件，反映小蝸的新角色
+- **docs**: 更新 daily-report spec，將 gary 加入日報撰寫排程
+
 ## 2026-06-09
 
 - **feat**: 角色配置（AgentConfig）大幅強化 — 卡片改 4 欄+細項統計（MCP 啟用/總數、技能、指引、排程啟用/總數、KB context 數）、Dialog 固定 85vh

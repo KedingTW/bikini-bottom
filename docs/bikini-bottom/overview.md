@@ -19,10 +19,10 @@ Discord Server: 比奇堡
 │   ├── 🐋 珍珍（pearl） — 全端工程師
 │   ├── 🦞 蝦霸（larry） — 後端工程師
 │   ├── 🦑 章魚哥（squidward） — 專案經理 / PM
+│   ├── 🐌 小蝸（gary） — 專案經理 / PM
 │   ├── 🐿️ 珊迪（sandy） — 客戶成功經理
 │   ├── 🐡 泡芙老師（puff） — Code Review
 │   ├── 🐚 神奇海螺（conch） — 團隊神諭者
-│   ├── 🐌 小蝸（gary） — 維運助手 / 查詢服務
 │
 ├── 系統服務（僅提供授權，不參與對話）
 │   └── 🖥️ 凱倫（karen） — Discord 授權 Token 持有者
@@ -51,7 +51,7 @@ Discord Server: 比奇堡
 | 🐿️ 珊迪 | `sandy` | OpenAB agent | 客戶成功經理 |
 | 🐡 泡芙老師 | `puff` | OpenAB agent | Code Review |
 | 🐚 神奇海螺 | `conch` | OpenAB agent | 團隊神諭者，求助與流程導航 |
-| 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 維運助手，提供 `/usage`、`/activity`、`/status`、`/heal`、`/logs`、`/archive` 指令 |
+| 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 專案經理（PM），與章魚哥相同職責；slash-bot 服務獨立運作 |
 | 🖥️ 凱倫 | `karen` | 系統服務（非 agent） | 不參與對話，僅持有 Discord Bot Token 供 MCP Server 管理成員/身分組/頻道 |
 
 ## 快速開始
@@ -89,10 +89,10 @@ bikini-bottom/
 │   ├── pearl/                ← 🐋 珍珍（全端工程師）
 │   ├── larry/                ← 🦞 蝦霸（後端工程師）
 │   ├── squidward/            ← 🦑 章魚哥（PM）
+│   ├── gary/                 ← 🐌 小蝸（PM，與章魚哥相同職責）
 │   ├── sandy/                ← 🐿️ 珊迪（客戶成功經理）
 │   ├── puff/                 ← 🐡 泡芙老師（Code Review）
 │   ├── conch/                ← 🐚 神奇海螺（團隊神諭者）
-│   ├── gary/                 ← 🐌 小蝸（維運助手，也是 slash-bot 的人格）
 │   └── karen/               ← 🖥️ 凱倫（系統服務，僅持有授權 Token）
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
