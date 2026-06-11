@@ -75,6 +75,10 @@ NAS_CRED_FILE="/etc/nas-credentials"
 NAS_MOUNT="/mnt/nas"
 NAS_DEVICE="//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom"
 
+# 89.KedingDC NAS（下單小幫手 correction-log 等）
+KD_SHARE_MOUNT="/mnt/kd-share"
+KD_SHARE_DEVICE="//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/89.KedingDC"
+
 if [ ! -f "$NAS_CRED_FILE" ]; then
   echo "  需要 NAS 帳號密碼（跟舊機 .env 裡的 NAS_USER / NAS_PASSWORD 一樣）"
   read -p "  NAS 使用者名稱: " NAS_USER
@@ -93,13 +97,21 @@ fi
 
 # 建立掛載點
 mkdir -p $NAS_MOUNT
+mkdir -p $KD_SHARE_MOUNT
 
 # 檢查 fstab 是否已有
 if grep -q "88.BikiniBottom" /etc/fstab; then
-  echo "  ✅ fstab 已有 NAS 設定"
+  echo "  ✅ fstab 已有 NAS 設定 (88.BikiniBottom)"
 else
   echo "$NAS_DEVICE $NAS_MOUNT cifs credentials=$NAS_CRED_FILE,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0" >> /etc/fstab
-  echo "  ✅ fstab 已新增 NAS 掛載設定"
+  echo "  ✅ fstab 已新增 NAS 掛載設定 (88.BikiniBottom)"
+fi
+
+if grep -q "89.KedingDC" /etc/fstab; then
+  echo "  ✅ fstab 已有 NAS 設定 (89.KedingDC)"
+else
+  echo "$KD_SHARE_DEVICE $KD_SHARE_MOUNT cifs credentials=$NAS_CRED_FILE,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0" >> /etc/fstab
+  echo "  ✅ fstab 已新增 NAS 掛載設定 (89.KedingDC)"
 fi
 
 # 掛載
