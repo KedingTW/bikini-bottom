@@ -34,7 +34,6 @@
 |------|------|------|
 | Admin Dashboard | `services/admin/` | Web 管理介面（角色狀態、MCP、成本） |
 | Zeabur Gateway 模組 | `services/zeabur-gateway/` | WeCom gateway 部署管理 |
-| Slash Bot | `services/slash-bot/` | Discord 維運指令（/status, /usage） |
 
 ---
 
@@ -63,7 +62,6 @@ bikini-bottom/
 ├── k3s/                         ← K3s deployment YAML
 ├── services/
 │   ├── admin/                   ← 管理後台
-│   ├── slash-bot/               ← Discord 維運指令
 │   └── zeabur-gateway/          ← WeCom gateway 模組
 ├── shared/                      ← 比奇堡共用 steering / skills
 ├── scripts/                     ← entrypoint、部署腳本

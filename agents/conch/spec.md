@@ -30,7 +30,6 @@
 | 章魚哥 / squidward | squidward |
 | 珊迪 / sandy | sandy |
 | 泡芙老師 / puff | puff |
-| 小蝸 / gary | slash-bot |
 | 企微 / wecom | wecom-bot |
 | gateway | gateway |
 

@@ -27,9 +27,8 @@ bikini-bottom/
 ├── agents/                   ← AI 角色設定
 │   ├── bob/                  ← 🧽 海綿寶寶（全端工程師）
 │   ├── patrick/              ← ⭐ 派大星（後端工程師）
-│   └── gary/                 ← 🐌 小蝸（維運助手，AI 模式未啟用）
+│   └── gary/                 ← 🐌 小蝸（PM）
 ├── services/                 ← 獨立服務
-│   └── slash-bot/            ← Discord slash command bot（/usage 等）
 └── docs/
     └── new-agent-sop.md      ← 新增角色 SOP
 ```
@@ -40,7 +39,7 @@ bikini-bottom/
 |------|------|------|------|
 | 🧽 海綿寶寶 | bob | 全端工程師 | 運作中 |
 | ⭐ 派大星 | patrick | 後端工程師 | 運作中 |
-| 🐌 小蝸 | gary | 維運助手 | AI 模式未啟用，slash-bot 使用其 token |
+| 🐌 小蝸 | gary | 專案經理（PM） | 運作中 |
 
 ## 常用操作
 

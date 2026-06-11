@@ -60,17 +60,6 @@ kubectl create secret generic github-token -n $NAMESPACE \
   --from-literal=GH_TOKEN="${GH_TOKEN}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-# ─── Slash Bot ───
-echo "  📌 slash-bot-secrets..."
-kubectl create secret generic slash-bot-secrets -n $NAMESPACE \
-  --from-literal=DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN_GARY}" \
-  --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-  --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-  --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
-  --from-literal=OPENAI_ADMIN_KEY="${OPENAI_ADMIN_KEY:-}" \
-  --from-literal=OPENAI_ORG_ID="${OPENAI_ORG_ID:-}" \
-  --dry-run=client -o yaml | kubectl apply -f -
-
 # ─── WeCom Gateway ───
 echo "  📌 wecom-secrets..."
 kubectl create secret generic wecom-secrets -n $NAMESPACE \

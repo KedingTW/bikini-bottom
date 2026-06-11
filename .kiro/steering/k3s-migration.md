@@ -63,9 +63,6 @@ docker build -t bikini-bottom/agent:latest .
 # 匯入到 K3s 的 containerd
 docker save bikini-bottom/agent:latest | sudo k3s ctr images import -
 
-# Build slash-bot image
-docker build -t bikini-bottom/slash-bot:latest ./services/slash-bot
-docker save bikini-bottom/slash-bot:latest | sudo k3s ctr images import -
 ```
 
 ### Phase 3：建立 K8s 資源
@@ -138,5 +135,4 @@ docker compose up -d
 | 珍珍 | pearl | OpenAB agent |
 | 蝦霸 | larry | OpenAB agent |
 | 神奇海螺 | conch | OpenAB agent |
-| 小蝸 | slash-bot | 獨立服務 (Node.js) |
 | Gateway | gateway | WeCom Gateway |
