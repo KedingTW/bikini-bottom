@@ -28,7 +28,7 @@ Discord Server: 比奇堡
 │   └── 🖥️ 凱倫（karen） — Discord 授權 Token 持有者
 │
 ├── 獨立服務
-│   └── 🐌 slash-bot — 小蝸的查詢與容器管理服務（含神奇海螺的容器操作）
+│   └── 🐌 slash-bot — 查詢與容器管理服務（含神奇海螺的容器操作）
 │
 └── Discord 頻道
     ├── 🍔 蟹堡王 — 工作任務交辦
@@ -51,7 +51,7 @@ Discord Server: 比奇堡
 | 🐿️ 珊迪 | `sandy` | OpenAB agent | 客戶成功經理 |
 | 🐡 泡芙老師 | `puff` | OpenAB agent | Code Review |
 | 🐚 神奇海螺 | `conch` | OpenAB agent | 團隊神諭者，求助與流程導航 |
-| 🐌 小蝸 | `gary` (agent) / `slash-bot` (服務) | OpenAB agent + 獨立服務 | 專案經理（PM），與章魚哥相同職責；slash-bot 服務獨立運作 |
+| 🐌 小蝸 | `gary` | OpenAB agent | 專案經理，任務分配與追蹤 |
 | 🖥️ 凱倫 | `karen` | 系統服務（非 agent） | 不參與對話，僅持有 Discord Bot Token 供 MCP Server 管理成員/身分組/頻道 |
 
 ## 快速開始
@@ -89,7 +89,7 @@ bikini-bottom/
 │   ├── pearl/                ← 🐋 珍珍（全端工程師）
 │   ├── larry/                ← 🦞 蝦霸（後端工程師）
 │   ├── squidward/            ← 🦑 章魚哥（PM）
-│   ├── gary/                 ← 🐌 小蝸（PM，與章魚哥相同職責）
+│   ├── gary/                 ← 🐌 小蝸（PM）
 │   ├── sandy/                ← 🐿️ 珊迪（客戶成功經理）
 │   ├── puff/                 ← 🐡 泡芙老師（Code Review）
 │   ├── conch/                ← 🐚 神奇海螺（團隊神諭者）
@@ -97,7 +97,7 @@ bikini-bottom/
 ├── shared/                   ← Bot 間共享檔案交換區
 │   └── drop/                 ← 扁平交換區（每日自動清空）
 ├── services/                 ← 獨立服務
-│   └── slash-bot/            ← 🐌 小蝸（查詢 + 容器管理 + 海螺容器操作）
+│   └── slash-bot/            ← 查詢 + 容器管理服務
 └── docs/
     ├── usage-guide.md        ← 使用指南（給交辦人看）
     ├── new-agent-sop.md      ← 新增角色 SOP
