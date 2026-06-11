@@ -105,7 +105,6 @@ Ubuntu Desktop 24.04 (16GB RAM)
 │       │   ├── pearl      ← 開發者
 │       │   ├── larry      ← 開發者
 │       │   ├── conch      ← 神奇海螺
-│       │   ├── slash-bot  ← Discord 指令
 │       │   └── gateway    ← WeCom Gateway
 │       │
 │       ├── Secrets
@@ -561,7 +560,6 @@ resources:
 | 角色類型 | memory limit | 說明 |
 |---------|-------------|------|
 | Agent (bob, patrick...) | 512Mi | 含 kiro-cli session |
-| slash-bot | 256Mi | Node.js，較輕 |
 | gateway | 128Mi | 純轉發 |
 | conch | 512Mi | 同 agent |
 

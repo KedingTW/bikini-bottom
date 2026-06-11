@@ -2,10 +2,7 @@
 
 ## Phase 1：小蝸接收容器管理指令
 
-- [ ] 1. 將 `services/magic-conch/bot.py` 的容器管理邏輯合併到 `services/slash-bot/bot.py`
 - [ ] 2. 指令改名（`/conch-*` → `/status`, `/heal`, `/logs`, `/archive`）
-- [ ] 3. 更新 `services/slash-bot/requirements.txt`（加 docker、openai）
-- [ ] 4. 更新 `docker-compose.yml`：slash-bot 加 docker.sock volume 和新 env
 - [ ] 5. 測試小蝸的新指令能正常運作
 
 ## Phase 2：建立神奇海螺 OpenAB Agent

@@ -62,7 +62,6 @@
 | K3s control plane | ~512 MB |
 | 每個 OpenAB agent（idle） | ~150–250 MB |
 | 每個 OpenAB agent（active kiro-cli session） | ~300–500 MB |
-| slash-bot (Node.js) | ~100 MB |
 | gateway | ~50 MB |
 | **合計（11 pods idle）** | **~5–6 GB** |
 | **合計（11 pods 全活躍）** | **~8–10 GB** |
@@ -85,7 +84,6 @@
 │  │  Deployments:                             │  │
 │  │    bob, patrick, puff, squidward,         │  │
 │  │    sandy, pearl, larry, conch,            │  │
-│  │    slash-bot, gateway, wecom-bot          │  │
 │  │                                           │  │
 │  │  Secrets:                                 │  │
 │  │    discord-tokens, kiro-api-keys,         │  │
@@ -193,7 +191,6 @@ k3s/
 │   ├── pearl.yaml
 │   ├── larry.yaml
 │   ├── conch.yaml
-│   ├── slash-bot.yaml
 │   ├── gateway.yaml
 │   └── wecom-bot.yaml
 └── kustomization.yaml    ← 一鍵部署全部

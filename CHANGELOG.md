@@ -17,7 +17,7 @@
 - **feat**: Knowledge Base 管理 — 從 `contexts.json` 讀人類可讀名稱、source_path、item_count、size，點開可預覽來源檔內容
 - **feat**: Skills 顯示修正 — admin 容器掛載 `/opt/skills`，符號連結正確解析；卡片顯示 SKILL.md frontmatter description，點開預覽
 - **feat**: AgentConfig 與總覽 URL hash 同步 — `/agent-config#bob` 自動彈 dialog
-- **fix**: 小蝸（gary）Dashboard 狀態偵測修正（name mapping slash-bot → gary）
+- **fix**: 小蝸（gary）Dashboard 狀態偵測修正（name mapping gary → gary）
 - **feat**: Admin 管理後台全面升級 — dashboard 更名為 admin，重構為 Vue 3 + Vite + Tailwind 標準專案
 - **feat**: 總覽頁 — 角色狀態卡片（按記憶體排序）、CPU/Memory 即時監控、告警橫幅
 - **feat**: 資源監控 — 每角色歷史 CPU/Memory 圖表（SQLite 紀錄，保留 30 天）、放大 Dialog
@@ -39,7 +39,7 @@
 
 - **feat**: K3s 遷移完成 — 全部 agent deployment 的 hostPath 改為直接讀取 repo 目錄，不再依賴 `/opt/bikini-bottom` 副本，等同 docker-compose 的 bind mount 行為
 - **feat**: 新增 dashboard service 部署到 K3s（NodePort 30080）
-- **chore**: slash-bot 正式改名為 gary（deployment、image、secret 統一命名）
+- **chore**: gary 正式改名為 gary（deployment、image、secret 統一命名）
 - **feat**: 小蝸新增 `/openai-usage` 指令 — 查詢 OpenAI API 費用與 token 用量（使用 Admin API Key）
 - **feat**: 同步 agent-skills repo 全部 skills — 新增 kd-company-knowledge、kd-complaint-handler、kd-crm-operations、kd-glossary、kd-meeting-updates、kd-pricing-assistant、kd-product-coding、kd-product-knowledge、kd-ai-workflow-design、als-vue-ui-guide 共 10 個 skill
 - **feat**: 角色 × Skill 分配策略 — kd-* 系列全員可用；kd-ai-workflow-design 僅章魚哥+珊迪；als-vue-ui-guide 僅海綿寶寶
@@ -68,7 +68,7 @@
 
 ## 2026-05-27
 
-- **feat**: 神奇海螺升級為 OpenAB agent + 容器管理指令搬給小蝸（slash-bot）
+- **feat**: 神奇海螺升級為 OpenAB agent + 容器管理指令搬給小蝸（gary）
 - **feat**: 新增珍珍（Pearl）和蝦霸（Larry）兩位開發者 agent
 - **fix**: README 目錄結構補上 `agents/conch/`
 - **chore**: 整理先前未推送的設定更新和文件
@@ -158,10 +158,10 @@
 
 ## 2026-04-15
 
-- **feat**: slash-bot 重構 — `/usage` 額度報表 + `/activity` 功能分析
+- **feat**: gary 重構 — `/usage` 額度報表 + `/activity` 功能分析
 - **chore**: 移除 AWS_SESSION_TOKEN 改用 IAM User 長期金鑰
 - **chore**: steering 改為手動載入，節省 usage
-- **docs**: 新增 slash-bot IAM 最小權限 policy
+- **docs**: 新增 gary IAM 最小權限 policy
 - 🎉 **First commit** — 比奇堡 AI 開發團隊誕生
 
 ## 2026-06-10

@@ -29,7 +29,6 @@
 1. WHEN 系統時間到達每日 22:00（Asia/Taipei 時區），THE Cronjob_Scheduler SHALL 觸發該 Agent 的日報撰寫流程
 2. THE Cronjob_Scheduler SHALL 透過各 Agent 的 `cronjob.toml` 設定排程，使用 cron 表達式 `0 22 * * *`
 3. THE Cronjob_Scheduler SHALL 僅對以下角色觸發日報撰寫：bob、patrick、puff、squidward、sandy、gary
-4. ~~THE Cronjob_Scheduler SHALL 排除 gary（小蝸）的日報撰寫，因其為獨立 slash-bot 服務而非 AI Agent~~ （已變更：gary 現為 PM 角色，需撰寫日報）
 5. THE Cronjob_Scheduler SHALL 排除 wecom-bot 的日報撰寫，因其為訊息轉發服務而非需要自我回顧的角色
 
 ### 需求 2：活動資料收集

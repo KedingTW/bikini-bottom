@@ -29,7 +29,6 @@ bikini-bottom/
 │   ├── patrick/              ← ⭐ 派大星（後端工程師）
 │   └── gary/                 ← 🐌 小蝸（PM）
 ├── services/                 ← 獨立服務
-│   └── slash-bot/            ← Discord slash command bot
 └── docs/
     └── new-agent-sop.md      ← 新增角色 SOP
 ```

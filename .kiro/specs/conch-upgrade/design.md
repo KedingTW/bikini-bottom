@@ -9,7 +9,6 @@ services/magic-conch/  (Python bot, CONCH token)
   → slash command: /conch-status, /conch-heal, /conch-logs, /conch-archive
   → docker.sock 掛載
 
-services/slash-bot/  (Python bot, GARY token)
   → slash command: /usage, /activity
 ```
 
@@ -20,14 +19,12 @@ agents/conch/  (OpenAB agent, CONCH token)
   → AI 對話，被 mention 時回答
   → 不掛 docker.sock，不管容器
 
-services/slash-bot/  (Python bot, GARY token)
   → slash command: /usage, /activity（原有）
   → slash command: /status, /heal, /logs, /archive（從海螺搬來）
   → docker.sock 掛載（新增）
   → openai 依賴（新增，用於 /archive 摘要）
 ```
 
-## 小蝸 (slash-bot) 改動
 
 ### 依賴新增
 
@@ -38,13 +35,10 @@ openai==1.82.0
 
 ### docker-compose 改動
 
-- `slash-bot` service 新增 volume: `/var/run/docker.sock:/var/run/docker.sock:ro`
-- `slash-bot` service 新增 env: `CONCH_ADMIN_IDS`, `CONCH_OPERATOR_ROLE_IDS`, `OPENAI_API_KEY`
 - 移除 `magic-conch` service
 
 ### 程式碼
 
-- 將 `services/magic-conch/bot.py` 中的指令邏輯搬到 `services/slash-bot/bot.py`
 - 指令改名：`/conch-status` → `/status`，`/conch-heal` → `/heal`，`/conch-logs` → `/logs`，`/conch-archive` → `/archive`
 - 移除頻道限制（或改為小蝸的頻道）
 - `ROLE_MAP` 和 `MANAGED_CONTAINERS` 更新（加入 pearl、larry、conch）
@@ -126,10 +120,6 @@ conch:
 
 | 檔案 | 改動 |
 |------|------|
-| `docker-compose.yml` | 移除 magic-conch，新增 conch，修改 slash-bot |
-| `services/slash-bot/bot.py` | 合併容器管理指令 |
-| `services/slash-bot/requirements.txt` | 加 docker、openai |
-| `services/slash-bot/Dockerfile` | 可能不用改（pip install 會裝新依賴） |
 | `agents/conch/` | 全新建立 |
 | `shared/steering/team-members.md` | 更新海螺的描述 |
 | `README.md` | 更新角色表 |

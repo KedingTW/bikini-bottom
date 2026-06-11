@@ -164,5 +164,4 @@ kubectl rollout restart deployment -n bikini-bottom
 
 - **docker-compose.yml** 也要同步改 `${VAR_NAME}`（如果還保留 docker compose 模式）
 - **admin backend** 的 `app.py` 如有直接讀 env 的地方要檢查
-- **slash-bot** 的 env 讀取也要改
 - 建議全部改完後跑一次 `grep -r 'DISCORD_BOT_TOKEN_\|KIRO_API_KEY_\|CHANNEL_' k3s/ services/ docker-compose.yml` 確認沒殘留

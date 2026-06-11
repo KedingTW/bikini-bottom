@@ -6,7 +6,6 @@
 
 ## 目標
 
-1. 將海螺的 slash command（容器管理）搬給小蝸（`services/slash-bot/`）
 2. 退役 `services/magic-conch/` 容器
 3. 新建 `agents/conch/` OpenAB agent，使用現有的 `DISCORD_BOT_TOKEN_CONCH`
 4. 神奇海螺成為團隊的「神諭者」— 被 mention 時以簡短、神秘的風格回答

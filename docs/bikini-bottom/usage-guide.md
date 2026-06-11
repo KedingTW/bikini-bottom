@@ -205,7 +205,7 @@ https://github.com/KedingTW/krusty-krab-website/pull/XX
 | 章魚哥 | squidward | squidward |
 | 珊迪 | sandy | sandy |
 | 泡芙老師 | puff | puff |
-| 小蝸 | gary | slash-bot |
+| 小蝸 | gary | gary |
 
 **不填 target = 查看/操作全員。**
 
