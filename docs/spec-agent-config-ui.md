@@ -91,6 +91,10 @@ Response: { "ok": true, "updated": ["bob", "sandy", ...], "restarted": [...] }
 | Pool | `session_ttl_hours` | 數字輸入 |
 | Reactions | `enabled` | Toggle 開關 |
 | Reactions | emojis | Emoji 選擇器 |
+| Resources | `requests.memory` | 文字輸入（如 256Mi），預設 256Mi |
+| Resources | `requests.cpu` | 文字輸入（如 50m），預設 50m |
+| Resources | `limits.memory` | 文字輸入（選填，留空表示不限） |
+| Resources | `limits.cpu` | 文字輸入（選填，留空表示不限） |
 
 #### API 設計
 
@@ -103,12 +107,16 @@ Body: {
   },
   "pool": {
     "max_sessions": 15
+  },
+  "resources": {
+    "requests": {"memory": "256Mi", "cpu": "50m"},
+    "limits": {"memory": "2Gi", "cpu": "1000m"}  // 選填，null 或省略表示不設限
   }
 }
-Response: { "ok": true }
+Response: { "ok": true, "restart_required": true }
 ```
 
-後端使用 `tomlkit` 做 partial update，只修改傳入的欄位。
+後端使用 `tomlkit` 做 config.toml 的 partial update，resources 部分則更新對應的 k3s deployment YAML。若有 resources 變更，回傳 `restart_required: true` 提示前端詢問是否重啟。
 
 ---
 
@@ -245,6 +253,21 @@ usercron_path = "cronjob.toml"
 2. `allowed_channels` 不能為空（除非 `allow_all_channels = true`）
 3. UID 格式必須是 17-20 位數字
 4. TOML 語法正確性
+
+### K3s Deployment 規範
+
+新增角色產生 deployment YAML 時的預設值：
+
+```yaml
+# 預設只設 requests，不設 limits
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "50m"
+```
+
+> 💡 預設不設 `resources.limits`，因為 Agent 處理大任務時記憶體波動很大，設太緊會導致 OOM Kill。  
+> 但管理者可透過 UI 依需求為特定角色設定 limits。
 
 ### 安全考量
 - Config 修改需登入且為 admin 角色
