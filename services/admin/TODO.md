@@ -68,6 +68,9 @@
 - [x] Knowledge Base 管理：讀 contexts.json 顯示人類可讀名稱、來源檔案、大小，點開預覽 source_path
 - [x] Dialog 固定高度（80vh）+ 卡片 4 欄佈局 + URL hash 同步
 - [x] Config.toml：agent 基本設定
+- [ ] **Bot 互信管理面板**（矩陣 UI + 一鍵全部互信 + 自動更新 config.toml）→ 規格：`docs/spec-agent-config-ui.md` Phase 1
+- [ ] **Config 結構化編輯**（卡片模式從唯讀改為可編輯表單）→ 規格：`docs/spec-agent-config-ui.md` Phase 2
+- [ ] **新增角色全流程 UI**（輸入 token → 自動產生 config + 更新互信 + 部署）→ 規格：`docs/spec-agent-config-ui.md` Phase 3
 - [ ] 配置比對（A 角色 vs B 角色差異）
 - [ ] 範本套用（一次套用 MCP 配置到多個角色）
 - [ ] KB 上傳新檔案
