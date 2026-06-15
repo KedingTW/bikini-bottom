@@ -1,0 +1,46 @@
+{
+  "mcpServers": {
+    "crm-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/crm",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "sap-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/sap",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "hrs-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/hrs",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "als-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/als",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "image-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/image",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "file-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/file",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    },
+    "stt-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/stt",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    }
+  }
+}

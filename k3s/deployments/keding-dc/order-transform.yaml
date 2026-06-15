@@ -57,17 +57,12 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "50m"
-            limits:
-              memory: "768Mi"
-              cpu: "1000m"
           volumeMounts:
             - name: config
               mountPath: /etc/openab/config.toml
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: kd-share
-              mountPath: /mnt/kd-share
       volumes:
         - name: config
           hostPath:
@@ -77,7 +72,3 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform
             type: Directory
-        - name: kd-share
-          hostPath:
-            path: /mnt/kd-share
-            type: DirectoryOrCreate
