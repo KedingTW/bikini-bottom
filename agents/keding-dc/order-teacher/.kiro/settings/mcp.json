@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "sap-mcp": {
+      "url": "http://host.docker.internal:1601/mcp/sap",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+[discord]
+bot_token = "${DISCORD_BOT_TOKEN}"
+allowed_channels = ["1513867725242503168"]
+trusted_bot_ids = ["1516345749854752819"]
+allow_bot_messages = "mentions"
+allowed_role_ids = ["1514059154002677944"]
+allow_user_messages = "involved"
+max_bot_turns = 100
+
+[agent]
+command = "kiro-cli"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent"
+env = { KIRO_API_KEY = "${KIRO_API_KEY}" }
+inherit_env = ["GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL", "KIRO_API_KEY"]
+
+[pool]
+max_sessions = 15
+session_ttl_hours = 24
+
+[reactions]
+enabled = true
+remove_after_reply = false
+
+[reactions.emojis]
+queued = "👀"
+thinking = "🤔"
+tool = "🔥"
+coding = "📋"
+web = "⚡"
+done = "🆗"
+error = "😱"
+
+[reactions.timing]
+debounce_ms = 700
+stall_soft_ms = 10000
+stall_hard_ms = 30000
+done_hold_ms = 1500
+error_hold_ms = 2500
