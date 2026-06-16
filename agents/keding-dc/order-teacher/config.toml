@@ -4,7 +4,7 @@ allowed_channels = ["1513867725242503168"]
 trusted_bot_ids = ["1514058459585445888"]
 allow_bot_messages = "mentions"
 allowed_role_ids = ["1516346270132736074"]
-allow_user_messages = "involved"
+allow_user_messages = "mentions"
 max_bot_turns = 100
 
 [agent]
