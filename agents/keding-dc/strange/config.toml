@@ -2,8 +2,8 @@
 bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["1515997514904633384"]
 trusted_bot_ids = ["1516009402321211493", "1516011013223354428"]
-allow_bot_messages = "none"
-allow_user_messages = "involved"
+allow_bot_messages = "mentions"
+allow_user_messages = "mentions"
 max_bot_turns = 100
 
 [agent]
@@ -27,7 +27,7 @@ thinking = "🔮"
 tool = "⏳"
 coding = "📊"
 web = "🌀"
-done = "💫"
+done = "🆗"
 error = "🌑"
 
 [reactions.timing]

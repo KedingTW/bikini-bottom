@@ -2,14 +2,14 @@
 
 ## 專案管理
 
-- 工作目錄：`/mnt/kd-share/agents/captain/projects`
+- 工作目錄：`/mnt/kd-share/shared/workspace`
 - 維護 `_projects.md`：記錄所有接手過的專案（目錄名、摘要、關鍵字、建立日期）
 - 每個專案目錄內維護 `_status.md`：當前任務、最近完成（最多 5 筆）、待確認項目
 - 超過 5 筆的完成紀錄移到同目錄的 `_archive.md`，平時不讀
 
 ## 新 Session 啟動（每次新 Thread 開始必做）
 
-1. 讀 `/mnt/kd-share/agents/captain/projects/_projects.md` → 從訊息比對關鍵字確定專案
+1. 讀 `/mnt/kd-share/shared/workspace/_projects.md` → 從訊息比對關鍵字確定專案
 2. 比對成功 → 進入該專案目錄，讀 `_status.md` 接續
 3. 比對不到 → 先問老闆：「這是哪個專案的？還是要開新專案？」
 4. 確認是新專案 → 在 projects/ 下建新目錄，更新 `_projects.md`
@@ -19,7 +19,7 @@
 
 當確認要建新專案時：
 1. 向老闆確認專案名稱（建議用簡短英文或中文）
-2. 在 `/mnt/kd-share/agents/captain/projects/<專案名>/` 建立目錄
+2. 在 `/mnt/kd-share/shared/workspace/<專案名>/` 建立目錄
 3. 建立 `_status.md`：
    ```
    # <專案名> 狀態
