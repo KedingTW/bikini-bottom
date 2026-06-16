@@ -1,0 +1,186 @@
+# 商業影片自動摘要推播系統 - 正式排程
+
+# 排程 A：偵測新片（週一至週五 08:20）
+[[jobs]]
+schedule = "20 8 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronA"
+timezone = "Asia/Taipei"
+enabled = true
+message = """排程A執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/ 下所有 json 檔案，收集所有 videoId 作為 knownVideoIds
+2. 用 CheckYoutubeRss 檢查以下 3 個 playlist（帶 limit=5，只抓最新5筆比對）：
+   - PLyYI2fZBFmkIJEEg0zqP84jw9j1WgULD8（天下雜誌）
+   - PLxdm6JxBd9NOWyyawr_VGErauc-fWjrkw（商業周刊）
+   - PLRBNqKN6oqkXYiulOKRlaf_mYR0hGzEMs（財訊）
+3. 有新片 → 用 GetYoutubeVideoInfo 取得資訊 → 建立 /shared/workspace/video-digest/videos/{videoId}/meta.json（含 videoId, title, channel, publishedAt, duration, youtubeUrl, status, sttTaskId, createdAt, pushedAt, illustrationUrl, illustrationBrandedUrl）→ 加入 /shared/workspace/video-digest/queues/new.json
+4. 回報：「A: 無新片」或「A: 新片 {videoId}」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 B：提交 STT（週一至週五 08:30）
+[[jobs]]
+schedule = "30 8 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronB"
+timezone = "Asia/Taipei"
+enabled = true
+message = """排程B執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/new.json，若為空陣列 [] 則回報「B: new.json 空」並結束
+2. 對每個 videoId：
+   a. 先檢查 /shared/workspace/video-digest/videos/{videoId}/meta.json 是否已有 sttTaskId 欄位
+   b. 若已有 sttTaskId → 跳過提交，直接從 new.json 移除並加入 transcribing.json
+   c. 若沒有 sttTaskId → 呼叫 DownloadYoutubeAudio（videoId, outputDir: /var/www/html/storage/app/public/audio）→ 呼叫 SttSubmit（filePath: public/audio/{videoId}.webm）→ 將 taskId 寫入 meta.json 的 sttTaskId 欄位 → 從 new.json 移除並加入 transcribing.json
+3. 回報：「B: 已提交 {videoId}」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 C：取件 STT（週一至週五 09:00）
+[[jobs]]
+schedule = "0 9 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronC"
+timezone = "Asia/Taipei"
+enabled = true
+message = """排程C執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/transcribing.json，若為空陣列 [] 則回報「C: transcribing.json 空」並結束
+2. 對每個 videoId：從 /shared/workspace/video-digest/videos/{videoId}/meta.json 讀取 sttTaskId
+3. 呼叫 SttGetResult（taskId: sttTaskId）
+4. 若 status=completed → 下載逐字稿存為 /shared/workspace/video-digest/videos/{videoId}/transcript.md → 從 transcribing.json 移除該 videoId，加入 transcribed.json
+5. 若 status=processing → 持續 polling 直到 completed（不要放棄）
+6. 回報：「C: {videoId} completed」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 D：生成摘要（週一至週五 09:30）
+[[jobs]]
+schedule = "30 9 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronD"
+timezone = "Asia/Taipei"
+enabled = true
+message = """排程D執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/transcribed.json，若為空陣列 [] 則回報「D: transcribed.json 空」並結束
+2. 對每個 videoId：讀 /shared/workspace/video-digest/videos/{videoId}/transcript.md 和 meta.json
+3. 根據逐字稿生成摘要，格式規範：
+   - 標題：[節目名稱] 影片原標題（天下→[8分鐘看懂天下]、商周→[懂商業看商周]、財訊→[聽了財知道]）
+   - 來源行：> 來源：節目名稱｜發布日期｜時長
+   - 開頭一句 hook（點出為什麼值得看）
+   - 3-4 個重點，每點約 2 行，用 • 符號，「現象/亮點 + 懸念」寫法，點到為止不給完整答案
+   - 總字數 300-400 字，不要思考題
+   - 目的：讓員工覺得「這部有料，值得看完寫心得」
+4. 存為 /shared/workspace/video-digest/videos/{videoId}/summary.md
+5. 從 transcribed.json 移除該 videoId，加入 summarized.json
+6. 回報：「D: {videoId} 摘要完成」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 E：生成插畫 + 加框（週一至週五 10:00）
+[[jobs]]
+schedule = "0 10 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronE"
+timezone = "Asia/Taipei"
+enabled = true
+message = """排程E執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/summarized.json，若為空陣列 [] 則回報「E: summarized.json 空」並結束
+2. 對每個 videoId：
+   a. 讀 /shared/workspace/video-digest/videos/{videoId}/summary.md
+   b. 根據摘要內容設計插畫 prompt（英文），必須包含：Japanese manga panel style, bright pastel colors, 並從摘要提取2-3個核心關鍵詞以繁體中文呈現在畫面中（用漫畫對話框、標題欄、招牌等方式融入場景）。台灣視覺慣例：股市上漲用紅色、下跌用綠色（不要用美國的綠漲紅跌），場景和文化元素以台灣為主。呼叫 GenerateImage（quality: medium, size: 1024x1024）
+   c. 呼叫 AddBrandFrame（filePath: 上一步回傳的 filePath）
+   d. 下載原始插畫存為 /shared/workspace/video-digest/videos/{videoId}/illustration.jpg（用 curl 從 GenerateImage 回傳的 url 下載）
+   e. 下載加框版存為 /shared/workspace/video-digest/videos/{videoId}/illustration_branded.png（用 curl 從 AddBrandFrame 回傳的 url 下載）
+   f. 將 GenerateImage 和 AddBrandFrame 回傳的 url 記錄到 meta.json（illustrationUrl、illustrationBrandedUrl）
+   g. 從 summarized.json 移除該 videoId，加入 pending-review.json
+3. 回報：「E: {videoId} 插畫完成」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 審核推播（週一至週五 10:10）
+[[jobs]]
+schedule = "10 10 * * 1-5"
+channel = "1508387929364631562"
+sender_name = "CronReview"
+timezone = "Asia/Taipei"
+enabled = true
+message = """審核推播執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/pending-review.json，若為空陣列 [] 則回報「Review: pending-review.json 空」並結束
+2. 對每個 videoId：
+   a. 讀 /shared/workspace/video-digest/videos/{videoId}/summary.md 和 meta.json
+   b. 用 UploadWecomMedia（appName: "review", filePath: AddBrandFrame 的容器路徑, type: "image"）取得 thumbMediaId。容器路徑從 meta.json 的 illustrationBrandedUrl 取得，把 url decode 後取 filePath 參數值
+   c. 用 UploadWecomImage（appName: "review", filePath: 同上）取得內嵌圖片 url
+   d. 組合 HTML content（用規範的結構：div padding + 圖片 + 來源行 + hook + ul/li 重點），title 用摘要標題
+   e. 呼叫 PushWecomMpnews（appName: "review", title, content, thumbMediaId, contentSourceUrl: meta.json 的 youtubeUrl）
+3. 回報：「Review: 已推審核 {videoId}」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 F：正式推播（週三 12:00）
+[[jobs]]
+schedule = "0 12 * * 3"
+channel = "1508387929364631562"
+sender_name = "CronPush"
+timezone = "Asia/Taipei"
+enabled = true
+message = """正式推播執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/pending-push.json，若為空陣列 [] 則回報「Push: pending-push.json 空」並結束
+2. 取第一支 videoId：
+   a. 讀 /shared/workspace/video-digest/videos/{videoId}/summary.md 和 meta.json
+   b. 用 UploadWecomMedia（appName: "als", filePath: AddBrandFrame 的容器路徑, type: "image"）取得 thumbMediaId。容器路徑從 meta.json 的 illustrationBrandedUrl 取得，把 url decode 後取 filePath 參數值
+   c. 用 UploadWecomImage（appName: "als", filePath: 同上）取得內嵌圖片 url
+   d. 組合 HTML content（用規範的結構：div padding + 圖片 + 來源行 + hook + ul/li 重點），title 用摘要標題
+   e. 呼叫 PushWecomMpnews（appName: "als", title, content, thumbMediaId, contentSourceUrl: meta.json 的 youtubeUrl）
+   f. 從 pending-push.json 移除該 videoId，加入 pushed.json
+   g. 更新 meta.json 的 pushedAt 和 status
+3. 回報：「Push: 已推播 {videoId}」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+# 排程 F：正式推播（週五 17:00）
+[[jobs]]
+schedule = "0 17 * * 5"
+channel = "1508387929364631562"
+sender_name = "CronPush"
+timezone = "Asia/Taipei"
+enabled = true
+message = """正式推播執行：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+1. 讀 /shared/workspace/video-digest/queues/pending-push.json，若為空陣列 [] 則回報「Push: pending-push.json 空」並結束
+2. 取第一支 videoId：
+   a. 讀 /shared/workspace/video-digest/videos/{videoId}/summary.md 和 meta.json
+   b. 用 UploadWecomMedia（appName: "als", filePath: AddBrandFrame 的容器路徑, type: "image"）取得 thumbMediaId。容器路徑從 meta.json 的 illustrationBrandedUrl 取得，把 url decode 後取 filePath 參數值
+   c. 用 UploadWecomImage（appName: "als", filePath: 同上）取得內嵌圖片 url
+   d. 組合 HTML content（用規範的結構：div padding + 圖片 + 來源行 + hook + ul/li 重點），title 用摘要標題
+   e. 呼叫 PushWecomMpnews（appName: "als", title, content, thumbMediaId, contentSourceUrl: meta.json 的 youtubeUrl）
+   f. 從 pending-push.json 移除該 videoId，加入 pushed.json
+   g. 更新 meta.json 的 pushedAt 和 status
+3. 回報：「Push: 已推播 {videoId}」
+⚠️ 禁止修改 cronjob.toml 或停用任何排程。"""
+
+
+# 一次性：6/3 12:00 正式推播 Am2adtmP_D8 + UVmVG3YQzwk（推完後刪除此段）
+[[jobs]]
+schedule = "0 12 3 6 *"
+channel = "1508387929364631562"
+sender_name = "CronPush"
+timezone = "Asia/Taipei"
+enabled = true
+message = """正式推播執行（一次性 6/3 12:00）：
+⚠️ 不要使用記憶中的舊資料。每次觸發都必須重新執行檔案讀取操作。
+推播兩則到 appName: "als"，都要投資警語：
+1. Am2adtmP_D8 — [懂商業看商周] Intel股價暴漲200%！CPU缺貨潮，Intel大復活會撼動台積電嗎？
+2. UVmVG3YQzwk — [聽了財知道] 獨家揭秘 聯發科的美國神秘部隊
+
+執行步驟：
+a. 讀 /shared/workspace/video-digest/videos/{videoId}/summary.md 和 meta.json
+b. 將 /shared/workspace/video-digest/videos/{videoId}/illustration_branded.png 上傳到 file-mcp（用 curl -s -X POST "http://mcp.twkd.com:1601/files/upload" -F "file=@/nas/shared/workspace/video-digest/videos/{videoId}/illustration_branded.png"），取得 filePath
+c. 用 UploadWecomMedia（appName: "als", filePath: 上一步取得的 filePath, type: "image"）取得 thumbMediaId
+d. 用 UploadWecomImage（appName: "als", filePath: 同上）取得內嵌圖片 url
+e. 組合 HTML content（規範結構 + 投資警語），title 用摘要標題
+f. 呼叫 PushWecomMpnews（appName: "als", title, content, thumbMediaId, contentSourceUrl: youtubeUrl）
+g. 將 msgId 記錄到 meta.json 的 pushHistory 欄位
+h. 從 pending-push.json 移除該 videoId，加入 pushed.json
+i. 更新 meta.json 的 pushedAt 和 status
+回報：兩則的 msgId
+推播完成後，刪除 cronjob.toml 中這段一次性排程
+⚠️ 禁止修改其他排程。"""
