@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keding-dc-order-transform
+  name: keding-dc-order-teacher
   namespace: bikini-bottom
   labels:
-    app: keding-dc-order-transform
+    app: keding-dc-order-teacher
     type: agent
     group: keding-dc
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: keding-dc-order-transform
+      app: keding-dc-order-teacher
   template:
     metadata:
       labels:
-        app: keding-dc-order-transform
+        app: keding-dc-order-teacher
         type: agent
         group: keding-dc
     spec:
@@ -31,16 +31,16 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: keding-dc-secrets
-                  key: ORDER_TRANSFORM_BOT_TOKEN
+                  key: ORDER_TEACHER_BOT_TOKEN
             - name: KIRO_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: keding-dc-secrets
                   key: ORDER_TRANSFORM_KIRO_KEY
             - name: GIT_AUTHOR_NAME
-              value: "Order Transform Bot"
+              value: "Order Teacher Bot"
             - name: GIT_COMMITTER_NAME
-              value: "Order Transform Bot"
+              value: "Order Teacher Bot"
             - name: GIT_AUTHOR_EMAIL
               valueFrom:
                 configMapKeyRef:
@@ -52,7 +52,7 @@ spec:
                   name: common-env
                   key: GIT_EMAIL
             - name: AGENT_NAME
-              value: "keding-dc-order-transform"
+              value: "keding-dc-order-teacher"
           resources:
             requests:
               memory: "256Mi"
@@ -68,11 +68,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-teacher/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-teacher
             type: Directory
         - name: kd-share
           hostPath:
