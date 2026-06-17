@@ -1,0 +1,69 @@
+#!/bin/bash
+# kiro-key-wrap — Kiro API Key Pool Wrapper
+# 透明 shim：選一把可用的 key → 注入 env → exec kiro-cli
+# 參考 kiro-multi 的 kiro-wrap 設計，簡化為 API Key 模式
+
+set -euo pipefail
+
+POOL_KEYS="${KIRO_POOL_KEYS:-/etc/kiro-pool/keys.json}"
+STATE_FILE="${KIRO_POOL_STATE:-/data/kiro-pool/state.json}"
+LOCK_FILE="${KIRO_POOL_LOCK:-/data/kiro-pool/state.lock}"
+LOG_DIR="${KIRO_POOL_LOGS:-/data/kiro-pool/logs}"
+PICK_SCRIPT="/usr/local/lib/kiro-pool/pick.py"
+MARK_SCRIPT="/usr/local/lib/kiro-pool/mark_exhausted.py"
+
+# cooldown regex（同 kiro-multi 預設）
+COOLDOWN_REGEX="(quota|exceeded|rate[[:space:]-]?limit|too many|Internal error|-32603|concurrent|throttl|retry in [0-9]|try again later)"
+
+# 確保 state 目錄存在
+mkdir -p "$(dirname "$STATE_FILE")"
+mkdir -p "$LOG_DIR"
+
+# 確保 lock file 存在
+touch "$LOCK_FILE"
+
+# ── 1. 選 key ──────────────────────────────────────────────
+PICKED=$(flock -w 5 "$LOCK_FILE" python3 "$PICK_SCRIPT" \
+    --keys "$POOL_KEYS" \
+    --state "$STATE_FILE" \
+    --agent "${AGENT_NAME:-unknown}")
+
+if [ -z "$PICKED" ]; then
+    echo "[kiro-key-wrap] ERROR: pool 中無可用 key" >&2
+    exit 1
+fi
+
+echo "[kiro-key-wrap] picked key for agent=${AGENT_NAME:-unknown}" >&2
+
+# ── 2. 用選到的 key 跑 kiro-cli ───────────────────────────
+STDERR_LOG=$(mktemp /tmp/kiro-stderr.XXXXXX)
+
+# exec 前設定 trap 確保清理
+cleanup() {
+    local exit_code=$?
+    
+    # 3. 檢查是否撞牆
+    if grep -qiE "$COOLDOWN_REGEX" "$STDERR_LOG" 2>/dev/null; then
+        echo "[kiro-key-wrap] 偵測到 rate-limit / quota，標記 key exhausted" >&2
+        flock -w 5 "$LOCK_FILE" python3 "$MARK_SCRIPT" \
+            --state "$STATE_FILE" \
+            --key-id "$KEY_ID" \
+            --reason "$(tail -5 "$STDERR_LOG")" 2>/dev/null || true
+        # 保留 log（最多保留 50 個）
+        cp "$STDERR_LOG" "$LOG_DIR/${AGENT_NAME:-unknown}-$$-$(date +%s).log" 2>/dev/null || true
+        # 清理舊 log
+        ls -t "$LOG_DIR"/*.log 2>/dev/null | tail -n +51 | xargs rm -f 2>/dev/null || true
+    fi
+    
+    rm -f "$STDERR_LOG"
+    exit $exit_code
+}
+trap cleanup EXIT
+
+# 解析 pick 回傳的 key_id 和 key_value（以 tab 分隔）
+KEY_ID=$(echo "$PICKED" | cut -f1)
+KEY_VALUE=$(echo "$PICKED" | cut -f2)
+
+# 啟動 kiro-cli，stderr tee 到 log 和 real stderr
+export KIRO_API_KEY="$KEY_VALUE"
+kiro-cli "$@" 2> >(tee "$STDERR_LOG" >&2)

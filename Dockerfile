@@ -20,6 +20,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         markitdown \
     && rm -rf /var/lib/apt/lists/*
 
+# Kiro API Key Pool — wrapper + pick/mark scripts
+COPY services/kiro-key-pool/kiro-key-wrap /usr/local/bin/kiro-key-wrap
+COPY services/kiro-key-pool/pick.py /usr/local/lib/kiro-pool/pick.py
+COPY services/kiro-key-pool/mark_exhausted.py /usr/local/lib/kiro-pool/mark_exhausted.py
+RUN chmod +x /usr/local/bin/kiro-key-wrap \
+    && mkdir -p /data/kiro-pool/logs
+
 # 共用 steering / skills 文件 symlink 腳本（容器啟動時由 entrypoint wrapper 執行）
 COPY scripts/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
 COPY scripts/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh

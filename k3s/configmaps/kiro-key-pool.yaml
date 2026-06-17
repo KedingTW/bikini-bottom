@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kiro-key-pool
+  namespace: bikini-bottom
+data:
+  # 加 key：kubectl edit configmap kiro-key-pool -n bikini-bottom
+  # 改完後新 session 自動使用，不用重啟 bot
+  keys.json: |
+    [
+      {
+        "id": "power_1",
+        "key": "ksk_0W83MTCBxogJ151Mjpj6AgUbf70rlD4X",
+        "tier": "power",
+        "note": "主帳號"
+      }
+    ]

@@ -32,11 +32,7 @@ spec:
                 secretKeyRef:
                   name: discord-tokens
                   key: BOB
-            - name: KIRO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kiro-api-keys
-                  key: BOB
+            # KIRO_API_KEY 由 kiro-key-wrap 從 pool 動態注入，不再靜態設定
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -80,6 +76,11 @@ spec:
             - name: shared-skills
               mountPath: /opt/skills
               readOnly: true
+            - name: kiro-key-pool
+              mountPath: /etc/kiro-pool
+              readOnly: true
+            - name: kiro-pool-state
+              mountPath: /data/kiro-pool
       volumes:
         - name: config
           hostPath:
@@ -100,3 +101,10 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
             type: Directory
+        - name: kiro-key-pool
+          configMap:
+            name: kiro-key-pool
+        - name: kiro-pool-state
+          hostPath:
+            path: /home/kdprogramer/kiro-pool
+            type: DirectoryOrCreate

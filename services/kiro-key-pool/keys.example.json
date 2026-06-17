@@ -1,0 +1,14 @@
+[
+  {
+    "id": "power_1",
+    "key": "ksk_YOUR_FIRST_API_KEY_HERE",
+    "tier": "power",
+    "note": "主帳號 - wahow"
+  },
+  {
+    "id": "power_2",
+    "key": "ksk_YOUR_SECOND_API_KEY_HERE",
+    "tier": "power",
+    "note": "備用帳號"
+  }
+]
