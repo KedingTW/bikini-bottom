@@ -1,19 +1,12 @@
 <template>
-  <nav
-    :class="[
-      collapsed && !mobileOpen ? 'w-14' : 'w-64 lg:w-48',
-      mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-    ]"
-    class="glass-darker border-r border-white/10 flex flex-col shrink-0 transition-all duration-300 relative overflow-visible z-30 fixed lg:static inset-y-0 left-0 top-[60px] lg:top-0 h-[calc(100vh-60px)]">
-
-    <!-- Collapse toggle (desktop only) -->
+  <nav :class="collapsed ? 'w-14' : 'w-48'" class="glass-darker border-r border-white/10 flex-col shrink-0 transition-all duration-300 relative overflow-visible z-20">
     <button @click="collapsed = !collapsed"
-      class="hidden lg:flex absolute -right-3 top-3 w-7 h-7 bg-ocean-700 border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-ocean-600 items-center justify-center text-xs z-10">
+      class="absolute -right-3 top-3 w-7 h-7 bg-ocean-700 border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-ocean-600 flex items-center justify-center text-xs z-10">
       {{ collapsed ? '›' : '‹' }}
     </button>
 
     <!-- Group Switcher -->
-    <div class="px-3 pt-3 pb-2 border-b border-white/10" v-show="!collapsed || mobileOpen">
+    <div class="px-3 pt-3 pb-2 border-b border-white/10" v-show="!collapsed">
       <button @click="groupOpen = !groupOpen" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-600/20 border border-cyan-400/30 hover:bg-cyan-600/30 transition">
         <img v-if="currentGroupImage" :src="currentGroupImage" class="w-6 h-6 rounded object-cover">
         <span v-else class="text-lg">{{ currentGroupIcon }}</span>
@@ -32,23 +25,22 @@
       </div>
     </div>
     <!-- Collapsed: just show icon -->
-    <div v-show="collapsed && !mobileOpen" class="px-2 pt-3 pb-2 border-b border-white/10 text-center hidden lg:block">
+    <div v-show="collapsed" class="px-2 pt-3 pb-2 border-b border-white/10 text-center">
       <span class="text-lg" :title="currentGroupDisplay">{{ currentGroupIcon }}</span>
     </div>
 
     <div class="py-3 flex-1 overflow-y-auto">
       <template v-for="group in visibleGroups" :key="group.label">
         <!-- Divider -->
-        <div v-if="group.divider" class="my-3 mx-4 border-t-2 border-cyan-400/30" v-show="!collapsed || mobileOpen"></div>
-        <div v-if="group.divider && collapsed && !mobileOpen" class="my-3 mx-2 border-t-2 border-cyan-400/30 hidden lg:block"></div>
+        <div v-if="group.divider" class="my-3 mx-4 border-t-2 border-cyan-400/30" v-show="!collapsed"></div>
+        <div v-if="group.divider && collapsed" class="my-3 mx-2 border-t-2 border-cyan-400/30"></div>
         <!-- Group label -->
-        <div v-if="group.label" class="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-white/60" v-show="!collapsed || mobileOpen">{{ group.label }}</div>
+        <div v-if="group.label" class="px-5 pt-4 pb-1 text-[10px] uppercase tracking-wider text-white/60" v-show="!collapsed">{{ group.label }}</div>
         <router-link v-for="item in group.items" :key="item.path" :to="item.path"
-          class="flex items-center gap-3 px-5 py-2.5 lg:py-2 text-sm border-l-[3px] transition"
-          :class="isActive(item.path) ? 'text-cyan-400 bg-cyan-500/10 border-cyan-400' : 'text-white/80 hover:text-white hover:bg-white/5 border-transparent'"
-          @click="$emit('close')">
+          class="flex items-center gap-3 px-5 py-2 text-sm border-l-[3px] transition"
+          :class="isActive(item.path) ? 'text-cyan-400 bg-cyan-500/10 border-cyan-400' : 'text-white/80 hover:text-white hover:bg-white/5 border-transparent'">
           <span class="text-base w-5 text-center">{{ item.icon }}</span>
-          <span v-show="!collapsed || mobileOpen" class="truncate">{{ item.label }}</span>
+          <span v-show="!collapsed" class="truncate">{{ item.label }}</span>
         </router-link>
       </template>
     </div>
@@ -59,14 +51,7 @@
 import { ref, computed, inject } from 'vue'
 import { useRoute } from 'vue-router'
 
-const props = defineProps({
-  role: { type: String, default: 'viewer' },
-  groups: { type: Array, default: () => [] },
-  mobileOpen: { type: Boolean, default: false }
-})
-
-defineEmits(['close'])
-
+const props = defineProps({ role: { type: String, default: 'viewer' }, groups: { type: Array, default: () => [] } })
 const route = useRoute()
 const collapsed = ref(false)
 const groupOpen = ref(false)

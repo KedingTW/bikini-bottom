@@ -2,10 +2,6 @@
   <!-- Top Header -->
   <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2 sm:gap-3">
-      <!-- Hamburger (mobile only) -->
-      <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/80">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
       <img src="/header.png" alt="Logo" class="h-7">
     </div>
     <h1 class="hidden sm:block text-lg font-semibold whitespace-nowrap truncate max-w-[40vw]">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
@@ -27,20 +23,19 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <!-- Sidebar overlay (mobile) -->
-    <div v-if="sidebarOpen" class="fixed inset-0 bg-black/50 z-30 lg:hidden" @click="sidebarOpen = false"></div>
-
-    <Sidebar :role="userRole" :groups="groups"
-      :mobile-open="sidebarOpen"
-      @close="sidebarOpen = false" />
+    <!-- Desktop sidebar -->
+    <Sidebar :role="userRole" :groups="groups" class="hidden md:flex" />
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <main class="flex-1 overflow-y-auto" id="main-scroll">
+      <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
         <slot />
       </main>
-      <img class="w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
+      <img class="hidden md:block w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
     </div>
   </div>
+
+  <!-- Mobile Bottom Tab Bar -->
+  <MobileTabBar :role="userRole" class="md:hidden" />
 
   <!-- Change Password Dialog -->
   <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showPwDialog = false">
@@ -72,6 +67,7 @@
 import { computed, ref, reactive, onMounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
+import MobileTabBar from './MobileTabBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,7 +75,6 @@ const userName = ref('...')
 const userId = ref('')
 const userRole = ref('viewer')
 const menuOpen = ref(false)
-const sidebarOpen = ref(false)
 const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
@@ -118,9 +113,6 @@ const pageTitle = computed(() => {
   }
   return map[route.name] || '總覽'
 })
-
-// Close sidebar on route change (mobile)
-router.afterEach(() => { sidebarOpen.value = false })
 
 onMounted(async () => {
   try {
