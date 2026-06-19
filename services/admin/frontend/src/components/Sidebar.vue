@@ -1,5 +1,5 @@
 <template>
-  <nav :class="collapsed ? 'w-14' : 'w-48'" class="glass-darker border-r border-white/10 flex-col shrink-0 transition-all duration-300 relative overflow-visible z-20">
+  <nav :class="collapsed ? 'w-14' : 'w-48'" class="glass-darker border-r border-white/10 flex flex-col shrink-0 transition-all duration-300 relative overflow-visible z-20 h-full">
     <button @click="collapsed = !collapsed"
       class="absolute -right-3 top-3 w-7 h-7 bg-ocean-700 border border-white/20 rounded-full text-white/70 hover:text-white hover:bg-ocean-600 flex items-center justify-center text-xs z-10">
       {{ collapsed ? '›' : '‹' }}

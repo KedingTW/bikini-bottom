@@ -4,7 +4,9 @@
     <div class="flex items-center gap-2 sm:gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
     </div>
-    <h1 class="hidden sm:block text-lg font-semibold whitespace-nowrap truncate max-w-[40vw]">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
+    <h1 class="text-base sm:text-lg font-semibold whitespace-nowrap truncate flex-1 text-center mx-2">
+      <span class="hidden sm:inline">{{ currentGroupDisplay }} - </span>{{ pageTitle }}
+    </h1>
     <div class="relative flex items-center gap-2 text-sm">
       <button @click="menuOpen = !menuOpen" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
         <span class="hidden sm:inline">👤 {{ userName }}({{ userId }})</span>
@@ -23,8 +25,10 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <!-- Desktop sidebar -->
-    <Sidebar :role="userRole" :groups="groups" class="hidden md:flex" />
+    <!-- Desktop sidebar (hidden on mobile) -->
+    <div class="hidden md:block">
+      <Sidebar :role="userRole" :groups="groups" />
+    </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">
       <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
@@ -34,8 +38,10 @@
     </div>
   </div>
 
-  <!-- Mobile Bottom Tab Bar -->
-  <MobileTabBar :role="userRole" class="md:hidden" />
+  <!-- Mobile Bottom Tab Bar (hidden on desktop) -->
+  <div class="block md:hidden">
+    <MobileTabBar :role="userRole" />
+  </div>
 
   <!-- Change Password Dialog -->
   <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showPwDialog = false">
