@@ -1,13 +1,16 @@
 <template>
   <!-- Top Header -->
-  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between relative">
-    <div class="flex items-center gap-3">
+  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2 sm:gap-3">
       <img src="/header.png" alt="Logo" class="h-7">
     </div>
-    <h1 class="absolute left-1/2 -translate-x-1/2 text-lg font-semibold whitespace-nowrap">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
+    <h1 class="text-base sm:text-lg font-semibold whitespace-nowrap truncate flex-1 text-center mx-2">
+      <span class="hidden sm:inline">{{ currentGroupDisplay }} - </span>{{ pageTitle }}
+    </h1>
     <div class="relative flex items-center gap-2 text-sm">
-      <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
-        <span>👤 {{ userName }}({{ userId }})</span>
+      <button @click="menuOpen = !menuOpen" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
+        <span class="hidden sm:inline">👤 {{ userName }}({{ userId }})</span>
+        <span class="sm:hidden">👤</span>
         <span class="text-xs">▾</span>
       </button>
       <!-- Dropdown -->
@@ -22,17 +25,26 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <Sidebar :role="userRole" :groups="groups" />
+    <!-- Desktop sidebar (hidden on mobile) -->
+    <div class="hidden md:block">
+      <Sidebar :role="userRole" :groups="groups" />
+    </div>
+
     <div class="flex-1 flex flex-col overflow-hidden">
-      <main class="flex-1 overflow-y-auto" id="main-scroll">
+      <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
         <slot />
       </main>
-      <img class="w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
+      <img class="hidden md:block w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
     </div>
   </div>
 
+  <!-- Mobile Bottom Tab Bar (hidden on desktop) -->
+  <div class="block md:hidden">
+    <MobileTabBar :role="userRole" />
+  </div>
+
   <!-- Change Password Dialog -->
-  <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" @click.self="showPwDialog = false">
+  <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showPwDialog = false">
     <div class="bg-ocean-700 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-white/10">
       <h3 class="text-lg font-semibold mb-4">🔑 修改密碼</h3>
       <div class="mb-4">
@@ -61,6 +73,7 @@
 import { computed, ref, reactive, onMounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
+import MobileTabBar from './MobileTabBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -87,7 +100,6 @@ function onGroupChange() {
   const url = new URL(window.location)
   url.searchParams.set('group', currentGroup.value)
   history.replaceState(null, '', url)
-  // If current page is dcOnly and new group is wecom, redirect to home
   if (currentGroup.value === 'keding-wecom' && DC_ONLY_PATHS.includes(route.path)) {
     router.push('/')
   }
@@ -101,7 +113,8 @@ const pageTitle = computed(() => {
   const map = {
     home: '總覽', metrics: '資源監控', costs: '成本監控', alerts: '異常通知',
     messaging: '訊息推送', members: '成員管理', threads: '討論串管理', 'thread-analytics': '討論串分析',
-    'agent-config': '角色配置', cronjobs: 'Cronjob', knowledge: 'Knowledge Base',
+    'agent-config': '角色配置', mcp: 'MCP 管理', skills: 'Skill 管理', steering: 'Steering',
+    cronjobs: 'Cronjob', knowledge: 'Knowledge Base',
     system: '系統資源', logs: 'Log 搜尋', deploy: '部署管理', 'api-keys': 'API Key',
     users: '使用者管理',
   }
