@@ -2391,28 +2391,37 @@ async def api_mcp_pool(request: Request):
     # Load servers.json
     servers_path = MCP_CONFIGS_DIR / "servers.json"
     if servers_path.exists():
-        data = json_mod.loads(servers_path.read_text())
-        result["servers"] = data.get("servers", {})
+        try:
+            data = json_mod.loads(servers_path.read_text())
+            result["servers"] = data.get("servers", {})
+        except json_mod.JSONDecodeError as e:
+            return JSONResponse({"error": f"servers.json 格式錯誤：{e}"}, status_code=500)
 
     # Load environments
     env_dir = MCP_CONFIGS_DIR / "environments"
     if env_dir.exists():
         for f in sorted(env_dir.iterdir()):
             if f.suffix == ".json":
-                env_data = json_mod.loads(f.read_text())
-                result["environments"].append({
-                    "name": f.stem,
-                    "baseUrl": env_data.get("baseUrl", ""),
-                    "comment": env_data.get("$comment", ""),
-                })
+                try:
+                    env_data = json_mod.loads(f.read_text())
+                    result["environments"].append({
+                        "name": f.stem,
+                        "baseUrl": env_data.get("baseUrl", ""),
+                        "comment": env_data.get("$comment", ""),
+                    })
+                except json_mod.JSONDecodeError:
+                    pass
 
     # Load profiles
     prof_dir = MCP_CONFIGS_DIR / "profiles"
     if prof_dir.exists():
         for f in sorted(prof_dir.iterdir()):
             if f.suffix == ".json":
-                prof_data = json_mod.loads(f.read_text())
-                result["profiles"][f.stem] = prof_data.get("servers", [])
+                try:
+                    prof_data = json_mod.loads(f.read_text())
+                    result["profiles"][f.stem] = prof_data.get("servers", [])
+                except json_mod.JSONDecodeError:
+                    pass
 
     return JSONResponse(result)
 
@@ -2424,66 +2433,56 @@ async def api_mcp_pool_agent(agent_name: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    generate_path = MCP_CONFIGS_DIR / "generate.js"
-    if not generate_path.exists():
-        return JSONResponse({"error": "generate.js not found", "config": None})
-
-    content = generate_path.read_text()
-
-    # Parse the AGENT_MCP_CONFIGS block for this agent
-    import re
-    # Extract the full AGENT_MCP_CONFIGS object as text
-    match = re.search(r'const AGENT_MCP_CONFIGS\s*=\s*\{', content)
-    if not match:
-        return JSONResponse({"error": "Cannot parse AGENT_MCP_CONFIGS", "config": None})
-
-    # Use a simple JS-object parser approach: find agent's config block
-    # We'll use subprocess with node if available, otherwise return raw
-    config = _parse_agent_config_from_js(content, agent_name)
+    # Use node to eval generate.js and extract the agent config as JSON
+    config = _read_agent_config(agent_name)
+    if config is None:
+        return JSONResponse({"error": "Agent not found in config", "config": None})
     return JSONResponse({"error": None, "config": config})
 
 
-def _parse_agent_config_from_js(js_content: str, agent_name: str) -> dict:
-    """Parse a single agent's config from generate.js using regex."""
-    import re, json as json_mod
+def _read_agent_config(agent_name: str) -> dict:
+    """Read agent config using node subprocess (reliable, no regex)."""
+    import subprocess
 
-    # Find the agent block: agentName: { ... }
-    # Pattern: agent_name: {  (with possible quotes)
-    pattern = rf"['\"]?{re.escape(agent_name)}['\"]?\s*:\s*\{{"
-    match = re.search(pattern, js_content)
-    if not match:
+    # First try agent-configs.json (managed by admin UI)
+    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
+    if json_path.exists():
+        try:
+            import json as json_mod
+            data = json_mod.loads(json_path.read_text())
+            if agent_name in data:
+                return data[agent_name]
+        except Exception:
+            pass
+
+    # Fallback: use node to extract from generate.js
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    if not generate_path.exists():
         return None
 
-    # Find balanced braces from match start
-    start = match.start()
-    brace_start = js_content.index('{', match.start() + len(agent_name))
-    depth = 0
-    i = brace_start
-    while i < len(js_content):
-        if js_content[i] == '{':
-            depth += 1
-        elif js_content[i] == '}':
-            depth -= 1
-            if depth == 0:
-                break
-        i += 1
-
-    block = js_content[brace_start:i + 1]
-
-    # Convert JS object to JSON-parseable format
-    # Remove comments
-    block = re.sub(r'//[^\n]*', '', block)
-    # Add quotes to keys
-    block = re.sub(r"(\w+)\s*:", r'"\1":', block)
-    # Replace single quotes with double quotes
-    block = block.replace("'", '"')
-    # Remove trailing commas
-    block = re.sub(r',\s*([}\]])', r'\1', block)
-
     try:
-        return json_mod.loads(block)
-    except Exception:
-        return {"_raw": block, "_parse_error": True}
+        # Add a temporary export and eval with node
+        script = (
+            f"const fs = require('fs');"
+            f"const content = fs.readFileSync('{generate_path}', 'utf8');"
+            f"const match = content.match(/const AGENT_MCP_CONFIGS\\s*=\\s*/);"
+            f"if (!match) {{ console.log('null'); process.exit(0); }}"
+            f"const fn = new Function('return (' + content.slice(match.index + match[0].length).split(/^}};/m)[0] + '}})');"
+            f"const configs = fn();"
+            f"console.log(JSON.stringify(configs['{agent_name}'] || null));"
+        )
+        result = subprocess.run(
+            ["node", "-e", script],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(MCP_CONFIGS_DIR)
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            import json as json_mod
+            return json_mod.loads(result.stdout.strip())
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        pass
+
+    return None
 
 
 @app.post("/api/mcp-pool/agent/{agent_name}")
@@ -2493,10 +2492,9 @@ async def api_mcp_pool_agent_save(agent_name: str, request: Request):
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-    import json as json_mod, re, subprocess
+    import json as json_mod, subprocess
 
     body = await request.json()
-    # body: { profile, default, overrides, disabled, toolFilter }
     new_config = {
         "profile": body.get("profile", "full"),
         "default": body.get("default", "local"),
@@ -2507,34 +2505,73 @@ async def api_mcp_pool_agent_save(agent_name: str, request: Request):
     if body.get("toolFilter"):
         new_config["toolFilter"] = body["toolFilter"]
 
-    generate_path = MCP_CONFIGS_DIR / "generate.js"
-    if not generate_path.exists():
-        raise HTTPException(status_code=500, detail="generate.js not found")
+    # ─── Save to agent-configs.json (safe JSON read/write) ───
+    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
 
-    content = generate_path.read_text()
+    # Backup existing file
+    backup_path = MCP_CONFIGS_DIR / "agent-configs.json.bak"
+    if json_path.exists():
+        backup_path.write_text(json_path.read_text())
 
-    # Replace or insert agent config in AGENT_MCP_CONFIGS
-    content = _update_agent_in_generate_js(content, agent_name, new_config)
-    generate_path.write_text(content)
-
-    # Execute generate.js for this agent
-    generate_result = None
     try:
-        node_bin = "node"
-        result = subprocess.run(
-            [node_bin, str(generate_path), agent_name],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(MCP_CONFIGS_DIR.parent)
-        )
-        generate_result = {
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "returncode": result.returncode
-        }
-    except FileNotFoundError:
-        generate_result = {"error": "node not found, mcp.json not generated"}
+        # Read existing configs
+        existing = {}
+        if json_path.exists():
+            existing = json_mod.loads(json_path.read_text())
+
+        # Update agent
+        existing[agent_name] = new_config
+        json_path.write_text(json_mod.dumps(existing, indent=2, ensure_ascii=False) + "\n")
     except Exception as e:
-        generate_result = {"error": str(e)}
+        # Rollback on failure
+        if backup_path.exists():
+            json_path.write_text(backup_path.read_text())
+        raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
+
+    # ─── Sync to generate.js + execute ───
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    generate_result = None
+
+    if generate_path.exists():
+        # Backup generate.js
+        gen_backup = MCP_CONFIGS_DIR / "generate.js.bak"
+        gen_backup.write_text(generate_path.read_text())
+
+        try:
+            # Update generate.js with new agent config
+            content = generate_path.read_text()
+            content = _update_agent_in_generate_js(content, agent_name, new_config)
+            generate_path.write_text(content)
+
+            # Verify syntax with node --check
+            check = subprocess.run(
+                ["node", "--check", str(generate_path)],
+                capture_output=True, text=True, timeout=10
+            )
+            if check.returncode != 0:
+                # Syntax error — rollback generate.js
+                generate_path.write_text(gen_backup.read_text())
+                generate_result = {"error": f"generate.js 語法錯誤，已還原：{check.stderr.strip()}"}
+            else:
+                # Execute generate.js for this agent
+                result = subprocess.run(
+                    ["node", str(generate_path), agent_name],
+                    capture_output=True, text=True, timeout=15,
+                    cwd=str(MCP_CONFIGS_DIR.parent)
+                )
+                generate_result = {
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "returncode": result.returncode
+                }
+        except FileNotFoundError:
+            generate_result = {"error": "node not found, generate.js not executed"}
+        except subprocess.TimeoutExpired:
+            generate_path.write_text(gen_backup.read_text())
+            generate_result = {"error": "generate.js 執行逾時，已還原"}
+        except Exception as e:
+            generate_path.write_text(gen_backup.read_text())
+            generate_result = {"error": f"執行失敗，已還原：{str(e)}"}
 
     return JSONResponse({
         "ok": True,

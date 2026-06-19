@@ -55,7 +55,20 @@ for (const file of fs.readdirSync(path.join(CONFIGS_DIR, 'profiles'))) {
 //   beta  = http://192.168.1.105:1601   （測試）
 //   local = http://host.docker.internal:80（本地 docker）
 //
-const AGENT_MCP_CONFIGS = {
+const AGENT_MCP_CONFIGS = (() => {
+  // Prefer agent-configs.json (managed by admin UI) if it exists
+  const jsonPath = path.join(CONFIGS_DIR, 'agent-configs.json');
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      if (Object.keys(data).length > 0) return data;
+    } catch (e) {
+      console.warn('⚠️  agent-configs.json parse error, falling back to inline config');
+    }
+  }
+
+  // Fallback: inline config (legacy)
+  return {
   bob: {
     profile: 'full',
     default: 'local',
@@ -100,7 +113,8 @@ const AGENT_MCP_CONFIGS = {
     default: 'local',
     overrides: {}
   }
-};
+  };
+})();
 
 // ─── 生成邏輯 ───
 
@@ -139,6 +153,9 @@ function generateMcpJson(agentName) {
     const url = env.baseUrl + serverDef.path;
 
     // Determine autoApprove: per-agent toolFilter or full server autoApprove
+    // ⚠️ toolFilter 是白名單：只有列出的 tools 會被啟用。
+    //    若 server 新增 tool，角色不會自動獲得，需手動加入 toolFilter。
+    //    未設定 toolFilter 的 server = 使用全部 autoApprove（自動獲得新 tool）。
     let autoApprove = serverDef.autoApprove || [];
     if (agentConfig.toolFilter && agentConfig.toolFilter[serverName]) {
       // Only include tools that exist in the server's autoApprove list
