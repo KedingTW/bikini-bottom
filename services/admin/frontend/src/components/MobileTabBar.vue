@@ -56,21 +56,23 @@ router.afterEach(() => { moreOpen.value = false })
 const primaryTabs = [
   { path: '/', icon: '🏠', label: '總覽', admin: false },
   { path: '/agent-config', icon: '🤖', label: '角色', admin: true },
+  { path: '/mcp', icon: '🔌', label: 'MCP', admin: true },
   { path: '/metrics', icon: '📊', label: '監控', admin: false },
-  { path: '/costs', icon: '💰', label: '成本', admin: false },
 ]
 
 // Secondary items in "more" menu
 const secondaryItems = [
+  { path: '/skills', icon: '📚', label: 'Skill', admin: true },
+  { path: '/steering', icon: '📜', label: 'Steering', admin: true },
+  { path: '/cronjobs', icon: '⏰', label: 'Cronjob', admin: true },
+  { path: '/costs', icon: '💰', label: '成本', admin: false },
   { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
   { path: '/logs', icon: '📋', label: 'Log', admin: true },
   { path: '/messaging', icon: '📢', label: '推送', admin: true },
   { path: '/members', icon: '👥', label: '成員', admin: true },
   { path: '/threads', icon: '📌', label: '討論串', admin: true },
-  { path: '/thread-analytics', icon: '📈', label: '分析', admin: true },
   { path: '/deploy', icon: '🚀', label: '部署', admin: true },
   { path: '/system', icon: '🖥️', label: '系統', admin: false },
-  { path: '/api-keys', icon: '🔑', label: 'API Key', admin: true },
   { path: '/users', icon: '👤', label: '使用者', admin: true },
 ]
 

@@ -72,8 +72,14 @@ const navGroups = [
   { label: '', items: [
     { path: '/', icon: '🏠', label: '總覽', admin: false },
   ]},
-  { label: '伺服器管理', items: [
+  { label: 'AI 角色管理', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
+    { path: '/mcp', icon: '🔌', label: 'MCP 管理', admin: true },
+    { path: '/skills', icon: '📚', label: 'Skill 管理', admin: true },
+    { path: '/steering', icon: '📜', label: 'Steering', admin: true },
+    { path: '/cronjobs', icon: '⏰', label: 'Cronjob', admin: true },
+  ]},
+  { label: '伺服器管理', items: [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
     { path: '/alerts', icon: '🔔', label: '異常通知', admin: false },
     { path: '/logs', icon: '📋', label: 'Log 搜尋', admin: true },

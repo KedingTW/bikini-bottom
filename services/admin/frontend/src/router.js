@@ -8,6 +8,9 @@ import Members from './views/Members.vue'
 import Discord from './views/Discord.vue'
 import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import AgentConfig from './views/AgentConfig.vue'
+import McpManage from './views/McpManage.vue'
+import SkillManage from './views/SkillManage.vue'
+import SteeringManage from './views/SteeringManage.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
 import Deploy from './views/Deploy.vue'
@@ -27,6 +30,9 @@ const routes = [
   { path: '/messaging', name: 'messaging', component: Messaging },
   // AI 角色管理
   { path: '/agent-config', name: 'agent-config', component: AgentConfig },
+  { path: '/mcp', name: 'mcp', component: McpManage },
+  { path: '/skills', name: 'skills', component: SkillManage },
+  { path: '/steering', name: 'steering', component: SteeringManage },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },
   // 系統運維
