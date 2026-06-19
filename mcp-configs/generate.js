@@ -42,8 +42,13 @@ for (const file of fs.readdirSync(path.join(CONFIGS_DIR, 'profiles'))) {
 // ─── Agent MCP 設定 ───
 // 
 // 設計邏輯：
+//   profile: 該 agent 使用哪個 server 組合包（full / minimal）
 //   default: 該 agent 所有 server 預設連到哪個環境
 //   overrides: 個別 server 要連到不同環境時指定
+//   disabled: 從 profile 中排除的 server（選填）
+//   toolFilter: per-server tool 篩選（選填）
+//     - 未指定的 server = 使用全部 autoApprove tools
+//     - 指定空陣列 = 該 server 不自動核准任何 tool
 //
 // 環境代碼：
 //   prod  = http://mcp.twkd.com:1601    （正式）
@@ -111,9 +116,13 @@ function generateMcpJson(agentName) {
     throw new Error(`Unknown profile: ${agentConfig.profile}`);
   }
 
+  // Determine which servers are enabled (profile servers minus disabled)
+  const disabledServers = agentConfig.disabled || [];
+  const enabledServers = profile.servers.filter(s => !disabledServers.includes(s));
+
   const mcpServers = {};
 
-  for (const serverName of profile.servers) {
+  for (const serverName of enabledServers) {
     const serverDef = servers.servers[serverName];
     if (!serverDef) {
       console.warn(`  ⚠️  Server "${serverName}" in profile but not in servers.json, skipping`);
@@ -129,11 +138,20 @@ function generateMcpJson(agentName) {
 
     const url = env.baseUrl + serverDef.path;
 
+    // Determine autoApprove: per-agent toolFilter or full server autoApprove
+    let autoApprove = serverDef.autoApprove || [];
+    if (agentConfig.toolFilter && agentConfig.toolFilter[serverName]) {
+      // Only include tools that exist in the server's autoApprove list
+      const allowed = agentConfig.toolFilter[serverName];
+      autoApprove = autoApprove.filter(t => allowed.includes(t));
+    }
+
     mcpServers[serverName] = {
       url,
       headers: {
         Authorization: `Bearer ${env.token}`
-      }
+      },
+      ...(autoApprove.length > 0 && { autoApprove })
     };
   }
 

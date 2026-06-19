@@ -2373,9 +2373,247 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     })
 
 
+# ─── MCP Pool 管理 API ───
+
+MCP_CONFIGS_DIR = REPO_DIR / "mcp-configs"
+
+
+@app.get("/api/mcp-pool")
+async def api_mcp_pool(request: Request):
+    """取得 MCP Pool 定義（所有 server + tools）+ 可用環境 + profiles"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+
+    result = {"servers": {}, "environments": [], "profiles": {}}
+
+    # Load servers.json
+    servers_path = MCP_CONFIGS_DIR / "servers.json"
+    if servers_path.exists():
+        data = json_mod.loads(servers_path.read_text())
+        result["servers"] = data.get("servers", {})
+
+    # Load environments
+    env_dir = MCP_CONFIGS_DIR / "environments"
+    if env_dir.exists():
+        for f in sorted(env_dir.iterdir()):
+            if f.suffix == ".json":
+                env_data = json_mod.loads(f.read_text())
+                result["environments"].append({
+                    "name": f.stem,
+                    "baseUrl": env_data.get("baseUrl", ""),
+                    "comment": env_data.get("$comment", ""),
+                })
+
+    # Load profiles
+    prof_dir = MCP_CONFIGS_DIR / "profiles"
+    if prof_dir.exists():
+        for f in sorted(prof_dir.iterdir()):
+            if f.suffix == ".json":
+                prof_data = json_mod.loads(f.read_text())
+                result["profiles"][f.stem] = prof_data.get("servers", [])
+
+    return JSONResponse(result)
+
+
+@app.get("/api/mcp-pool/agent/{agent_name}")
+async def api_mcp_pool_agent(agent_name: str, request: Request):
+    """取得某角色在 generate.js 中的 MCP 配置"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    if not generate_path.exists():
+        return JSONResponse({"error": "generate.js not found", "config": None})
+
+    content = generate_path.read_text()
+
+    # Parse the AGENT_MCP_CONFIGS block for this agent
+    import re
+    # Extract the full AGENT_MCP_CONFIGS object as text
+    match = re.search(r'const AGENT_MCP_CONFIGS\s*=\s*\{', content)
+    if not match:
+        return JSONResponse({"error": "Cannot parse AGENT_MCP_CONFIGS", "config": None})
+
+    # Use a simple JS-object parser approach: find agent's config block
+    # We'll use subprocess with node if available, otherwise return raw
+    config = _parse_agent_config_from_js(content, agent_name)
+    return JSONResponse({"error": None, "config": config})
+
+
+def _parse_agent_config_from_js(js_content: str, agent_name: str) -> dict:
+    """Parse a single agent's config from generate.js using regex."""
+    import re, json as json_mod
+
+    # Find the agent block: agentName: { ... }
+    # Pattern: agent_name: {  (with possible quotes)
+    pattern = rf"['\"]?{re.escape(agent_name)}['\"]?\s*:\s*\{{"
+    match = re.search(pattern, js_content)
+    if not match:
+        return None
+
+    # Find balanced braces from match start
+    start = match.start()
+    brace_start = js_content.index('{', match.start() + len(agent_name))
+    depth = 0
+    i = brace_start
+    while i < len(js_content):
+        if js_content[i] == '{':
+            depth += 1
+        elif js_content[i] == '}':
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+
+    block = js_content[brace_start:i + 1]
+
+    # Convert JS object to JSON-parseable format
+    # Remove comments
+    block = re.sub(r'//[^\n]*', '', block)
+    # Add quotes to keys
+    block = re.sub(r"(\w+)\s*:", r'"\1":', block)
+    # Replace single quotes with double quotes
+    block = block.replace("'", '"')
+    # Remove trailing commas
+    block = re.sub(r',\s*([}\]])', r'\1', block)
+
+    try:
+        return json_mod.loads(block)
+    except Exception:
+        return {"_raw": block, "_parse_error": True}
+
+
+@app.post("/api/mcp-pool/agent/{agent_name}")
+async def api_mcp_pool_agent_save(agent_name: str, request: Request):
+    """儲存角色的 MCP Pool 配置並執行 generate.js"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    import json as json_mod, re, subprocess
+
+    body = await request.json()
+    # body: { profile, default, overrides, disabled, toolFilter }
+    new_config = {
+        "profile": body.get("profile", "full"),
+        "default": body.get("default", "local"),
+        "overrides": body.get("overrides", {}),
+    }
+    if body.get("disabled"):
+        new_config["disabled"] = body["disabled"]
+    if body.get("toolFilter"):
+        new_config["toolFilter"] = body["toolFilter"]
+
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    if not generate_path.exists():
+        raise HTTPException(status_code=500, detail="generate.js not found")
+
+    content = generate_path.read_text()
+
+    # Replace or insert agent config in AGENT_MCP_CONFIGS
+    content = _update_agent_in_generate_js(content, agent_name, new_config)
+    generate_path.write_text(content)
+
+    # Execute generate.js for this agent
+    generate_result = None
+    try:
+        node_bin = "node"
+        result = subprocess.run(
+            [node_bin, str(generate_path), agent_name],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(MCP_CONFIGS_DIR.parent)
+        )
+        generate_result = {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode
+        }
+    except FileNotFoundError:
+        generate_result = {"error": "node not found, mcp.json not generated"}
+    except Exception as e:
+        generate_result = {"error": str(e)}
+
+    return JSONResponse({
+        "ok": True,
+        "message": f"已儲存 {agent_name} 的 MCP 配置",
+        "generate": generate_result
+    })
+
+
+def _update_agent_in_generate_js(content: str, agent_name: str, config: dict) -> str:
+    """Update or insert an agent's config block in generate.js."""
+    import re, json as json_mod
+
+    # Build JS object string from config
+    lines = []
+    lines.append(f"  {agent_name}: {{")
+    lines.append(f"    profile: '{config['profile']}',")
+    lines.append(f"    default: '{config['default']}',")
+
+    # overrides
+    if config.get("overrides"):
+        lines.append("    overrides: {")
+        for k, v in config["overrides"].items():
+            lines.append(f"      '{k}': '{v}',")
+        lines.append("    },")
+    else:
+        lines.append("    overrides: {},")
+
+    # disabled
+    if config.get("disabled"):
+        items = ", ".join(f"'{s}'" for s in config["disabled"])
+        lines.append(f"    disabled: [{items}],")
+
+    # toolFilter
+    if config.get("toolFilter"):
+        lines.append("    toolFilter: {")
+        for server, tools in config["toolFilter"].items():
+            tool_list = ", ".join(f"'{t}'" for t in tools)
+            lines.append(f"      '{server}': [{tool_list}],")
+        lines.append("    },")
+
+    lines.append("  }")
+    new_block = "\n".join(lines)
+
+    # Try to find and replace existing agent block
+    pattern = rf"(\s*)['\"]?{re.escape(agent_name)}['\"]?\s*:\s*\{{"
+    match = re.search(pattern, content)
+
+    if match:
+        # Find the end of this agent's block (balanced braces)
+        brace_start = content.index('{', match.start() + len(agent_name))
+        depth = 0
+        i = brace_start
+        while i < len(content):
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        # Check for trailing comma
+        end = i + 1
+        if end < len(content) and content[end] == ',':
+            end += 1
+
+        # Replace
+        content = content[:match.start()] + "\n" + new_block + "," + content[end:]
+    else:
+        # Insert before closing of AGENT_MCP_CONFIGS
+        closing = content.rfind("};", content.find("AGENT_MCP_CONFIGS"))
+        if closing > 0:
+            content = content[:closing] + new_block + ",\n" + content[closing:]
+
+    return content
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/skills", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
