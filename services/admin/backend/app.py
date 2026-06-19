@@ -14,6 +14,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from itsdangerous import URLSafeTimedSerializer
 
 try:
+    import pymysql
+    MYSQL_AVAILABLE = True
+except ImportError:
+    MYSQL_AVAILABLE = False
+
+try:
     from kubernetes import client, config as k8s_config
     K8S_AVAILABLE = True
 except ImportError:
@@ -34,55 +40,211 @@ BACKEND = os.environ.get("DASHBOARD_BACKEND", "auto")  # "k8s", "docker", or "au
 METRICS_DB = os.environ.get("METRICS_DB", "/data/metrics/metrics.db")
 DEFAULT_PASSWORD = os.environ.get("DASHBOARD_DEFAULT_PASSWORD", "")
 
+# ─── MySQL Config ─────────────────────────────────────────
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_USER = os.environ.get("MYSQL_USER", "admin")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
+MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "admin_dashboard")
 
-# ─── SQLite Metrics Store ─────────────────────────────────
+# 若 MYSQL_HOST 有設定且 pymysql 可用，就用 MySQL；否則 fallback SQLite
+USE_MYSQL = bool(MYSQL_HOST) and MYSQL_AVAILABLE
+
+
+def get_db():
+    """取得資料庫連線（MySQL 或 SQLite）"""
+    if USE_MYSQL:
+        conn = pymysql.connect(
+            host=MYSQL_HOST, port=MYSQL_PORT,
+            user=MYSQL_USER, password=MYSQL_PASSWORD,
+            database=MYSQL_DATABASE, charset="utf8mb4",
+            cursorclass=pymysql.cursors.Cursor,
+            autocommit=True,
+        )
+        return MySQLCompat(conn)
+    else:
+        return sqlite3.connect(METRICS_DB)
+
+
+class MySQLCompat:
+    """Wrapper 讓 pymysql 連線能用 sqlite3 風格的 ? placeholder 和 SQLite 特有語法。"""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    @staticmethod
+    def _translate_sql(sql):
+        """將 SQLite 語法轉換為 MySQL 相容語法。"""
+        import re
+        sql = sql.replace("?", "%s")
+        sql = sql.replace("INSERT OR IGNORE", "INSERT IGNORE")
+        sql = sql.replace("INSERT OR REPLACE", "REPLACE")
+        # datetime('now') → NOW()
+        sql = re.sub(r"datetime\('now'\)", "NOW()", sql)
+        # datetime('now', '-X hour') → DATE_SUB(NOW(), INTERVAL X HOUR)
+        sql = re.sub(r"datetime\('now',\s*'-(\d+)\s*hour'\)", r"DATE_SUB(NOW(), INTERVAL \1 HOUR)", sql)
+        # datetime('now', '-X minutes') → DATE_SUB(NOW(), INTERVAL X MINUTE)
+        sql = re.sub(r"datetime\('now',\s*'-(\d+)\s*minutes?'\)", r"DATE_SUB(NOW(), INTERVAL \1 MINUTE)", sql)
+        # SQLite inline CREATE TABLE cache → skip (already created in _init_db)
+        if "CREATE TABLE IF NOT EXISTS cache" in sql and "LONGTEXT" not in sql:
+            return "SELECT 1"
+        # cache 表的 key 欄位是 MySQL 保留字，需加 backtick
+        if "cache" in sql and "key" in sql.lower():
+            sql = re.sub(r'\bkey\b(?!_)', '`key`', sql)
+        return sql
+
+    def execute(self, sql, params=None):
+        sql = self._translate_sql(sql)
+        cur = self._conn.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def executemany(self, sql, params_list):
+        sql = self._translate_sql(sql)
+        cur = self._conn.cursor()
+        cur.executemany(sql, params_list)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, *args):
+        try:
+            if exc_type:
+                self._conn.rollback()
+        except Exception:
+            pass
+        self._conn.close()
+
+
+# ─── Database Init ─────────────────────────────────────────
 def _init_db():
-    """Initialize SQLite database for metrics history."""
-    os.makedirs(os.path.dirname(METRICS_DB), exist_ok=True)
-    with sqlite3.connect(METRICS_DB) as conn:
-        conn.execute("""
+    """Initialize database tables (MySQL or SQLite)."""
+    if USE_MYSQL:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS metrics_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                agent TEXT NOT NULL,
-                cpu_milli REAL NOT NULL,
-                memory_mb REAL NOT NULL
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                ts VARCHAR(32) NOT NULL,
+                agent VARCHAR(64) NOT NULL,
+                cpu_milli DOUBLE NOT NULL,
+                memory_mb DOUBLE NOT NULL,
+                INDEX idx_metrics_ts (ts),
+                INDEX idx_metrics_agent (agent)
             )
         """)
-        conn.execute("""
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                agent TEXT NOT NULL,
-                level TEXT NOT NULL,
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                ts VARCHAR(32) NOT NULL,
+                agent VARCHAR(64) NOT NULL,
+                level VARCHAR(16) NOT NULL,
                 message TEXT NOT NULL,
-                dismissed INTEGER DEFAULT 0
+                dismissed INT DEFAULT 0,
+                INDEX idx_alerts_ts (ts)
             )
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics_history(ts)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_agent ON metrics_history(agent)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts)")
-        conn.execute("""
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                department TEXT DEFAULT '',
-                password_hash TEXT NOT NULL,
-                role TEXT DEFAULT 'admin'
+                id VARCHAR(32) PRIMARY KEY,
+                name VARCHAR(64) NOT NULL,
+                department VARCHAR(64) DEFAULT '',
+                password_hash VARCHAR(128) NOT NULL,
+                role VARCHAR(16) DEFAULT 'admin'
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS deploy_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                ts VARCHAR(32) NOT NULL,
+                user_id VARCHAR(32) NOT NULL,
+                user_name VARCHAR(64) NOT NULL,
+                agent VARCHAR(64) NOT NULL,
+                action VARCHAR(32) NOT NULL,
+                status VARCHAR(16) NOT NULL,
+                message TEXT DEFAULT ''
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS push_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                ts VARCHAR(32) NOT NULL,
+                user_name VARCHAR(64) NOT NULL,
+                platform VARCHAR(32) NOT NULL,
+                target VARCHAR(128) NOT NULL,
+                content TEXT NOT NULL,
+                status VARCHAR(16) DEFAULT 'sent',
+                scheduled_at VARCHAR(32) DEFAULT ''
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cache (
+                `key` VARCHAR(128) PRIMARY KEY,
+                data LONGTEXT,
+                ts VARCHAR(32)
+            )
+        """)
+        cur.close()
+        conn.close()
+    else:
+        os.makedirs(os.path.dirname(METRICS_DB), exist_ok=True)
+        with sqlite3.connect(METRICS_DB) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS metrics_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts TEXT NOT NULL,
+                    agent TEXT NOT NULL,
+                    cpu_milli REAL NOT NULL,
+                    memory_mb REAL NOT NULL
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS alerts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts TEXT NOT NULL,
+                    agent TEXT NOT NULL,
+                    level TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    dismissed INTEGER DEFAULT 0
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics_history(ts)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_agent ON metrics_history(agent)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts)")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    department TEXT DEFAULT '',
+                    password_hash TEXT NOT NULL,
+                    role TEXT DEFAULT 'admin'
+                )
+            """)
     _seed_users()
 
 
 def _seed_users():
     """Seed initial users if table is empty."""
-    with sqlite3.connect(METRICS_DB) as conn:
-        # Add role column if not exists (migration)
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'")
-            conn.commit()
-        except Exception:
-            pass
+    conn = get_db()
+    try:
+        if not USE_MYSQL:
+            # SQLite migration: add role column if not exists
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'")
+                conn.commit()
+            except Exception:
+                pass
+
         count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if count == 0:
             default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
@@ -95,16 +257,31 @@ def _seed_users():
                 ("11020550", "吳珈瑄", "系統開發課"),
                 ("11110577", "楊詠仁", "系統開發課"),
             ]
-            for uid, name, dept in initial_users:
-                conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
-                             (uid, name, dept, default_pw))
-            conn.commit()
+            if USE_MYSQL:
+                conn._conn.autocommit = False
+                try:
+                    for uid, name, dept in initial_users:
+                        conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
+                                     (uid, name, dept, default_pw))
+                    conn.commit()
+                except Exception:
+                    conn._conn.rollback()
+                    raise
+                finally:
+                    conn._conn.autocommit = True
+            else:
+                for uid, name, dept in initial_users:
+                    conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
+                                 (uid, name, dept, default_pw))
+                conn.commit()
+    finally:
+        conn.close()
 
 
 def _store_metrics(metrics: dict):
-    """Store current metrics snapshot to SQLite."""
+    """Store current metrics snapshot to database."""
     try:
-        with sqlite3.connect(METRICS_DB) as conn:
+        with get_db() as conn:
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             rows = []
             for agent_name, m in metrics.items():
@@ -121,7 +298,7 @@ def _store_metrics(metrics: dict):
 def _cleanup_old_metrics():
     """Remove metrics older than 30 days."""
     try:
-        with sqlite3.connect(METRICS_DB) as conn:
+        with get_db() as conn:
             cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute("DELETE FROM metrics_history WHERE ts < ?", (cutoff,))
     except Exception as e:
@@ -461,9 +638,8 @@ async def api_login(request: Request):
     if not username or not password:
         raise HTTPException(status_code=400, detail="請輸入帳號和密碼")
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    conn = sqlite3.connect(METRICS_DB)
-    row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
-    conn.close()
+    with get_db() as conn:
+        row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
     if row:
         token = serializer.dumps({"user": row[0], "name": row[1]})
         request.session["auth_token"] = token
@@ -512,9 +688,8 @@ async def api_me(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    row = conn.execute("SELECT name, department, role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    conn.close()
+    with get_db() as conn:
+        row = conn.execute("SELECT name, department, role FROM users WHERE id = ?", (user["id"],)).fetchone()
     name = row[0] if row else user["id"]
     role = row[2] if row else "viewer"
     return JSONResponse({"id": user["id"], "name": name, "role": role})
@@ -532,15 +707,16 @@ async def api_change_password(request: Request):
     if not new_pw or len(new_pw) < 6:
         raise HTTPException(status_code=400, detail="新密碼至少 6 字元")
     old_hash = hashlib.sha256(old_pw.encode()).hexdigest()
-    conn = sqlite3.connect(METRICS_DB)
-    row = conn.execute("SELECT id FROM users WHERE id = ? AND password_hash = ?", (user["id"], old_hash)).fetchone()
-    if not row:
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM users WHERE id = ? AND password_hash = ?", (user["id"], old_hash)).fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="舊密碼不正確")
+        new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user["id"]))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="舊密碼不正確")
-    new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user["id"]))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True, "message": "密碼已更新"})
 
 
@@ -551,9 +727,8 @@ async def api_users(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    rows = conn.execute("SELECT id, name, department, role FROM users ORDER BY id").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT id, name, department, role FROM users ORDER BY id").fetchall()
     return JSONResponse({"users": [{"id": r[0], "name": r[1], "department": r[2], "role": r[3]} for r in rows]})
 
 
@@ -564,31 +739,30 @@ async def api_create_user(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     # Check admin
-    conn = sqlite3.connect(METRICS_DB)
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
-        conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    body = await request.json()
-    uid = body.get("id", "").strip()
-    name = body.get("name", "").strip()
-    department = body.get("department", "").strip()
-    role = body.get("role", "viewer")
-    password = body.get("password", DEFAULT_PASSWORD)
-    if not uid or not name:
-        conn.close()
-        raise HTTPException(status_code=400, detail="員工編號和姓名為必填")
-    if role not in ("admin", "viewer"):
-        role = "viewer"
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_db()
     try:
-        conn.execute("INSERT INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, ?)",
-                     (uid, name, department, pw_hash, role))
-        conn.commit()
-    except sqlite3.IntegrityError:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        body = await request.json()
+        uid = body.get("id", "").strip()
+        name = body.get("name", "").strip()
+        department = body.get("department", "").strip()
+        role = body.get("role", "viewer")
+        password = body.get("password", DEFAULT_PASSWORD)
+        if not uid or not name:
+            raise HTTPException(status_code=400, detail="員工編號和姓名為必填")
+        if role not in ("admin", "viewer"):
+            role = "viewer"
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        try:
+            conn.execute("INSERT INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+                         (uid, name, department, pw_hash, role))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=400, detail="該員工編號已存在")
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="該員工編號已存在")
-    conn.close()
     return JSONResponse({"ok": True, "message": f"已新增使用者 {name}"})
 
 
@@ -598,17 +772,17 @@ async def api_delete_user(user_id: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    conn = get_db()
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        if user_id == user["id"]:
+            raise HTTPException(status_code=400, detail="不能刪除自己")
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    if user_id == user["id"]:
-        conn.close()
-        raise HTTPException(status_code=400, detail="不能刪除自己")
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True})
 
 
@@ -618,17 +792,18 @@ async def api_reset_password(user_id: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    conn = get_db()
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
+        if not default_pw:
+            raise HTTPException(status_code=500, detail="DASHBOARD_DEFAULT_PASSWORD 未設定")
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (default_pw, user_id))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
-    if not default_pw:
-        raise HTTPException(status_code=500, detail="DASHBOARD_DEFAULT_PASSWORD 未設定")
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (default_pw, user_id))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True, "message": "密碼已重設為預設值"})
 
 
@@ -638,18 +813,19 @@ async def api_update_role(user_id: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    conn = get_db()
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        body = await request.json()
+        new_role = body.get("role", "viewer")
+        if new_role not in ("admin", "viewer"):
+            new_role = "viewer"
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    body = await request.json()
-    new_role = body.get("role", "viewer")
-    if new_role not in ("admin", "viewer"):
-        new_role = "viewer"
-    conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True})
 
 
@@ -769,7 +945,9 @@ REPO_DIR = Path(os.environ.get("REPO_DIR", "/data/repo"))
 
 
 def _init_deploy_table():
-    with sqlite3.connect(METRICS_DB) as conn:
+    if USE_MYSQL:
+        return  # 已在 _init_db 中建立
+    with get_db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS deploy_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -810,9 +988,8 @@ async def api_deploy_history(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    rows = conn.execute("SELECT ts, user_name, agent, action, status, message FROM deploy_history ORDER BY id DESC LIMIT 50").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT ts, user_name, agent, action, status, message FROM deploy_history ORDER BY id DESC LIMIT 50").fetchall()
     history = [{"ts": r[0], "user": r[1], "agent": r[2], "action": r[3], "status": r[4], "message": r[5]} for r in rows]
     return JSONResponse({"history": history})
 
@@ -834,11 +1011,10 @@ async def api_deploy(agent_name: str, request: Request):
     steps = []
 
     def log_deploy(action, status, message=""):
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("INSERT INTO deploy_history (ts, user_id, user_name, agent, action, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     (now_str, user["id"], user["name"], agent_name, action, status, message))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("INSERT INTO deploy_history (ts, user_id, user_name, agent, action, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                         (now_str, user["id"], user["name"], agent_name, action, status, message))
+            conn.commit()
 
     # Step 1: git pull
     try:
@@ -1082,27 +1258,26 @@ async def api_metrics_history(request: Request, hours: int = 6, agent: str = "")
     since = (datetime.now(timezone.utc) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        if agent and ',' in agent:
-            # Multiple agents: aggregate sum for the group
-            agent_list = [a.strip() for a in agent.split(',') if a.strip()]
-            placeholders = ','.join('?' * len(agent_list))
-            rows = conn.execute(
-                f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
-                [since] + agent_list,
-            ).fetchall()
-        elif agent:
-            rows = conn.execute(
-                "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
-                (since, agent),
-            ).fetchall()
-        else:
-            # Aggregate total across all agents per timestamp
-            rows = conn.execute(
-                "SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? GROUP BY ts ORDER BY ts",
-                (since,),
-            ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            if agent and ',' in agent:
+                # Multiple agents: aggregate sum for the group
+                agent_list = [a.strip() for a in agent.split(',') if a.strip()]
+                placeholders = ','.join('?' * len(agent_list))
+                rows = conn.execute(
+                    f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
+                    [since] + agent_list,
+                ).fetchall()
+            elif agent:
+                rows = conn.execute(
+                    "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
+                    (since, agent),
+                ).fetchall()
+            else:
+                # Aggregate total across all agents per timestamp
+                rows = conn.execute(
+                    "SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? GROUP BY ts ORDER BY ts",
+                    (since,),
+                ).fetchall()
     except Exception as e:
         return JSONResponse({"error": str(e), "data": []})
 
@@ -1123,11 +1298,10 @@ async def api_alerts(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        rows = conn.execute(
-            "SELECT id, ts, agent, level, message FROM alerts WHERE dismissed = 0 ORDER BY ts DESC LIMIT 50"
-        ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT id, ts, agent, level, message FROM alerts WHERE dismissed = 0 ORDER BY ts DESC LIMIT 50"
+            ).fetchall()
         alerts = [{"id": r[0], "ts": r[1], "agent": r[2], "level": r[3], "message": r[4]} for r in rows]
         return JSONResponse({"alerts": alerts})
     except Exception as e:
@@ -1141,19 +1315,18 @@ async def api_dismiss_alert(alert_id: int, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("UPDATE alerts SET dismissed = 1 WHERE id = ?", (alert_id,))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("UPDATE alerts SET dismissed = 1 WHERE id = ?", (alert_id,))
+            conn.commit()
         return JSONResponse({"ok": True})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 def _insert_alert(agent: str, level: str, message: str):
-    """Insert an alert into SQLite."""
+    """Insert an alert into database."""
     try:
-        with sqlite3.connect(METRICS_DB) as conn:
+        with get_db() as conn:
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute("INSERT INTO alerts (ts, agent, level, message) VALUES (?, ?, ?, ?)", (ts, agent, level, message))
     except Exception as e:
@@ -1169,18 +1342,17 @@ async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
     days = min(days, 30)
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     try:
-        conn = sqlite3.connect(METRICS_DB)
-        if agent:
-            rows = conn.execute(
-                "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? AND agent = ? ORDER BY ts DESC",
-                (since, agent),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? ORDER BY ts DESC",
-                (since,),
-            ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            if agent:
+                rows = conn.execute(
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? AND agent = ? ORDER BY ts DESC",
+                    (since, agent),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? ORDER BY ts DESC",
+                    (since,),
+                ).fetchall()
         alerts = [{"id": r[0], "ts": r[1], "agent": r[2], "level": r[3], "message": r[4], "dismissed": bool(r[5])} for r in rows]
         return JSONResponse({"alerts": alerts})
     except Exception as e:
@@ -1325,52 +1497,52 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
     try:
         import json as json_mod
         cache_key = f"kiro_usage_{range}"
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        if refresh != "1":
-            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-            if row:
-                conn.close()
-                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
-        conn.close()
+        conn = get_db()
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            if refresh != "1":
+                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
 
-        from query_usage import get_usage_data, query_usage
-        data = get_usage_data(range)
+            from query_usage import get_usage_data, query_usage
+            data = get_usage_data(range)
 
-        # Also compute daily_totals for chart
-        if data.get("periods"):
-            from collections import defaultdict
-            p = data["periods"][0]  # Use first period's date range
-            # Aggregate from raw user data by date
-            daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
-            for u in p.get("raw_data", []):
-                d = daily[u["date"]]
-                d["credits"] += u.get("credits_used", 0) or u.get("credits", 0)
-                d["messages"] += u.get("total_messages", 0) or u.get("messages", 0)
-                d["conversations"] += u.get("chat_conversations", 0) or u.get("conversations", 0)
+            # Also compute daily_totals for chart
+            if data.get("periods"):
+                from collections import defaultdict
+                p = data["periods"][0]  # Use first period's date range
+                # Aggregate from raw user data by date
+                daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+                for u in p.get("raw_data", []):
+                    d = daily[u["date"]]
+                    d["credits"] += u.get("credits_used", 0) or u.get("credits", 0)
+                    d["messages"] += u.get("total_messages", 0) or u.get("messages", 0)
+                    d["conversations"] += u.get("chat_conversations", 0) or u.get("conversations", 0)
 
-            if not daily:
-                # Fallback: try query directly
-                try:
-                    from datetime import date
-                    raw = query_usage(p.get("_start", date.today()), p.get("_end", date.today()))
-                    for r in raw:
-                        d = daily[r["date"]]
-                        d["credits"] += r.get("credits_used", 0)
-                        d["messages"] += r.get("total_messages", 0)
-                        d["conversations"] += r.get("chat_conversations", 0)
-                except Exception:
-                    pass
+                if not daily:
+                    # Fallback: try query directly
+                    try:
+                        from datetime import date
+                        raw = query_usage(p.get("_start", date.today()), p.get("_end", date.today()))
+                        for r in raw:
+                            d = daily[r["date"]]
+                            d["credits"] += r.get("credits_used", 0)
+                            d["messages"] += r.get("total_messages", 0)
+                            d["conversations"] += r.get("chat_conversations", 0)
+                    except Exception:
+                        pass
 
-            data["daily_totals"] = [
-                {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
-                for k, v in sorted(daily.items())
-            ]
+                data["daily_totals"] = [
+                    {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+                    for k, v in sorted(daily.items())
+                ]
 
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
-        conn.commit()
-        conn.close()
+            with get_db() as conn:
+                conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
+                conn.commit()
+        finally:
+            conn.close()
 
         return JSONResponse({"error": None, "data": data, "cached": False})
     except Exception as e:
@@ -1387,24 +1559,25 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
     try:
         import json as json_mod
         cache_key = f"openai_{range}_{type}"
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
-        conn.close()
-        if row:
-            return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+        conn = get_db()
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
+            if row:
+                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
 
-        from query_openai_usage import query_costs, query_completions_usage
-        result = {}
-        if type in ("all", "cost"):
-            result["costs"] = await query_costs(range)
-        if type in ("all", "tokens"):
-            result["tokens"] = await query_completions_usage(range)
+            from query_openai_usage import query_costs, query_completions_usage
+            result = {}
+            if type in ("all", "cost"):
+                result["costs"] = await query_costs(range)
+            if type in ("all", "tokens"):
+                result["tokens"] = await query_completions_usage(range)
 
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-        conn.commit()
-        conn.close()
+            with get_db() as conn:
+                conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+                conn.commit()
+        finally:
+            conn.close()
 
         return JSONResponse({"error": None, "data": result, "cached": False})
     except Exception as e:
@@ -1518,7 +1691,9 @@ async def api_discord_send_message(channel_id: str, request: Request):
 
 # ─── Messaging APIs ──────────────────────────────────────
 def _init_push_table():
-    with sqlite3.connect(METRICS_DB) as conn:
+    if USE_MYSQL:
+        return  # 已在 _init_db 中建立
+    with get_db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS push_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1539,11 +1714,10 @@ _init_push_table()
 def _log_push(user, platform, target, content, scheduled_at=""):
     tz = timezone(timedelta(hours=8))
     now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    conn = sqlite3.connect(METRICS_DB)
-    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'sent', ?)",
-                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'sent', ?)",
+                     (now_str, user["name"], platform, target, content[:200], scheduled_at))
+        conn.commit()
 
 
 @app.get("/api/messaging/history")
@@ -1551,9 +1725,8 @@ async def api_messaging_history(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = sqlite3.connect(METRICS_DB)
-    rows = conn.execute("SELECT ts, user_name, platform, target, content, status, scheduled_at FROM push_history ORDER BY id DESC LIMIT 50").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT ts, user_name, platform, target, content, status, scheduled_at FROM push_history ORDER BY id DESC LIMIT 50").fetchall()
     return JSONResponse({"history": [{"ts": r[0], "user": r[1], "platform": r[2], "target": r[3], "content": r[4], "status": r[5], "scheduled_at": r[6]} for r in rows]})
 
 
@@ -1608,11 +1781,10 @@ async def api_messaging_schedule(request: Request):
         raise HTTPException(status_code=400, detail="請填寫內容和排程時間")
     tz = timezone(timedelta(hours=8))
     now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    conn = sqlite3.connect(METRICS_DB)
-    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'scheduled', ?)",
-                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'scheduled', ?)",
+                     (now_str, user["name"], platform, target, content[:200], scheduled_at))
+        conn.commit()
     return JSONResponse({"ok": True, "message": f"已排程於 {scheduled_at} 發送"})
 
 
@@ -1685,34 +1857,35 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
         if mode == "all":
             # Full fetch for analytics (cached 1 hour)
             cache_key = f"thread_msgs_{thread_id}"
-            conn = sqlite3.connect(METRICS_DB)
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-            conn.close()
-            if row:
-                return JSONResponse(json_mod.loads(row[0]))
+            conn = get_db()
+            try:
+                conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse(json_mod.loads(row[0]))
 
-            all_msgs = []
-            bf = None
-            for _ in range(20):
-                msgs = await get_channel_messages(thread_id, limit=100, before=bf)
-                if not msgs:
-                    break
-                all_msgs.extend(msgs)
-                bf = msgs[-1]["id"]
-                if len(msgs) < 100:
-                    break
-            messages = []
-            for m in all_msgs:
-                author = m.get("author", {})
-                uid = author.get("id", "")
-                display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
-                messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False), "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None})
-            result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
-            conn = sqlite3.connect(METRICS_DB)
-            conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-            conn.commit()
-            conn.close()
+                all_msgs = []
+                bf = None
+                for _ in range(20):
+                    msgs = await get_channel_messages(thread_id, limit=100, before=bf)
+                    if not msgs:
+                        break
+                    all_msgs.extend(msgs)
+                    bf = msgs[-1]["id"]
+                    if len(msgs) < 100:
+                        break
+                messages = []
+                for m in all_msgs:
+                    author = m.get("author", {})
+                    uid = author.get("id", "")
+                    display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
+                    messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False), "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None})
+                result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
+                with get_db() as conn:
+                    conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+                    conn.commit()
+            finally:
+                conn.close()
             return JSONResponse(result)
 
         # Preview mode — last N messages
@@ -1762,10 +1935,9 @@ async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
     try:
         # Check cache (per group)
         cache_key = f"discord_activity_{group}"
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
         if row:
             return JSONResponse({"error": None, **json_mod.loads(row[0]), "cached": True})
 
@@ -1829,10 +2001,9 @@ async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
         }
 
         # Store cache
-        conn = sqlite3.connect(METRICS_DB)
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+            conn.commit()
 
         return JSONResponse({"error": None, **result, "cached": False})
     except Exception as e:
