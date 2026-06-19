@@ -117,7 +117,12 @@ class MySQLCompat:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, exc_type, *args):
+        try:
+            if exc_type:
+                self._conn.rollback()
+        except Exception:
+            pass
         self._conn.close()
 
 
@@ -252,10 +257,22 @@ def _seed_users():
                 ("11020550", "吳珈瑄", "系統開發課"),
                 ("11110577", "楊詠仁", "系統開發課"),
             ]
-            for uid, name, dept in initial_users:
-                conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
-                             (uid, name, dept, default_pw))
-            if not USE_MYSQL:
+            if USE_MYSQL:
+                conn._conn.autocommit = False
+                try:
+                    for uid, name, dept in initial_users:
+                        conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
+                                     (uid, name, dept, default_pw))
+                    conn.commit()
+                except Exception:
+                    conn._conn.rollback()
+                    raise
+                finally:
+                    conn._conn.autocommit = True
+            else:
+                for uid, name, dept in initial_users:
+                    conn.execute("INSERT OR IGNORE INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, 'admin')",
+                                 (uid, name, dept, default_pw))
                 conn.commit()
     finally:
         conn.close()
@@ -264,17 +281,16 @@ def _seed_users():
 def _store_metrics(metrics: dict):
     """Store current metrics snapshot to database."""
     try:
-        conn = get_db()
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        rows = []
-        for agent_name, m in metrics.items():
-            cpu_raw = m.get("cpu_raw", "0")
-            mem_raw = m.get("memory_raw", "0")
-            cpu_milli = _parse_cpu_milli(cpu_raw)
-            mem_mb = _parse_memory_mb(mem_raw)
-            rows.append((ts, agent_name, cpu_milli, mem_mb))
-        conn.executemany("INSERT INTO metrics_history (ts, agent, cpu_milli, memory_mb) VALUES (?, ?, ?, ?)", rows)
-        conn.close()
+        with get_db() as conn:
+            ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            rows = []
+            for agent_name, m in metrics.items():
+                cpu_raw = m.get("cpu_raw", "0")
+                mem_raw = m.get("memory_raw", "0")
+                cpu_milli = _parse_cpu_milli(cpu_raw)
+                mem_mb = _parse_memory_mb(mem_raw)
+                rows.append((ts, agent_name, cpu_milli, mem_mb))
+            conn.executemany("INSERT INTO metrics_history (ts, agent, cpu_milli, memory_mb) VALUES (?, ?, ?, ?)", rows)
     except Exception as e:
         logging.error(f"Metrics store error: {e}")
 
@@ -282,10 +298,9 @@ def _store_metrics(metrics: dict):
 def _cleanup_old_metrics():
     """Remove metrics older than 30 days."""
     try:
-        conn = get_db()
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-        conn.execute("DELETE FROM metrics_history WHERE ts < ?", (cutoff,))
-        conn.close()
+        with get_db() as conn:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("DELETE FROM metrics_history WHERE ts < ?", (cutoff,))
     except Exception as e:
         logging.error(f"Metrics cleanup error: {e}")
 
@@ -623,9 +638,8 @@ async def api_login(request: Request):
     if not username or not password:
         raise HTTPException(status_code=400, detail="請輸入帳號和密碼")
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    conn = get_db()
-    row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
-    conn.close()
+    with get_db() as conn:
+        row = conn.execute("SELECT id, name FROM users WHERE id = ? AND password_hash = ?", (username, pw_hash)).fetchone()
     if row:
         token = serializer.dumps({"user": row[0], "name": row[1]})
         request.session["auth_token"] = token
@@ -674,9 +688,8 @@ async def api_me(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = get_db()
-    row = conn.execute("SELECT name, department, role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    conn.close()
+    with get_db() as conn:
+        row = conn.execute("SELECT name, department, role FROM users WHERE id = ?", (user["id"],)).fetchone()
     name = row[0] if row else user["id"]
     role = row[2] if row else "viewer"
     return JSONResponse({"id": user["id"], "name": name, "role": role})
@@ -695,14 +708,15 @@ async def api_change_password(request: Request):
         raise HTTPException(status_code=400, detail="新密碼至少 6 字元")
     old_hash = hashlib.sha256(old_pw.encode()).hexdigest()
     conn = get_db()
-    row = conn.execute("SELECT id FROM users WHERE id = ? AND password_hash = ?", (user["id"], old_hash)).fetchone()
-    if not row:
+    try:
+        row = conn.execute("SELECT id FROM users WHERE id = ? AND password_hash = ?", (user["id"], old_hash)).fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="舊密碼不正確")
+        new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user["id"]))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="舊密碼不正確")
-    new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user["id"]))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True, "message": "密碼已更新"})
 
 
@@ -713,9 +727,8 @@ async def api_users(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = get_db()
-    rows = conn.execute("SELECT id, name, department, role FROM users ORDER BY id").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT id, name, department, role FROM users ORDER BY id").fetchall()
     return JSONResponse({"users": [{"id": r[0], "name": r[1], "department": r[2], "role": r[3]} for r in rows]})
 
 
@@ -727,30 +740,29 @@ async def api_create_user(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     # Check admin
     conn = get_db()
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
-        conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    body = await request.json()
-    uid = body.get("id", "").strip()
-    name = body.get("name", "").strip()
-    department = body.get("department", "").strip()
-    role = body.get("role", "viewer")
-    password = body.get("password", DEFAULT_PASSWORD)
-    if not uid or not name:
-        conn.close()
-        raise HTTPException(status_code=400, detail="員工編號和姓名為必填")
-    if role not in ("admin", "viewer"):
-        role = "viewer"
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
     try:
-        conn.execute("INSERT INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, ?)",
-                     (uid, name, department, pw_hash, role))
-        conn.commit()
-    except sqlite3.IntegrityError:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        body = await request.json()
+        uid = body.get("id", "").strip()
+        name = body.get("name", "").strip()
+        department = body.get("department", "").strip()
+        role = body.get("role", "viewer")
+        password = body.get("password", DEFAULT_PASSWORD)
+        if not uid or not name:
+            raise HTTPException(status_code=400, detail="員工編號和姓名為必填")
+        if role not in ("admin", "viewer"):
+            role = "viewer"
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        try:
+            conn.execute("INSERT INTO users (id, name, department, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+                         (uid, name, department, pw_hash, role))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=400, detail="該員工編號已存在")
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="該員工編號已存在")
-    conn.close()
     return JSONResponse({"ok": True, "message": f"已新增使用者 {name}"})
 
 
@@ -761,16 +773,16 @@ async def api_delete_user(user_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     conn = get_db()
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        if user_id == user["id"]:
+            raise HTTPException(status_code=400, detail="不能刪除自己")
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    if user_id == user["id"]:
-        conn.close()
-        raise HTTPException(status_code=400, detail="不能刪除自己")
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True})
 
 
@@ -781,16 +793,17 @@ async def api_reset_password(user_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     conn = get_db()
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
+        if not default_pw:
+            raise HTTPException(status_code=500, detail="DASHBOARD_DEFAULT_PASSWORD 未設定")
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (default_pw, user_id))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    default_pw = hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest() if DEFAULT_PASSWORD else ""
-    if not default_pw:
-        raise HTTPException(status_code=500, detail="DASHBOARD_DEFAULT_PASSWORD 未設定")
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (default_pw, user_id))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True, "message": "密碼已重設為預設值"})
 
 
@@ -801,17 +814,18 @@ async def api_update_role(user_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     conn = get_db()
-    me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not me or me[0] != "admin":
+    try:
+        me = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if not me or me[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足")
+        body = await request.json()
+        new_role = body.get("role", "viewer")
+        if new_role not in ("admin", "viewer"):
+            new_role = "viewer"
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=403, detail="權限不足")
-    body = await request.json()
-    new_role = body.get("role", "viewer")
-    if new_role not in ("admin", "viewer"):
-        new_role = "viewer"
-    conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
-    conn.commit()
-    conn.close()
     return JSONResponse({"ok": True})
 
 
@@ -974,9 +988,8 @@ async def api_deploy_history(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = get_db()
-    rows = conn.execute("SELECT ts, user_name, agent, action, status, message FROM deploy_history ORDER BY id DESC LIMIT 50").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT ts, user_name, agent, action, status, message FROM deploy_history ORDER BY id DESC LIMIT 50").fetchall()
     history = [{"ts": r[0], "user": r[1], "agent": r[2], "action": r[3], "status": r[4], "message": r[5]} for r in rows]
     return JSONResponse({"history": history})
 
@@ -998,11 +1011,10 @@ async def api_deploy(agent_name: str, request: Request):
     steps = []
 
     def log_deploy(action, status, message=""):
-        conn = get_db()
-        conn.execute("INSERT INTO deploy_history (ts, user_id, user_name, agent, action, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     (now_str, user["id"], user["name"], agent_name, action, status, message))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("INSERT INTO deploy_history (ts, user_id, user_name, agent, action, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                         (now_str, user["id"], user["name"], agent_name, action, status, message))
+            conn.commit()
 
     # Step 1: git pull
     try:
@@ -1246,27 +1258,26 @@ async def api_metrics_history(request: Request, hours: int = 6, agent: str = "")
     since = (datetime.now(timezone.utc) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        conn = get_db()
-        if agent and ',' in agent:
-            # Multiple agents: aggregate sum for the group
-            agent_list = [a.strip() for a in agent.split(',') if a.strip()]
-            placeholders = ','.join('?' * len(agent_list))
-            rows = conn.execute(
-                f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
-                [since] + agent_list,
-            ).fetchall()
-        elif agent:
-            rows = conn.execute(
-                "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
-                (since, agent),
-            ).fetchall()
-        else:
-            # Aggregate total across all agents per timestamp
-            rows = conn.execute(
-                "SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? GROUP BY ts ORDER BY ts",
-                (since,),
-            ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            if agent and ',' in agent:
+                # Multiple agents: aggregate sum for the group
+                agent_list = [a.strip() for a in agent.split(',') if a.strip()]
+                placeholders = ','.join('?' * len(agent_list))
+                rows = conn.execute(
+                    f"SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? AND agent IN ({placeholders}) GROUP BY ts ORDER BY ts",
+                    [since] + agent_list,
+                ).fetchall()
+            elif agent:
+                rows = conn.execute(
+                    "SELECT ts, agent, cpu_milli, memory_mb FROM metrics_history WHERE ts >= ? AND agent = ? ORDER BY ts",
+                    (since, agent),
+                ).fetchall()
+            else:
+                # Aggregate total across all agents per timestamp
+                rows = conn.execute(
+                    "SELECT ts, 'total' as agent, SUM(cpu_milli), SUM(memory_mb) FROM metrics_history WHERE ts >= ? GROUP BY ts ORDER BY ts",
+                    (since,),
+                ).fetchall()
     except Exception as e:
         return JSONResponse({"error": str(e), "data": []})
 
@@ -1287,11 +1298,10 @@ async def api_alerts(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        conn = get_db()
-        rows = conn.execute(
-            "SELECT id, ts, agent, level, message FROM alerts WHERE dismissed = 0 ORDER BY ts DESC LIMIT 50"
-        ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT id, ts, agent, level, message FROM alerts WHERE dismissed = 0 ORDER BY ts DESC LIMIT 50"
+            ).fetchall()
         alerts = [{"id": r[0], "ts": r[1], "agent": r[2], "level": r[3], "message": r[4]} for r in rows]
         return JSONResponse({"alerts": alerts})
     except Exception as e:
@@ -1305,10 +1315,9 @@ async def api_dismiss_alert(alert_id: int, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        conn = get_db()
-        conn.execute("UPDATE alerts SET dismissed = 1 WHERE id = ?", (alert_id,))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("UPDATE alerts SET dismissed = 1 WHERE id = ?", (alert_id,))
+            conn.commit()
         return JSONResponse({"ok": True})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1333,18 +1342,17 @@ async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
     days = min(days, 30)
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     try:
-        conn = get_db()
-        if agent:
-            rows = conn.execute(
-                "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? AND agent = ? ORDER BY ts DESC",
-                (since, agent),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? ORDER BY ts DESC",
-                (since,),
-            ).fetchall()
-        conn.close()
+        with get_db() as conn:
+            if agent:
+                rows = conn.execute(
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? AND agent = ? ORDER BY ts DESC",
+                    (since, agent),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? ORDER BY ts DESC",
+                    (since,),
+                ).fetchall()
         alerts = [{"id": r[0], "ts": r[1], "agent": r[2], "level": r[3], "message": r[4], "dismissed": bool(r[5])} for r in rows]
         return JSONResponse({"alerts": alerts})
     except Exception as e:
@@ -1490,51 +1498,51 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
         import json as json_mod
         cache_key = f"kiro_usage_{range}"
         conn = get_db()
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        if refresh != "1":
-            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-            if row:
-                conn.close()
-                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
-        conn.close()
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            if refresh != "1":
+                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
 
-        from query_usage import get_usage_data, query_usage
-        data = get_usage_data(range)
+            from query_usage import get_usage_data, query_usage
+            data = get_usage_data(range)
 
-        # Also compute daily_totals for chart
-        if data.get("periods"):
-            from collections import defaultdict
-            p = data["periods"][0]  # Use first period's date range
-            # Aggregate from raw user data by date
-            daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
-            for u in p.get("raw_data", []):
-                d = daily[u["date"]]
-                d["credits"] += u.get("credits_used", 0) or u.get("credits", 0)
-                d["messages"] += u.get("total_messages", 0) or u.get("messages", 0)
-                d["conversations"] += u.get("chat_conversations", 0) or u.get("conversations", 0)
+            # Also compute daily_totals for chart
+            if data.get("periods"):
+                from collections import defaultdict
+                p = data["periods"][0]  # Use first period's date range
+                # Aggregate from raw user data by date
+                daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+                for u in p.get("raw_data", []):
+                    d = daily[u["date"]]
+                    d["credits"] += u.get("credits_used", 0) or u.get("credits", 0)
+                    d["messages"] += u.get("total_messages", 0) or u.get("messages", 0)
+                    d["conversations"] += u.get("chat_conversations", 0) or u.get("conversations", 0)
 
-            if not daily:
-                # Fallback: try query directly
-                try:
-                    from datetime import date
-                    raw = query_usage(p.get("_start", date.today()), p.get("_end", date.today()))
-                    for r in raw:
-                        d = daily[r["date"]]
-                        d["credits"] += r.get("credits_used", 0)
-                        d["messages"] += r.get("total_messages", 0)
-                        d["conversations"] += r.get("chat_conversations", 0)
-                except Exception:
-                    pass
+                if not daily:
+                    # Fallback: try query directly
+                    try:
+                        from datetime import date
+                        raw = query_usage(p.get("_start", date.today()), p.get("_end", date.today()))
+                        for r in raw:
+                            d = daily[r["date"]]
+                            d["credits"] += r.get("credits_used", 0)
+                            d["messages"] += r.get("total_messages", 0)
+                            d["conversations"] += r.get("chat_conversations", 0)
+                    except Exception:
+                        pass
 
-            data["daily_totals"] = [
-                {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
-                for k, v in sorted(daily.items())
-            ]
+                data["daily_totals"] = [
+                    {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+                    for k, v in sorted(daily.items())
+                ]
 
-        conn = get_db()
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
-        conn.commit()
-        conn.close()
+            with get_db() as conn:
+                conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
+                conn.commit()
+        finally:
+            conn.close()
 
         return JSONResponse({"error": None, "data": data, "cached": False})
     except Exception as e:
@@ -1552,23 +1560,24 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
         import json as json_mod
         cache_key = f"openai_{range}_{type}"
         conn = get_db()
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
-        conn.close()
-        if row:
-            return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
+            if row:
+                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
 
-        from query_openai_usage import query_costs, query_completions_usage
-        result = {}
-        if type in ("all", "cost"):
-            result["costs"] = await query_costs(range)
-        if type in ("all", "tokens"):
-            result["tokens"] = await query_completions_usage(range)
+            from query_openai_usage import query_costs, query_completions_usage
+            result = {}
+            if type in ("all", "cost"):
+                result["costs"] = await query_costs(range)
+            if type in ("all", "tokens"):
+                result["tokens"] = await query_completions_usage(range)
 
-        conn = get_db()
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-        conn.commit()
-        conn.close()
+            with get_db() as conn:
+                conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+                conn.commit()
+        finally:
+            conn.close()
 
         return JSONResponse({"error": None, "data": result, "cached": False})
     except Exception as e:
@@ -1705,11 +1714,10 @@ _init_push_table()
 def _log_push(user, platform, target, content, scheduled_at=""):
     tz = timezone(timedelta(hours=8))
     now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    conn = get_db()
-    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'sent', ?)",
-                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'sent', ?)",
+                     (now_str, user["name"], platform, target, content[:200], scheduled_at))
+        conn.commit()
 
 
 @app.get("/api/messaging/history")
@@ -1717,9 +1725,8 @@ async def api_messaging_history(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    conn = get_db()
-    rows = conn.execute("SELECT ts, user_name, platform, target, content, status, scheduled_at FROM push_history ORDER BY id DESC LIMIT 50").fetchall()
-    conn.close()
+    with get_db() as conn:
+        rows = conn.execute("SELECT ts, user_name, platform, target, content, status, scheduled_at FROM push_history ORDER BY id DESC LIMIT 50").fetchall()
     return JSONResponse({"history": [{"ts": r[0], "user": r[1], "platform": r[2], "target": r[3], "content": r[4], "status": r[5], "scheduled_at": r[6]} for r in rows]})
 
 
@@ -1774,11 +1781,10 @@ async def api_messaging_schedule(request: Request):
         raise HTTPException(status_code=400, detail="請填寫內容和排程時間")
     tz = timezone(timedelta(hours=8))
     now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    conn = get_db()
-    conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'scheduled', ?)",
-                 (now_str, user["name"], platform, target, content[:200], scheduled_at))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT INTO push_history (ts, user_name, platform, target, content, status, scheduled_at) VALUES (?, ?, ?, ?, ?, 'scheduled', ?)",
+                     (now_str, user["name"], platform, target, content[:200], scheduled_at))
+        conn.commit()
     return JSONResponse({"ok": True, "message": f"已排程於 {scheduled_at} 發送"})
 
 
@@ -1852,33 +1858,34 @@ async def api_discord_thread_messages(thread_id: str, request: Request, limit: i
             # Full fetch for analytics (cached 1 hour)
             cache_key = f"thread_msgs_{thread_id}"
             conn = get_db()
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-            conn.close()
-            if row:
-                return JSONResponse(json_mod.loads(row[0]))
+            try:
+                conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                row = conn.execute("SELECT data FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse(json_mod.loads(row[0]))
 
-            all_msgs = []
-            bf = None
-            for _ in range(20):
-                msgs = await get_channel_messages(thread_id, limit=100, before=bf)
-                if not msgs:
-                    break
-                all_msgs.extend(msgs)
-                bf = msgs[-1]["id"]
-                if len(msgs) < 100:
-                    break
-            messages = []
-            for m in all_msgs:
-                author = m.get("author", {})
-                uid = author.get("id", "")
-                display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
-                messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False), "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None})
-            result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
-            conn = get_db()
-            conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-            conn.commit()
-            conn.close()
+                all_msgs = []
+                bf = None
+                for _ in range(20):
+                    msgs = await get_channel_messages(thread_id, limit=100, before=bf)
+                    if not msgs:
+                        break
+                    all_msgs.extend(msgs)
+                    bf = msgs[-1]["id"]
+                    if len(msgs) < 100:
+                        break
+                messages = []
+                for m in all_msgs:
+                    author = m.get("author", {})
+                    uid = author.get("id", "")
+                    display = NICK_MAP.get(uid) or author.get("global_name") or author.get("username", "")
+                    messages.append({"timestamp": m["timestamp"], "author": display, "author_id": uid, "is_bot": author.get("bot", False), "avatar": f"https://cdn.discordapp.com/avatars/{uid}/{author.get('avatar')}.png?size=32" if author.get("avatar") else None})
+                result = {"error": None, "messages": messages, "total": len(messages), "has_more": False}
+                with get_db() as conn:
+                    conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+                    conn.commit()
+            finally:
+                conn.close()
             return JSONResponse(result)
 
         # Preview mode — last N messages
@@ -1928,10 +1935,9 @@ async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
     try:
         # Check cache (per group)
         cache_key = f"discord_activity_{group}"
-        conn = get_db()
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-        row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-10 minutes')", (cache_key,)).fetchone()
         if row:
             return JSONResponse({"error": None, **json_mod.loads(row[0]), "cached": True})
 
@@ -1995,10 +2001,9 @@ async def api_discord_activity(request: Request, group: str = "bikini-bottom"):
         }
 
         # Store cache
-        conn = get_db()
-        conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
+            conn.commit()
 
         return JSONResponse({"error": None, **result, "cached": False})
     except Exception as e:

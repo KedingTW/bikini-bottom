@@ -10,17 +10,13 @@ spec:
     requests:
       storage: 1Gi
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: admin-mysql-secret
-  namespace: bikini-bottom
-type: Opaque
-stringData:
-  MYSQL_ROOT_PASSWORD: "admin-root-2026"
-  MYSQL_DATABASE: "admin_dashboard"
-  MYSQL_USER: "admin"
-  MYSQL_PASSWORD: "admin-db-2026"
+# ⚠️ Secret 不在 repo 中管理，部署前需手動建立：
+# kubectl create secret generic admin-mysql-secret \
+#   --namespace=bikini-bottom \
+#   --from-literal=MYSQL_ROOT_PASSWORD=<root密碼> \
+#   --from-literal=MYSQL_DATABASE=admin_dashboard \
+#   --from-literal=MYSQL_USER=admin \
+#   --from-literal=MYSQL_PASSWORD=<使用者密碼>
 ---
 apiVersion: apps/v1
 kind: Deployment
