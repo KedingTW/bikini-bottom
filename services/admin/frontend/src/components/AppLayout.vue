@@ -1,13 +1,18 @@
 <template>
   <!-- Top Header -->
-  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-6 py-3 flex items-center justify-between relative">
-    <div class="flex items-center gap-3">
+  <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Hamburger (mobile only) -->
+      <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/80">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
       <img src="/header.png" alt="Logo" class="h-7">
     </div>
-    <h1 class="absolute left-1/2 -translate-x-1/2 text-lg font-semibold whitespace-nowrap">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
+    <h1 class="hidden sm:block text-lg font-semibold whitespace-nowrap truncate max-w-[40vw]">{{ currentGroupDisplay }} - {{ pageTitle }}</h1>
     <div class="relative flex items-center gap-2 text-sm">
-      <button @click="menuOpen = !menuOpen" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
-        <span>👤 {{ userName }}({{ userId }})</span>
+      <button @click="menuOpen = !menuOpen" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-white/10 transition text-white/90">
+        <span class="hidden sm:inline">👤 {{ userName }}({{ userId }})</span>
+        <span class="sm:hidden">👤</span>
         <span class="text-xs">▾</span>
       </button>
       <!-- Dropdown -->
@@ -22,7 +27,13 @@
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
   <div class="flex h-[calc(100vh-60px)]">
-    <Sidebar :role="userRole" :groups="groups" />
+    <!-- Sidebar overlay (mobile) -->
+    <div v-if="sidebarOpen" class="fixed inset-0 bg-black/50 z-30 lg:hidden" @click="sidebarOpen = false"></div>
+
+    <Sidebar :role="userRole" :groups="groups"
+      :mobile-open="sidebarOpen"
+      @close="sidebarOpen = false" />
+
     <div class="flex-1 flex flex-col overflow-hidden">
       <main class="flex-1 overflow-y-auto" id="main-scroll">
         <slot />
@@ -32,7 +43,7 @@
   </div>
 
   <!-- Change Password Dialog -->
-  <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" @click.self="showPwDialog = false">
+  <div v-if="showPwDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showPwDialog = false">
     <div class="bg-ocean-700 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-white/10">
       <h3 class="text-lg font-semibold mb-4">🔑 修改密碼</h3>
       <div class="mb-4">
@@ -68,6 +79,7 @@ const userName = ref('...')
 const userId = ref('')
 const userRole = ref('viewer')
 const menuOpen = ref(false)
+const sidebarOpen = ref(false)
 const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
@@ -87,7 +99,6 @@ function onGroupChange() {
   const url = new URL(window.location)
   url.searchParams.set('group', currentGroup.value)
   history.replaceState(null, '', url)
-  // If current page is dcOnly and new group is wecom, redirect to home
   if (currentGroup.value === 'keding-wecom' && DC_ONLY_PATHS.includes(route.path)) {
     router.push('/')
   }
@@ -107,6 +118,9 @@ const pageTitle = computed(() => {
   }
   return map[route.name] || '總覽'
 })
+
+// Close sidebar on route change (mobile)
+router.afterEach(() => { sidebarOpen.value = false })
 
 onMounted(async () => {
   try {

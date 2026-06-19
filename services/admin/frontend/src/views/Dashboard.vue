@@ -20,7 +20,7 @@
   </div>
 
   <!-- Agent Grid -->
-  <div class="p-7">
+  <div class="p-4 sm:p-7">
     <div v-if="!agents.length" class="text-center py-20 text-white/50">
       <div class="text-4xl mb-3">📭</div>
       <div>此伺服器尚未配置角色</div>
@@ -54,8 +54,8 @@
   </div>
 
   <!-- Log Modal -->
-  <div v-if="logModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" @click.self="logModal = false">
-    <div class="bg-ocean-700 rounded-xl w-[90%] max-w-3xl max-h-[80vh] flex flex-col shadow-2xl">
+  <div v-if="logModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="logModal = false">
+    <div class="bg-ocean-700 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
       <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between font-semibold">
         <span>{{ logTitle }}</span>
         <button @click="logModal = false" class="text-2xl text-white/60 hover:text-white">&times;</button>
