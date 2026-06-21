@@ -76,6 +76,7 @@
           <button @click="addServer()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
         </div>
       </div>
+    </div>
   </AgentDetailLayout>
 </template>
 
