@@ -31,7 +31,7 @@
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
+      <main class="flex-1 overflow-y-auto pb-28 md:pb-0" id="main-scroll">
         <slot />
       </main>
       <img class="hidden md:block w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
