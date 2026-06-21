@@ -74,6 +74,7 @@ const navGroups = [
   ]},
   { label: 'AI 角色管理', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
+    { path: '/mcp-servers', icon: '🗄️', label: 'MCP Servers', admin: true },
     { path: '/mcp', icon: '🔌', label: 'MCP 管理', admin: true },
     { path: '/skills', icon: '📚', label: 'Skill 管理', admin: true },
     { path: '/steering', icon: '📜', label: 'Steering', admin: true },
