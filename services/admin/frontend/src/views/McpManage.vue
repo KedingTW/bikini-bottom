@@ -1,9 +1,6 @@
 <template>
-  <div class="flex h-full">
-    <AgentListPanel :agents="agents" :selected="selectedAgent" :loading="loading" @select="onSelect" />
-
-    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div v-if="!selectedAgent" class="text-center py-20 text-white/50">
+  <AgentDetailLayout :agents="agents" :selected-agent="selectedAgent" :loading="loading" @select="onSelect" @back="selectedAgent = null">
+    <div v-if="!selectedAgent" class="text-center py-20 text-white/50 hidden md:block">
         <div class="text-3xl mb-2">🔌</div>
         <div>請選擇角色查看 MCP 配置</div>
       </div>
@@ -79,15 +76,14 @@
           <button @click="addServer()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
         </div>
       </div>
-    </div>
-  </div>
+  </AgentDetailLayout>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
 import { useApi } from '../composables/useApi.js'
-import AgentListPanel from '../components/AgentListPanel.vue'
+import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 
 const { get, put } = useApi()
 const { agents, selectedAgent, loading, selectAgent } = useAgentList()
