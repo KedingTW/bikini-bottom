@@ -1,11 +1,11 @@
 <template>
   <AgentDetailLayout :agents="agents" :selected-agent="selectedAgent" :loading="loading" @select="onSelect" @back="selectedAgent = null">
     <div v-if="!selectedAgent" class="text-center py-20 text-white/50 hidden md:block">
-        <div class="text-3xl mb-2">🔌</div>
-        <div>請選擇角色查看 MCP 配置</div>
-      </div>
+      <div class="text-3xl mb-2">🔌</div>
+      <div>請選擇角色管理 MCP 配置</div>
+    </div>
 
-      <template v-else>
+    <div v-if="selectedAgent">
         <div class="flex items-center gap-3 mb-5 flex-wrap">
           <h2 class="text-lg font-semibold">{{ selectedAgent.display }} — MCP Servers</h2>
           <div class="flex gap-1 ml-auto">
@@ -52,7 +52,6 @@
             <span v-if="status" class="text-xs" :class="status.ok ? 'text-green-400' : 'text-red-400'">{{ status.text }}</span>
           </div>
         </div>
-      </template>
     </div>
 
     <!-- Add Server Dialog -->
