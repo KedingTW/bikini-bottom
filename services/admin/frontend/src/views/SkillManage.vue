@@ -5,7 +5,7 @@
         <div>請選擇角色查看 Skill 配置</div>
       </div>
 
-      <template v-else>
+      <div v-if="selectedAgent">
         <h2 class="text-lg font-semibold mb-5">{{ selectedAgent.display }} — Skills（{{ selectedAgent.skills_meta?.length || 0 }}）</h2>
 
         <div v-if="!selectedAgent.skills_meta?.length" class="text-white/50 text-sm py-4">無 Skills</div>
@@ -20,8 +20,7 @@
             <div v-if="s.description" class="text-xs text-white/60 line-clamp-2">{{ s.description }}</div>
           </div>
         </div>
-      </template>
-    </div>
+      </div>
 
     <!-- Skill Viewer -->
     <div v-if="fileView" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" @click.self="fileView = null">
@@ -34,6 +33,7 @@
           <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/90 bg-black/30 p-4 rounded-lg">{{ fileView.content }}</pre>
         </div>
       </div>
+    </div>
   </AgentDetailLayout>
 </template>
 

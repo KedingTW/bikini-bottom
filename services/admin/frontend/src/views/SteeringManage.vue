@@ -5,7 +5,7 @@
         <div>請選擇角色查看 Steering 文件</div>
       </div>
 
-      <template v-else>
+      <div v-if="selectedAgent">
         <h2 class="text-lg font-semibold mb-5">{{ selectedAgent.display }} — Steering（{{ selectedAgent.steering?.length || 0 }}）</h2>
 
         <div v-if="!selectedAgent.steering?.length" class="text-white/50 text-sm py-4">無 Steering 文件</div>
@@ -19,8 +19,7 @@
             </div>
           </div>
         </div>
-      </template>
-    </div>
+      </div>
 
     <!-- File Viewer -->
     <div v-if="fileView" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" @click.self="fileView = null">
@@ -33,6 +32,7 @@
           <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/90 bg-black/30 p-4 rounded-lg">{{ fileView.content }}</pre>
         </div>
       </div>
+    </div>
   </AgentDetailLayout>
 </template>
 
