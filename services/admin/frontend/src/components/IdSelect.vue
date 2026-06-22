@@ -23,10 +23,10 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
-const available = computed(() => props.options.filter(o => !props.modelValue.includes(o.id)))
+const available = computed(() => props.options.filter(o => !props.modelValue.some(v => String(v) === String(o.id))))
 
 function getLabel(id) {
-  const opt = props.options.find(o => o.id === id)
+  const opt = props.options.find(o => String(o.id) === String(id))
   return opt ? opt.label : id
 }
 

@@ -316,7 +316,7 @@ async function loadChannels() {
   console.log('[AgentConfig] loadChannels group=', group)
   const res = await get(`/api/discord/channels?group=${group}`)
   if (res?.channels) {
-    channelOptions.value = res.channels.map(ch => ({ id: ch.id, label: `# ${ch.name}` }))
+    channelOptions.value = res.channels.map(ch => ({ id: String(ch.id), label: `# ${ch.name}` }))
   } else {
     channelOptions.value = []
   }
@@ -330,7 +330,7 @@ async function loadRoles() {
   console.log('[AgentConfig] loadRoles group=', group)
   const res = await get(`/api/discord/roles?group=${group}`)
   if (res?.roles) {
-    roleOptions.value = res.roles.map(r => ({ id: r.id, label: r.name }))
+    roleOptions.value = res.roles.map(r => ({ id: String(r.id), label: r.name }))
   } else {
     roleOptions.value = []
   }
@@ -343,7 +343,7 @@ async function loadBots() {
   console.log('[AgentConfig] loadBots group=', group)
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
-    botOptions.value = res.members.filter(m => m.bot).map(m => ({ id: m.id, label: `🤖 ${m.name}` }))
+    botOptions.value = res.members.filter(m => m.bot).map(m => ({ id: String(m.id), label: `🤖 ${m.name}` }))
   } else {
     botOptions.value = []
   }
