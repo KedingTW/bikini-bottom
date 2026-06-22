@@ -563,7 +563,7 @@ AGENT_GROUPS = {
         "platform": "discord",
         "guild_id": os.environ.get("SOUTH_PARK_GUILD_ID", ""),
         "agents": [
-            {"name": "kenny", "display": "乙太", "role": "後端工程師", "type": "agent", "icon": "🧡"},
+            {"name": "kenny", "display": "阿尼 (Kenny)", "role": "測試角色", "type": "agent", "icon": "🧡"},
         ],
     },
 }
