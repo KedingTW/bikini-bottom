@@ -312,32 +312,44 @@ const emojiLabels = { thinking: '思考中', tool_use: '使用工具', respondin
 // Dropdown options (channels loaded from API)
 const channelOptions = ref([])
 async function loadChannels() {
-  const res = await get(`/api/discord/channels?group=${currentGroup.value}`)
+  const group = currentGroup.value
+  console.log('[AgentConfig] loadChannels group=', group)
+  const res = await get(`/api/discord/channels?group=${group}`)
   if (res?.channels) {
     channelOptions.value = res.channels.map(ch => ({ id: ch.id, label: `# ${ch.name}` }))
+  } else {
+    channelOptions.value = []
   }
 }
 loadChannels()
-watch(currentGroup, loadChannels)
+watch(currentGroup, () => nextTick(loadChannels))
 
 const roleOptions = ref([])
 async function loadRoles() {
-  const res = await get(`/api/discord/roles?group=${currentGroup.value}`)
+  const group = currentGroup.value
+  console.log('[AgentConfig] loadRoles group=', group)
+  const res = await get(`/api/discord/roles?group=${group}`)
   if (res?.roles) {
     roleOptions.value = res.roles.map(r => ({ id: r.id, label: r.name }))
+  } else {
+    roleOptions.value = []
   }
 }
 loadRoles()
-watch(currentGroup, loadRoles)
+watch(currentGroup, () => nextTick(loadRoles))
 const botOptions = ref([])
 async function loadBots() {
-  const res = await get(`/api/discord/members?group=${currentGroup.value}`)
+  const group = currentGroup.value
+  console.log('[AgentConfig] loadBots group=', group)
+  const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
     botOptions.value = res.members.filter(m => m.bot).map(m => ({ id: m.id, label: `🤖 ${m.name}` }))
+  } else {
+    botOptions.value = []
   }
 }
 loadBots()
-watch(currentGroup, loadBots)
+watch(currentGroup, () => nextTick(loadBots))
 
 // Mock work directory files
 const mockFiles = [
