@@ -18,7 +18,7 @@
             </button>
             <button :disabled="!dirty.basic" @click="saveSection('basic')" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
           </div>
-          <div v-if="open.basic" @change.capture="markDirty('basic')" class="px-4 pb-4 border-t border-white/5 space-y-4">
+          <div v-if="open.basic" @change.capture="markDirty('basic')" @input.capture="markDirty('basic')" class="px-4 pb-4 border-t border-white/5 space-y-4">
             <!-- Discord -->
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
@@ -134,7 +134,7 @@
             <span class="font-medium">🔌 MCP 配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
           </button>
-          <div v-if="open.mcp" @change.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
+          <div v-if="open.mcp" @change.capture="markDirty('mcp')" @input.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
             <div class="flex justify-end mb-2">
               <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP Servers 管理</router-link>
             </div>
@@ -171,7 +171,7 @@
             <span class="font-medium">📚 Skill 配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
           </button>
-          <div v-if="open.skill" @change.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.skill" @change.capture="markDirty('skill')" @input.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
               <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
                 <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
@@ -191,7 +191,7 @@
             <span class="font-medium">⏰ 排程任務</span>
             <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
           </button>
-          <div v-if="open.cron" @change.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
                 <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
@@ -213,7 +213,7 @@
             <span class="font-medium">🧠 知識庫配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mockKb.length }} 個</span>
           </button>
-          <div v-if="open.kb" @change.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.kb" @change.capture="markDirty('kb')" @input.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3">
                 <span class="text-cyan-400">📖</span>
@@ -274,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
 import { useApi } from '../composables/useApi.js'
 import AgentDetailLayout from '../components/AgentDetailLayout.vue'
@@ -294,10 +294,19 @@ const cronDialog = ref(null)
 const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
-function onSelect(a) { selectAgent(a); Object.keys(dirty).forEach(k => dirty[k] = false) }
+function onSelect(a) { ready.value = false; selectAgent(a); Object.keys(dirty).forEach(k => dirty[k] = false); nextTick(() => { ready.value = true }) }
 function getChannelName(id) { const ch = channelOptions.value.find(c => c.id === id); return ch ? ch.label : id }
 function markDirty(key) { dirty[key] = true }
 function saveSection(key) { dirty[key] = false; /* TODO: call API */ }
+
+// Deep watchers for dirty tracking (covers custom components that don't emit native events)
+// Skip initial trigger with a ready flag
+const ready = ref(false)
+onMounted(() => nextTick(() => { ready.value = true }))
+watch(cfg, () => { if (ready.value) dirty.basic = true }, { deep: true })
+watch(mockMcp, () => { if (ready.value) dirty.mcp = true }, { deep: true })
+watch(mockSkills, () => { if (ready.value) dirty.skill = true }, { deep: true })
+watch(mockCrons, () => { if (ready.value) dirty.cron = true }, { deep: true })
 
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
