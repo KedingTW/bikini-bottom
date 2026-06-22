@@ -45,8 +45,10 @@ async def list_members(limit=100, after=None, guild_id=None):
         {
             "id": m["user"]["id"],
             "username": m["user"]["username"],
+            "name": NICK_MAP.get(m["user"]["id"]) or m["user"].get("global_name") or m.get("nick") or m["user"]["username"],
             "display_name": NICK_MAP.get(m["user"]["id"]) or m["user"].get("global_name") or m.get("nick") or m["user"]["username"],
             "nick": NICK_MAP.get(m["user"]["id"]) or m.get("nick"),
+            "bot": m["user"].get("bot", False),
             "avatar": m["user"].get("avatar"),
             "roles": [rid for rid in m.get("roles", []) if rid not in bot_role_ids],
             "joined_at": m.get("joined_at"),
