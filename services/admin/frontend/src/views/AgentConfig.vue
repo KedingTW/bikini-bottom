@@ -285,7 +285,7 @@ import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
 const { get } = useApi()
-const { agents, selectedAgent, loading, selectAgent } = useAgentList()
+const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
 const dirty = reactive({ basic: false, mcp: false, skill: false, cron: false, kb: false })
@@ -312,29 +312,32 @@ const emojiLabels = { thinking: '思考中', tool_use: '使用工具', respondin
 // Dropdown options (channels loaded from API)
 const channelOptions = ref([])
 async function loadChannels() {
-  const res = await get('/api/discord/channels')
+  const res = await get(`/api/discord/channels?group=${currentGroup.value}`)
   if (res?.channels) {
-    channelOptions.value = res.channels.map(ch => ({ id: ch.id, label: `${ch.type === 'category' ? '📁' : '#'} ${ch.name}` }))
+    channelOptions.value = res.channels.map(ch => ({ id: ch.id, label: `# ${ch.name}` }))
   }
 }
 loadChannels()
+watch(currentGroup, loadChannels)
 
-const roleOptions = [
-  { id: '1504289434122588200', label: '比奇堡小夥伴們' },
-  { id: '1506122390751678484', label: '比奇堡開發組' },
-  { id: '1506130693812391946', label: '比奇堡專案組' },
-  { id: '1506144995592376444', label: '比奇堡前端組' },
-  { id: '1506145234919096320', label: '比奇堡後端組' },
-]
-const botOptions = [
-  { id: '1493800835853975562', label: '🐌 小蝸' },
-  { id: '1496023645083009024', label: '⭐ 派大星' },
-  { id: '1503574146117013555', label: '🐡 泡芙老師' },
-  { id: '1503698574477627482', label: '🦑 章魚哥' },
-  { id: '1504275756488986774', label: '🐿️ 珊迪' },
-  { id: '1509104920954142871', label: '🐋 珍珍' },
-  { id: '1509105546060501184', label: '🦞 蝦霸' },
-]
+const roleOptions = ref([])
+async function loadRoles() {
+  const res = await get(`/api/discord/roles?group=${currentGroup.value}`)
+  if (res?.roles) {
+    roleOptions.value = res.roles.map(r => ({ id: r.id, label: r.name }))
+  }
+}
+loadRoles()
+watch(currentGroup, loadRoles)
+const botOptions = ref([])
+async function loadBots() {
+  const res = await get(`/api/discord/members?group=${currentGroup.value}`)
+  if (res?.members) {
+    botOptions.value = res.members.filter(m => m.bot).map(m => ({ id: m.id, label: `🤖 ${m.name}` }))
+  }
+}
+loadBots()
+watch(currentGroup, loadBots)
 
 // Mock work directory files
 const mockFiles = [
