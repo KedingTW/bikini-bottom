@@ -470,6 +470,16 @@ AGENT_GROUPS = {
         "guild_id": "",
         "agents": [],
     },
+    "south-park": {
+        "display": "南方公園",
+        "icon": "🏔️",
+        "agents_subdir": "south-park",
+        "platform": "discord",
+        "guild_id": os.environ.get("SOUTH_PARK_GUILD_ID", ""),
+        "agents": [
+            {"name": "kenny", "display": "乙太", "role": "後端工程師", "type": "agent", "icon": "🧡"},
+        ],
+    },
 }
 
 # Flat list for backward compatibility (all agents across groups)
@@ -1596,9 +1606,12 @@ async def api_discord_members(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定", "members": []})
     try:
         from discord_api import list_members
-        members = await list_members(limit=200, guild_id=_get_guild_id(group))
+        members = await list_members(limit=200, guild_id=gid)
         return JSONResponse({"error": None, "members": members})
     except Exception as e:
         return JSONResponse({"error": str(e), "members": []})
@@ -1609,9 +1622,12 @@ async def api_discord_roles(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定", "roles": []})
     try:
         from discord_api import list_roles
-        roles = await list_roles(guild_id=_get_guild_id(group))
+        roles = await list_roles(guild_id=gid)
         return JSONResponse({"error": None, "roles": roles})
     except Exception as e:
         return JSONResponse({"error": str(e), "roles": []})
@@ -1663,9 +1679,12 @@ async def api_discord_channels(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定（檢查 DISCORD_GUILD_ID 環境變數）", "channels": []})
     try:
         from discord_api import list_channels
-        channels = await list_channels(guild_id=_get_guild_id(group))
+        channels = await list_channels(guild_id=gid)
         return JSONResponse({"error": None, "channels": channels})
     except Exception as e:
         return JSONResponse({"error": str(e), "channels": []})
@@ -2087,7 +2106,7 @@ async def api_groups(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png"}
+    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png", "south-park": "/group-south-park.png"}
     groups = [{"id": k, "display": v["display"], "icon": v["icon"], "image": GROUP_IMAGES.get(k, ""), "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
     return JSONResponse({"groups": groups})
 
@@ -2243,6 +2262,21 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     if not path.exists():
         raise HTTPException(status_code=404, detail="檔案不存在")
     return JSONResponse({"content": path.read_text(), "filename": filename})
+
+
+@app.put("/api/agents/{agent_name}/steering/{filename}")
+async def api_agent_steering_save(agent_name: str, filename: str, request: Request):
+    """儲存 steering 檔案內容"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    content = body.get("content", "")
+    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / filename
+    if not path.parent.exists():
+        raise HTTPException(status_code=404, detail="Agent steering 目錄不存在")
+    path.write_text(content)
+    return JSONResponse({"ok": True, "message": "已儲存"})
 
 
 @app.get("/api/agents/{agent_name}/skills/{skill_name}")
