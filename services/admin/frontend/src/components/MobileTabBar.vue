@@ -47,13 +47,7 @@ const mainTabs = [
 ]
 
 const subTabs = {
-  agent: [
-    { path: '/mcp', icon: '🔌', label: 'MCP', admin: true },
-    { path: '/skills', icon: '📚', label: 'Skill', admin: true },
-    { path: '/steering', icon: '📜', label: 'Steering', admin: true },
-    { path: '/cronjobs', icon: '⏰', label: '排程任務', admin: true },
-    { path: '/agent-config', icon: '⚙️', label: 'Config', admin: true },
-  ],
+  agent: [],
   monitor: [
     { path: '/metrics', icon: '📊', label: '資源', admin: false },
     { path: '/costs', icon: '💰', label: '成本', admin: false },
@@ -80,6 +74,7 @@ const subTabs = {
 const activeMainTab = ref('home')
 
 function findMainTabForRoute(path) {
+  if (path === '/agent-config') return 'agent'
   for (const [tabId, items] of Object.entries(subTabs)) {
     if (items.some(item => item.path === path)) return tabId
   }
@@ -100,6 +95,10 @@ function selectMainTab(tab) {
   activeMainTab.value = tab.id
   if (tab.id === 'home') {
     router.push('/')
+    return
+  }
+  if (tab.id === 'agent') {
+    router.push('/agent-config')
     return
   }
   // Navigate to first sub item
