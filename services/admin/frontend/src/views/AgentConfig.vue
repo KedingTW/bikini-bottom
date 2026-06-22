@@ -8,24 +8,14 @@
     <div v-if="selectedAgent">
       <h2 class="text-lg font-semibold mb-4">{{ selectedAgent.display }} 配置</h2>
 
-      <!-- Mobile: sticky section menu -->
-      <div class="md:hidden sticky top-0 z-10 -mx-4 px-4 py-2 glass-darker border-b border-white/10 mb-4 overflow-x-auto no-scrollbar">
-        <div class="flex gap-1 whitespace-nowrap">
-          <a v-for="sec in sections" :key="sec.id" :href="'#' + sec.id"
-            class="px-3 py-1.5 text-sm rounded-full bg-ocean-700 border border-white/15 text-white/70 hover:text-cyan-300 hover:border-cyan-400/30 shrink-0">
-            {{ sec.label }}
-          </a>
-        </div>
-      </div>
-
       <div class="space-y-2">
         <!-- 1. 基本配置 -->
-        <div id="sec-basic" class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('basic')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left md:cursor-pointer">
-            <span class="text-white/30 hidden md:inline">{{ open.basic ? '▼' : '▶' }}</span>
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <button @click="toggle('basic')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
+            <span class="text-white/30">{{ open.basic ? '▼' : '▶' }}</span>
             <span class="font-medium">⚙️ 基本配置</span>
           </button>
-          <div v-if="open.basic || isMobile" class="px-4 pb-4 border-t border-white/5 space-y-4">
+          <div v-if="open.basic" class="px-4 pb-4 border-t border-white/5 space-y-4">
             <!-- Discord -->
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
@@ -135,13 +125,13 @@
         </div>
 
         <!-- 2. MCP 配置 -->
-        <div id="sec-mcp" class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('mcp')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left md:cursor-pointer">
-            <span class="text-white/30 hidden md:inline">{{ open.mcp ? '▼' : '▶' }}</span>
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <button @click="toggle('mcp')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
+            <span class="text-white/30">{{ open.mcp ? '▼' : '▶' }}</span>
             <span class="font-medium">🔌 MCP 配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
           </button>
-          <div v-if="open.mcp || isMobile" class="px-4 pb-4 border-t border-white/5 space-y-2">
+          <div v-if="open.mcp" class="px-4 pb-4 border-t border-white/5 space-y-2">
             <div class="flex justify-end mb-2">
               <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP Servers 管理</router-link>
             </div>
@@ -172,13 +162,13 @@
         </div>
 
         <!-- 3. Skill 配置 -->
-        <div id="sec-skill" class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('skill')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left md:cursor-pointer">
-            <span class="text-white/30 hidden md:inline">{{ open.skill ? '▼' : '▶' }}</span>
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <button @click="toggle('skill')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
+            <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
             <span class="font-medium">📚 Skill 配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
           </button>
-          <div v-if="open.skill || isMobile" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.skill" class="px-4 pb-4 border-t border-white/5">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
               <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
                 <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
@@ -192,13 +182,13 @@
         </div>
 
         <!-- 4. Cronjob -->
-        <div id="sec-cron" class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('cron')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left md:cursor-pointer">
-            <span class="text-white/30 hidden md:inline">{{ open.cron ? '▼' : '▶' }}</span>
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <button @click="toggle('cron')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
+            <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
             <span class="font-medium">⏰ 排程任務</span>
             <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
           </button>
-          <div v-if="open.cron || isMobile" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.cron" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
                 <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
@@ -214,13 +204,13 @@
         </div>
 
         <!-- 5. 知識庫配置 -->
-        <div id="sec-kb" class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('kb')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left md:cursor-pointer">
-            <span class="text-white/30 hidden md:inline">{{ open.kb ? '▼' : '▶' }}</span>
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <button @click="toggle('kb')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
+            <span class="text-white/30">{{ open.kb ? '▼' : '▶' }}</span>
             <span class="font-medium">🧠 知識庫配置</span>
             <span class="ml-auto text-sm text-white/40">{{ mockKb.length }} 個</span>
           </button>
-          <div v-if="open.kb || isMobile" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.kb" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3">
                 <span class="text-cyan-400">📖</span>
@@ -281,7 +271,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
 import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 import Field from '../components/Field.vue'
@@ -296,19 +286,6 @@ const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: 
 const cronLimit = ref(20)
 const cronDialog = ref(null)
 const showWorkDir = ref(false)
-const isMobile = ref(window.innerWidth < 768)
-
-function onResize() { isMobile.value = window.innerWidth < 768 }
-onMounted(() => window.addEventListener('resize', onResize))
-onUnmounted(() => window.removeEventListener('resize', onResize))
-
-const sections = [
-  { id: 'sec-mcp', label: 'MCP' },
-  { id: 'sec-skill', label: 'Skill' },
-  { id: 'sec-cron', label: '排程' },
-  { id: 'sec-basic', label: '基本配置' },
-  { id: 'sec-kb', label: '知識庫' },
-]
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) { selectAgent(a) }
@@ -407,6 +384,4 @@ const mockKb = reactive([
 .field-input {
   @apply w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50;
 }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
