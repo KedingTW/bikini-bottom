@@ -1,9 +1,9 @@
 <template>
   <button @click="$emit('update:modelValue', !modelValue)" type="button"
-    class="w-9 h-5 rounded-full transition relative"
+    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0"
     :class="modelValue ? 'bg-cyan-600' : 'bg-white/20'">
-    <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
-      :class="modelValue ? 'translate-x-4' : 'translate-x-0.5'"></span>
+    <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform"
+      :class="modelValue ? 'translate-x-6' : 'translate-x-1'"></span>
   </button>
 </template>
 
