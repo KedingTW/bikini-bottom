@@ -299,14 +299,9 @@ function getChannelName(id) { const ch = channelOptions.value.find(c => c.id ===
 function markDirty(key) { dirty[key] = true }
 function saveSection(key) { dirty[key] = false; /* TODO: call API */ }
 
-// Deep watchers for dirty tracking (covers custom components that don't emit native events)
-// Skip initial trigger with a ready flag
+// Deep watchers for dirty tracking — defined after data declarations below
 const ready = ref(false)
 onMounted(() => nextTick(() => { ready.value = true }))
-watch(cfg, () => { if (ready.value) dirty.basic = true }, { deep: true })
-watch(mockMcp, () => { if (ready.value) dirty.mcp = true }, { deep: true })
-watch(mockSkills, () => { if (ready.value) dirty.skill = true }, { deep: true })
-watch(mockCrons, () => { if (ready.value) dirty.cron = true }, { deep: true })
 
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
@@ -398,6 +393,12 @@ const mockKb = reactive([
   { id: 2, name: 'AI Chatbox 狀態', items: 8, source: 'ai-chatbox/_status.md' },
   { id: 3, name: 'ALS Vue 狀態', items: 15, source: 'als/als-vue/_status.md' },
 ])
+
+// Deep watchers for dirty tracking
+watch(cfg, () => { if (ready.value) dirty.basic = true }, { deep: true })
+watch(mockMcp, () => { if (ready.value) dirty.mcp = true }, { deep: true })
+watch(mockSkills, () => { if (ready.value) dirty.skill = true }, { deep: true })
+watch(mockCrons, () => { if (ready.value) dirty.cron = true }, { deep: true })
 </script>
 
 <style scoped>
