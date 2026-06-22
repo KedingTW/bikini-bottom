@@ -2356,9 +2356,13 @@ async def api_agent_steering_save(agent_name: str, filename: str, request: Reque
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    # 防止 path traversal
+    safe_name = Path(filename).name
+    if safe_name != filename or not safe_name.endswith(".md"):
+        raise HTTPException(status_code=400, detail="無效的檔案名稱")
     body = await request.json()
     content = body.get("content", "")
-    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / filename
+    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / safe_name
     if not path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent steering 目錄不存在")
     path.write_text(content)
