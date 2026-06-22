@@ -114,7 +114,7 @@
                 <Field label="API 位址"><input value="" disabled class="field-input opacity-50"></Field>
               </div>
             </fieldset>
-            <!-- Cron 設定 -->
+            <!-- 排程設定 -->
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">排程設定</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -184,7 +184,7 @@
           </div>
         </div>
 
-        <!-- 4. Cronjob -->
+        <!-- 4. 排程任務 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <button @click="toggle('cron')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
             <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
@@ -202,7 +202,7 @@
             <div v-if="mockCrons.length > cronLimit" class="mt-3 text-center">
               <button @click="cronLimit += 20" class="text-sm text-cyan-400 hover:underline">載入更多...</button>
             </div>
-            <button @click="editCron(null)" class="mt-3 w-full py-2.5 rounded border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40 text-sm">+ 新增 Cronjob</button>
+            <button @click="editCron(null)" class="mt-3 w-full py-2.5 rounded border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40 text-sm">+ 新增排程任務</button>
           </div>
         </div>
 
@@ -227,12 +227,12 @@
         </div>
       </div>
 
-      <!-- Cron Edit Dialog -->
+      <!-- 排程任務 Edit Dialog -->
       <div v-if="cronDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="cronDialog = null">
         <div class="bg-ocean-700 rounded-xl w-full max-w-lg p-6 shadow-2xl border border-white/10">
-          <h3 class="text-lg font-semibold mb-4">{{ cronDialog.isNew ? '新增' : '編輯' }} Cronjob</h3>
+          <h3 class="text-lg font-semibold mb-4">{{ cronDialog.isNew ? '新增' : '編輯' }}排程任務</h3>
           <div class="space-y-4">
-            <Field label="排程時間（Cron 表達式）" tip="5 欄位 POSIX cron：分 時 日 月 週"><input v-model="cronDialog.schedule" class="field-input font-mono" placeholder="0 9 * * 1-5"></Field>
+            <Field label="排程時間（Cron）" tip="5 欄位 POSIX cron：分 時 日 月 週"><input v-model="cronDialog.schedule" class="field-input font-mono" placeholder="0 9 * * 1-5"></Field>
             <Field label="頻道" tip="要發送到的 Discord 頻道">
               <select v-model="cronDialog.channel_id" class="field-input">
                 <option value="">請選擇頻道</option>
@@ -276,6 +276,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
+import { useApi } from '../composables/useApi.js'
 import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 import Field from '../components/Field.vue'
 import Toggle from '../components/Toggle.vue'
@@ -283,6 +284,7 @@ import TagInput from '../components/TagInput.vue'
 import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
+const { get } = useApi()
 const { agents, selectedAgent, loading, selectAgent } = useAgentList()
 
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
@@ -293,7 +295,7 @@ const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) { selectAgent(a); Object.keys(dirty).forEach(k => dirty[k] = false) }
-function getChannelName(id) { const ch = channelOptions.find(c => c.id === id); return ch ? ch.label : id }
+function getChannelName(id) { const ch = channelOptions.value.find(c => c.id === id); return ch ? ch.label : id }
 function markDirty(key) { dirty[key] = true }
 function saveSection(key) { dirty[key] = false; /* TODO: call API */ }
 
@@ -303,13 +305,16 @@ const botMap = { '1493800835853975562': '小蝸', '1496023645083009024': '派大
 const emojiLabels = { thinking: '思考中', tool_use: '使用工具', responding: '回覆中', done: '完成', error: '錯誤', queued: '排隊中', cancelled: '已取消' }
 
 // Dropdown options
-const channelOptions = [
-  { id: '1492090122257170526', label: '🍔 蟹堡王' },
-  { id: '1503940169252999198', label: '🏖️ 比奇堡廣場' },
-  { id: '1503704375074361424', label: '🧪 珊迪實驗室' },
-  { id: '1503703338800382002', label: '📋 會議室' },
-  { id: '1508682127200489552', label: '📰 比奇堡論壇' },
-]
+// Dropdown options (channels loaded from API)
+const channelOptions = ref([])
+async function loadChannels() {
+  const res = await get('/api/discord/channels')
+  if (res?.channels) {
+    channelOptions.value = res.channels.map(ch => ({ id: ch.id, label: `${ch.type === 'category' ? '📁' : '#'} ${ch.name}` }))
+  }
+}
+loadChannels()
+
 const roleOptions = [
   { id: '1504289434122588200', label: '比奇堡小夥伴們' },
   { id: '1506122390751678484', label: '比奇堡開發組' },

@@ -51,7 +51,7 @@ const subTabs = {
     { path: '/mcp', icon: '🔌', label: 'MCP', admin: true },
     { path: '/skills', icon: '📚', label: 'Skill', admin: true },
     { path: '/steering', icon: '📜', label: 'Steering', admin: true },
-    { path: '/cronjobs', icon: '⏰', label: 'Cronjob', admin: true },
+    { path: '/cronjobs', icon: '⏰', label: '排程任務', admin: true },
     { path: '/agent-config', icon: '⚙️', label: 'Config', admin: true },
   ],
   monitor: [
