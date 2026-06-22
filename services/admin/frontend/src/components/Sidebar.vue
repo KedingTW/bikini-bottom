@@ -74,10 +74,6 @@ const navGroups = [
   ]},
   { label: 'AI 角色管理', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
-    { path: '/mcp', icon: '🔌', label: 'MCP 管理', admin: true },
-    { path: '/skills', icon: '📚', label: 'Skill 管理', admin: true },
-    { path: '/steering', icon: '📜', label: 'Steering', admin: true },
-    { path: '/cronjobs', icon: '⏰', label: 'Cronjob', admin: true },
   ]},
   { label: '伺服器管理', items: [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
@@ -90,6 +86,7 @@ const navGroups = [
   ]},
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [
+    { path: '/mcp-servers', icon: '🗄️', label: 'MCP Servers', admin: true },
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
     { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },

@@ -31,7 +31,7 @@
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
+      <main class="flex-1 overflow-y-auto pb-28 md:pb-0" id="main-scroll">
         <slot />
       </main>
       <img class="hidden md:block w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
@@ -113,8 +113,8 @@ const pageTitle = computed(() => {
   const map = {
     home: '總覽', metrics: '資源監控', costs: '成本監控', alerts: '異常通知',
     messaging: '訊息推送', members: '成員管理', threads: '討論串管理', 'thread-analytics': '討論串分析',
-    'agent-config': '角色配置', mcp: 'MCP 管理', skills: 'Skill 管理', steering: 'Steering',
-    cronjobs: 'Cronjob', knowledge: 'Knowledge Base',
+    'agent-config': '角色配置', mcp: 'MCP 管理', 'mcp-servers': 'MCP Servers', skills: 'Skill 管理', steering: 'Steering',
+    cronjobs: '排程任務', knowledge: 'Knowledge Base',
     system: '系統資源', logs: 'Log 搜尋', deploy: '部署管理', 'api-keys': 'API Key',
     users: '使用者管理',
   }

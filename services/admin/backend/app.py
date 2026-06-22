@@ -194,6 +194,50 @@ def _init_db():
                 ts VARCHAR(32)
             )
         """)
+        # ─── MCP Pool tables ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_servers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(64) NOT NULL UNIQUE,
+                path VARCHAR(128) NOT NULL,
+                description VARCHAR(255) DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_server_tools (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_server_tool (server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_agent_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                server_id INT NOT NULL,
+                env VARCHAR(16) NOT NULL DEFAULT 'local',
+                enabled TINYINT DEFAULT 1,
+                UNIQUE KEY uk_agent_server (agent_name, server_id),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_agent_tool_filter (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_agent_tool (agent_name, server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        # Seed MCP data if empty
+        cur.execute("SELECT COUNT(*) FROM mcp_servers")
+        if cur.fetchone()[0] == 0:
+            _seed_mcp_data(conn)
         cur.close()
         conn.close()
     else:
@@ -409,6 +453,48 @@ def _fetch_k8s_metrics() -> dict:
                 "memory_raw": c.get("usage", {}).get("memory", "0"),
             }
     return result
+
+
+def _seed_mcp_data(conn):
+    """Seed MCP test data into MySQL."""
+    cur = conn.cursor()
+    servers = [
+        ("hrs-mcp", "/mcp/hrs", "人資系統 MCP"),
+        ("crm-mcp", "/mcp/crm", "CRM 客戶管理"),
+        ("sap-mcp", "/mcp/sap", "SAP 產品查詢"),
+        ("pricing-mcp", "/mcp/pricing", "報價系統"),
+        ("image-mcp", "/mcp/image", "圖片生成/處理"),
+    ]
+    for name, path, desc in servers:
+        cur.execute("INSERT IGNORE INTO mcp_servers (name, path, description) VALUES (%s, %s, %s)", (name, path, desc))
+
+    cur.execute("SELECT id, name FROM mcp_servers")
+    server_map = {name: sid for sid, name in cur.fetchall()}
+
+    tools_data = {
+        "hrs-mcp": ["GetLeaveBalance", "GetLeaveHistory", "GetLeavePolicy", "SaveLeaveRequest", "GetUser", "GetDepartment", "GetOrganizationCalendar"],
+        "crm-mcp": ["SearchCustomer", "SearchCustomerContact", "GetCrmDescription", "GetRegionSales", "CreateQuote"],
+        "sap-mcp": ["SearchProductItem", "ValidateProductCode"],
+        "pricing-mcp": ["GetRoomDoorPrice", "GetRoomDoorFramePrice", "GetFlooringPrice", "GetCabinetDoorPrice"],
+        "image-mcp": ["GenerateImage", "ResizeImage", "ComposeImage", "AddBrandFrame"],
+    }
+    for server_name, tools in tools_data.items():
+        sid = server_map.get(server_name)
+        if not sid:
+            continue
+        for tool in tools:
+            cur.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (%s, %s)", (sid, tool))
+
+    # Seed bob's config
+    for sname in ["hrs-mcp", "crm-mcp", "sap-mcp"]:
+        sid = server_map.get(sname)
+        if sid:
+            cur.execute("INSERT IGNORE INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (%s, %s, %s, %s)", ("bob", sid, "local", 1))
+    hrs_id = server_map.get("hrs-mcp")
+    if hrs_id:
+        for tool in ["GetLeaveBalance", "GetLeaveHistory", "GetUser"]:
+            cur.execute("INSERT IGNORE INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (%s, %s, %s)", ("bob", hrs_id, tool))
+    cur.close()
 
 
 _init_db()
@@ -2407,9 +2493,183 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     })
 
 
+# ─── MCP Servers CRUD API ───
+
+@app.get("/api/mcp-servers")
+async def api_mcp_servers_list(request: Request):
+    """列出所有 MCP Servers（含 tools 數量）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("""
+            SELECT s.id, s.name, s.path, s.description,
+                   (SELECT COUNT(*) FROM mcp_server_tools t WHERE t.server_id = s.id) as tool_count
+            FROM mcp_servers s ORDER BY s.name
+        """)
+        rows = cur.fetchall()
+    return JSONResponse({"servers": [{"id": r[0], "name": r[1], "path": r[2], "description": r[3], "tool_count": r[4]} for r in rows]})
+
+
+@app.get("/api/mcp-servers/{server_id}")
+async def api_mcp_server_detail(server_id: int, request: Request):
+    """取得單一 server 詳情 + tools 列表"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers WHERE id = ?", (server_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Server not found")
+        server = {"id": row[0], "name": row[1], "path": row[2], "description": row[3]}
+        cur2 = conn.execute("SELECT id, tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (server_id,))
+        server["tools"] = [{"id": r[0], "name": r[1]} for r in cur2.fetchall()]
+    return JSONResponse(server)
+
+
+@app.post("/api/mcp-servers")
+async def api_mcp_server_create(request: Request):
+    """新增 MCP Server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    name = body.get("name", "").strip()
+    path = body.get("path", "").strip()
+    desc = body.get("description", "").strip()
+    if not name or not path:
+        raise HTTPException(status_code=400, detail="name 和 path 為必填")
+    with get_db() as conn:
+        try:
+            conn.execute("INSERT INTO mcp_servers (name, path, description) VALUES (?, ?, ?)", (name, path, desc))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
+        cur = conn.execute("SELECT id FROM mcp_servers WHERE name = ?", (name,))
+        new_id = cur.fetchone()[0]
+        tools = body.get("tools", [])
+        for tool in tools:
+            conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool))
+    return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
+
+
+@app.put("/api/mcp-servers/{server_id}")
+async def api_mcp_server_update(server_id: int, request: Request):
+    """更新 MCP Server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    with get_db() as conn:
+        cur = conn.execute("SELECT id FROM mcp_servers WHERE id = ?", (server_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Server not found")
+        updates = []
+        params = []
+        for field in ["name", "path", "description"]:
+            if field in body:
+                updates.append(f"{field} = ?")
+                params.append(body[field])
+        if updates:
+            params.append(server_id)
+            conn.execute(f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = ?", tuple(params))
+    return JSONResponse({"ok": True, "message": "已更新"})
+
+
+@app.delete("/api/mcp-servers/{server_id}")
+async def api_mcp_server_delete(server_id: int, request: Request):
+    """刪除 MCP Server（CASCADE 刪除 tools + agent configs）"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        conn.execute("DELETE FROM mcp_servers WHERE id = ?", (server_id,))
+    return JSONResponse({"ok": True, "message": "已刪除"})
+
+
+@app.post("/api/mcp-servers/{server_id}/tools")
+async def api_mcp_server_add_tool(server_id: int, request: Request):
+    """新增 tool 到 server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    tool_name = body.get("name", "").strip()
+    if not tool_name:
+        raise HTTPException(status_code=400, detail="tool name 為必填")
+    with get_db() as conn:
+        conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/mcp-servers/{server_id}/tools/{tool_id}")
+async def api_mcp_server_del_tool(server_id: int, tool_id: int, request: Request):
+    """刪除 server 的 tool"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        conn.execute("DELETE FROM mcp_server_tools WHERE id = ? AND server_id = ?", (tool_id, server_id))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
+async def api_mcp_pool_for_agent(agent_name: str, request: Request):
+    """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers ORDER BY name")
+        servers = []
+        for r in cur.fetchall():
+            sid = r[0]
+            cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
+            tools = [t[0] for t in cur2.fetchall()]
+            servers.append({"id": sid, "name": r[1], "path": r[2], "description": r[3], "tools": tools})
+        cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+        agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
+        cur4 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+        tool_filter = {}
+        for r in cur4.fetchall():
+            tool_filter.setdefault(r[0], []).append(r[1])
+    return JSONResponse({"servers": servers, "agent_config": agent_config, "tool_filter": tool_filter})
+
+
+@app.post("/api/mcp-servers/save-agent-config/{agent_name}")
+async def api_mcp_save_agent_config(agent_name: str, request: Request):
+    """儲存角色的 MCP 配置到 MySQL（transaction 保護）"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    config = body.get("config", {})
+    tool_filter = body.get("toolFilter", {})
+    with get_db() as conn:
+        # Explicit transaction for atomic delete+insert
+        conn.execute("BEGIN")
+        try:
+            conn.execute("DELETE FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            conn.execute("DELETE FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+            for sid_str, cfg in config.items():
+                sid = int(sid_str)
+                conn.execute("INSERT INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (?, ?, ?, ?)",
+                             (agent_name, sid, cfg.get("env", "local"), 1 if cfg.get("enabled", True) else 0))
+            for sid_str, tools in tool_filter.items():
+                sid = int(sid_str)
+                for tool in tools:
+                    conn.execute("INSERT INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (?, ?, ?)",
+                                 (agent_name, sid, tool))
+            conn.commit()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
+
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
