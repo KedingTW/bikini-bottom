@@ -132,11 +132,17 @@
             <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
           </button>
           <div v-if="open.mcp" class="px-4 pb-4 border-t border-white/5 space-y-2">
+            <div class="flex justify-end mb-2">
+              <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP Servers 管理</router-link>
+            </div>
             <div v-for="s in mockMcp" :key="s.name" class="bg-ocean-700/50 rounded-lg overflow-hidden">
               <div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-white/5" @click="s._open = !s._open">
                 <input type="checkbox" :checked="s.enabled" :indeterminate.prop="s.partial" @click.stop="toggleMcpServer(s)" class="w-4 h-4 accent-cyan-500">
-                <span class="text-sm flex-1" :class="s.enabled ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
-                <span class="text-xs text-white/40">{{ s.enabledTools }}/{{ s.tools.length }}</span>
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm" :class="s.enabled ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
+                  <span class="text-xs text-white/40 ml-2">{{ s.desc }}</span>
+                </div>
+                <span class="text-xs text-white/40">{{ s.enabledTools }}/{{ s.tools.length }} tools</span>
                 <span class="text-xs text-white/30">{{ s._open ? '▼' : '▶' }}</span>
               </div>
               <div v-if="s._open" class="px-3 pb-3 border-t border-white/5">
@@ -166,7 +172,10 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
               <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
                 <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
-                <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.name }}</span>
+                <div class="min-w-0">
+                  <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.name }}</span>
+                  <span class="text-xs text-white/40 ml-1">{{ s.desc }}</span>
+                </div>
               </label>
             </div>
           </div>
@@ -176,7 +185,7 @@
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <button @click="toggle('cron')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
             <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
-            <span class="font-medium">⏰ Cronjob</span>
+            <span class="font-medium">⏰ 排程任務</span>
             <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
           </button>
           <div v-if="open.cron" class="px-4 pb-4 border-t border-white/5">
@@ -184,7 +193,7 @@
               <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
                 <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
                 <span class="text-sm text-white/70 flex-1 truncate">{{ c.message }}</span>
-                <span class="text-xs text-white/40 shrink-0">{{ channelMap[c.channel_id] || c.channel_id?.slice(-4) }}</span>
+                <span class="text-xs text-white/40 shrink-0">{{ getChannelName(c.channel_id) }}</span>
               </div>
             </div>
             <div v-if="mockCrons.length > cronLimit" class="mt-3 text-center">
@@ -221,7 +230,12 @@
           <h3 class="text-lg font-semibold mb-4">{{ cronDialog.isNew ? '新增' : '編輯' }} Cronjob</h3>
           <div class="space-y-4">
             <Field label="排程時間（Cron 表達式）" tip="5 欄位 POSIX cron：分 時 日 月 週"><input v-model="cronDialog.schedule" class="field-input font-mono" placeholder="0 9 * * 1-5"></Field>
-            <Field label="頻道 ID" tip="要發送到的 Discord 頻道"><input v-model="cronDialog.channel_id" class="field-input font-mono" placeholder="1492090122257170526"></Field>
+            <Field label="頻道" tip="要發送到的 Discord 頻道">
+              <select v-model="cronDialog.channel_id" class="field-input">
+                <option value="">請選擇頻道</option>
+                <option v-for="ch in channelOptions" :key="ch.id" :value="ch.id">{{ ch.label }}</option>
+              </select>
+            </Field>
             <Field label="時區" tip="執行時區"><select v-model="cronDialog.timezone" class="field-input"><option>Asia/Taipei</option><option>UTC</option></select></Field>
             <Field label="啟用">
               <div class="flex items-center gap-2"><Toggle v-model="cronDialog.enabled" /><span class="text-sm text-white/70">{{ cronDialog.enabled ? '啟用' : '停用' }}</span></div>
@@ -275,6 +289,7 @@ const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) { selectAgent(a) }
+function getChannelName(id) { const ch = channelOptions.find(c => c.id === id); return ch ? ch.label : id }
 
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
@@ -284,10 +299,10 @@ const emojiLabels = { thinking: '思考中', tool_use: '使用工具', respondin
 // Dropdown options
 const channelOptions = [
   { id: '1492090122257170526', label: '🍔 蟹堡王' },
-  { id: '1503940169252999198', label: '🏖️ 廣場' },
-  { id: '1503704375074361424', label: '🧪 實驗室' },
-  { id: '1503703338800382002', label: '🏢 會議室' },
-  { id: '1508682127200489552', label: '📋 論壇' },
+  { id: '1503940169252999198', label: '🏖️ 比奇堡廣場' },
+  { id: '1503704375074361424', label: '🧪 珊迪實驗室' },
+  { id: '1503703338800382002', label: '📋 會議室' },
+  { id: '1508682127200489552', label: '📰 比奇堡論壇' },
 ]
 const roleOptions = [
   { id: '1504289434122588200', label: '比奇堡小夥伴們' },
@@ -327,11 +342,11 @@ const cfg = reactive({
 })
 
 const mockMcp = reactive([
-  { name: 'hrs-mcp', enabled: true, partial: false, _open: false, enabledTools: 7, tools: [{ name: 'GetLeaveBalance', enabled: true }, { name: 'GetLeaveHistory', enabled: true }, { name: 'GetLeavePolicy', enabled: true }, { name: 'SaveLeaveRequest', enabled: true }, { name: 'GetUser', enabled: true }, { name: 'GetDepartment', enabled: true }, { name: 'GetOrganizationCalendar', enabled: true }] },
-  { name: 'crm-mcp', enabled: true, partial: false, _open: false, enabledTools: 5, tools: [{ name: 'SearchCustomer', enabled: true }, { name: 'SearchCustomerContact', enabled: true }, { name: 'GetCrmDescription', enabled: true }, { name: 'GetRegionSales', enabled: true }, { name: 'CreateQuote', enabled: true }] },
-  { name: 'sap-mcp', enabled: true, partial: true, _open: false, enabledTools: 1, tools: [{ name: 'SearchProductItem', enabled: true }, { name: 'ValidateProductCode', enabled: false }] },
-  { name: 'pricing-mcp', enabled: false, partial: false, _open: false, enabledTools: 0, tools: [{ name: 'GetRoomDoorPrice', enabled: false }, { name: 'GetFlooringPrice', enabled: false }] },
-  { name: 'image-mcp', enabled: true, partial: false, _open: false, enabledTools: 4, tools: [{ name: 'GenerateImage', enabled: true }, { name: 'ResizeImage', enabled: true }, { name: 'ComposeImage', enabled: true }, { name: 'AddBrandFrame', enabled: true }] },
+  { name: 'hrs-mcp', desc: '人資系統', enabled: true, partial: false, _open: false, enabledTools: 7, tools: [{ name: 'GetLeaveBalance', enabled: true }, { name: 'GetLeaveHistory', enabled: true }, { name: 'GetLeavePolicy', enabled: true }, { name: 'SaveLeaveRequest', enabled: true }, { name: 'GetUser', enabled: true }, { name: 'GetDepartment', enabled: true }, { name: 'GetOrganizationCalendar', enabled: true }] },
+  { name: 'crm-mcp', desc: '客戶管理', enabled: true, partial: false, _open: false, enabledTools: 5, tools: [{ name: 'SearchCustomer', enabled: true }, { name: 'SearchCustomerContact', enabled: true }, { name: 'GetCrmDescription', enabled: true }, { name: 'GetRegionSales', enabled: true }, { name: 'CreateQuote', enabled: true }] },
+  { name: 'sap-mcp', desc: 'ERP 系統', enabled: true, partial: true, _open: false, enabledTools: 1, tools: [{ name: 'SearchProductItem', enabled: true }, { name: 'ValidateProductCode', enabled: false }] },
+  { name: 'pricing-mcp', desc: '報價系統', enabled: false, partial: false, _open: false, enabledTools: 0, tools: [{ name: 'GetRoomDoorPrice', enabled: false }, { name: 'GetFlooringPrice', enabled: false }] },
+  { name: 'image-mcp', desc: '圖片生成', enabled: true, partial: false, _open: false, enabledTools: 4, tools: [{ name: 'GenerateImage', enabled: true }, { name: 'ResizeImage', enabled: true }, { name: 'ComposeImage', enabled: true }, { name: 'AddBrandFrame', enabled: true }] },
 ])
 
 const mcpEnabledCount = computed(() => mockMcp.filter(s => s.enabled).length)
@@ -341,8 +356,13 @@ function mcpDeselectAll(s) { s.tools.forEach(t => { t.enabled = false }); update
 function updateMcpCount(s) { s.enabledTools = s.tools.filter(t => t.enabled).length; s.enabled = s.enabledTools > 0; s.partial = s.enabledTools > 0 && s.enabledTools < s.tools.length }
 
 const mockSkills = reactive([
-  { name: 'doc-coauthoring', enabled: true }, { name: 'docx', enabled: true }, { name: 'pdf', enabled: true },
-  { name: 'pptx', enabled: true }, { name: 'xlsx', enabled: true }, { name: 'kd-pricing-assistant', enabled: false }, { name: 'kd-product-knowledge', enabled: false },
+  { name: 'doc-coauthoring', desc: '文件協作', enabled: true },
+  { name: 'docx', desc: 'Word 文件', enabled: true },
+  { name: 'pdf', desc: 'PDF 文件', enabled: true },
+  { name: 'pptx', desc: 'PowerPoint 簡報', enabled: true },
+  { name: 'xlsx', desc: 'Excel 試算表', enabled: true },
+  { name: 'kd-pricing-assistant', desc: '報價助手', enabled: false },
+  { name: 'kd-product-knowledge', desc: '產品知識庫', enabled: false },
 ])
 
 const mockCrons = reactive([

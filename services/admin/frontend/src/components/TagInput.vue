@@ -1,11 +1,11 @@
 <template>
-  <div class="flex flex-wrap gap-1.5 bg-ocean-800 border border-white/15 rounded px-2 py-1.5 min-h-[32px] cursor-text" @click="$refs.input.focus()">
-    <span v-for="(tag, i) in modelValue" :key="i" class="inline-flex items-center gap-0.5 bg-cyan-600/20 text-cyan-300 text-[10px] px-1.5 py-0.5 rounded">
+  <div class="flex flex-wrap gap-1.5 bg-ocean-800 border border-white/15 rounded px-3 py-2 min-h-[38px] cursor-text" @click="inputEl?.focus()">
+    <span v-for="(tag, i) in modelValue" :key="i" class="inline-flex items-center gap-1 bg-cyan-600/20 text-cyan-300 text-sm px-2 py-0.5 rounded">
       {{ tag }}
-      <button @click="remove(i)" class="text-cyan-400/60 hover:text-white ml-0.5">×</button>
+      <button @click="remove(i)" type="button" class="text-cyan-400/60 hover:text-white">×</button>
     </span>
-    <input ref="input" v-model="input" @keydown.enter.prevent="add" @keydown.backspace="onBackspace"
-      class="flex-1 min-w-[60px] bg-transparent text-xs text-white outline-none placeholder-white/30" placeholder="輸入後 Enter">
+    <input ref="inputEl" v-model="inputText" @keydown.enter.prevent="add" @keydown.backspace="onBackspace"
+      class="flex-1 min-w-[80px] bg-transparent text-sm text-white outline-none placeholder-white/30" placeholder="輸入後按 Enter">
   </div>
 </template>
 
@@ -14,14 +14,15 @@ import { ref } from 'vue'
 
 const props = defineProps({ modelValue: { type: Array, default: () => [] } })
 const emit = defineEmits(['update:modelValue'])
-const input = ref('')
+const inputEl = ref(null)
+const inputText = ref('')
 
 function add() {
-  const v = input.value.trim()
+  const v = inputText.value.trim()
   if (v && !props.modelValue.includes(v)) {
     emit('update:modelValue', [...props.modelValue, v])
   }
-  input.value = ''
+  inputText.value = ''
 }
 
 function remove(i) {
@@ -31,7 +32,7 @@ function remove(i) {
 }
 
 function onBackspace() {
-  if (!input.value && props.modelValue.length) {
+  if (!inputText.value && props.modelValue.length) {
     remove(props.modelValue.length - 1)
   }
 }

@@ -44,11 +44,11 @@ const groups = [
 
 const filteredEmojis = computed(() => {
   if (search.value) {
-    const all = groups.flatMap(g => g.emojis)
+    const all = groups.flatMap(grp => grp.emojis)
     return all.filter(e => e.includes(search.value))
   }
-  const g = groups.find(g => g.name === activeGroup.value)
-  return g ? g.emojis : []
+  const found = groups.find(grp => grp.name === activeGroup.value)
+  return found ? found.emojis : []
 })
 
 function select(e) { emit('update:modelValue', e); open.value = false; search.value = '' }
