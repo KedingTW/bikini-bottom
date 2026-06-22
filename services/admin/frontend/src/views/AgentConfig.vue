@@ -41,15 +41,13 @@
               </div>
               <div class="mt-4 space-y-3">
                 <Field label="允許頻道" tip="只有這些頻道 ID 的訊息會被處理">
-                  <TagInput v-model="cfg.discord.allowed_channels" />
-                  <div class="flex flex-wrap gap-1 mt-1"><span v-for="ch in cfg.discord.allowed_channels" :key="ch" class="text-[10px] text-white/40">{{ channelMap[ch] || '' }}</span></div>
+                  <IdSelect v-model="cfg.discord.allowed_channels" :options="channelOptions" placeholder="頻道" />
                 </Field>
                 <Field label="允許身分組" tip="只有這些身分組的訊息會被處理">
-                  <TagInput v-model="cfg.discord.allowed_role_ids" />
+                  <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" placeholder="身分組" />
                 </Field>
                 <Field label="信任 Bot ID" tip="這些 Bot 的訊息會被當作可信來源處理">
-                  <TagInput v-model="cfg.discord.trusted_bot_ids" />
-                  <div class="flex flex-wrap gap-1 mt-1"><span v-for="id in cfg.discord.trusted_bot_ids" :key="id" class="text-[10px] text-white/40">{{ botMap[id] || '' }}</span></div>
+                  <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="Bot" />
                 </Field>
               </div>
             </fieldset>
@@ -61,7 +59,7 @@
                 <Field label="工作目錄" tip="Agent 的工作路徑">
                   <div class="flex gap-2">
                     <input v-model="cfg.agent.working_dir" class="field-input font-mono flex-1">
-                    <button class="px-2 py-1 text-xs rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white shrink-0">📂</button>
+                    <button @click="showWorkDir = true" type="button" class="px-2 py-1 text-xs rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white shrink-0">📂</button>
                   </div>
                 </Field>
               </div>
@@ -236,6 +234,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Work Directory Dialog -->
+      <div v-if="showWorkDir" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showWorkDir = false">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
+          <h3 class="text-lg font-semibold mb-2">📂 工作目錄</h3>
+          <p class="text-sm text-white/50 mb-4 font-mono">{{ cfg.agent.working_dir }}</p>
+          <div class="space-y-1 bg-ocean-800/50 rounded-lg p-3 max-h-60 overflow-y-auto">
+            <div v-for="f in mockFiles" :key="f.name" class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 text-sm">
+              <span>{{ f.type === 'dir' ? '📁' : '📄' }}</span>
+              <span :class="f.type === 'dir' ? 'text-cyan-300' : 'text-white/80'">{{ f.name }}</span>
+              <span v-if="f.size" class="text-xs text-white/30 ml-auto">{{ f.size }}</span>
+            </div>
+          </div>
+          <div class="flex justify-end mt-4">
+            <button @click="showWorkDir = false" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white">關閉</button>
+          </div>
+        </div>
+      </div>
     </div>
   </AgentDetailLayout>
 </template>
@@ -247,6 +263,7 @@ import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 import Field from '../components/Field.vue'
 import Toggle from '../components/Toggle.vue'
 import TagInput from '../components/TagInput.vue'
+import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
 const { agents, selectedAgent, loading, selectAgent } = useAgentList()
@@ -254,6 +271,7 @@ const { agents, selectedAgent, loading, selectAgent } = useAgentList()
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
 const cronLimit = ref(20)
 const cronDialog = ref(null)
+const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) { selectAgent(a) }
@@ -262,6 +280,42 @@ function onSelect(a) { selectAgent(a) }
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
 const botMap = { '1493800835853975562': '小蝸', '1496023645083009024': '派大星', '1503574146117013555': '泡芙老師' }
 const emojiLabels = { thinking: '思考中', tool_use: '使用工具', responding: '回覆中', done: '完成', error: '錯誤', queued: '排隊中', cancelled: '已取消' }
+
+// Dropdown options
+const channelOptions = [
+  { id: '1492090122257170526', label: '🍔 蟹堡王' },
+  { id: '1503940169252999198', label: '🏖️ 廣場' },
+  { id: '1503704375074361424', label: '🧪 實驗室' },
+  { id: '1503703338800382002', label: '🏢 會議室' },
+  { id: '1508682127200489552', label: '📋 論壇' },
+]
+const roleOptions = [
+  { id: '1504289434122588200', label: '比奇堡小夥伴們' },
+  { id: '1506122390751678484', label: '比奇堡開發組' },
+  { id: '1506130693812391946', label: '比奇堡專案組' },
+  { id: '1506144995592376444', label: '比奇堡前端組' },
+  { id: '1506145234919096320', label: '比奇堡後端組' },
+]
+const botOptions = [
+  { id: '1493800835853975562', label: '🐌 小蝸' },
+  { id: '1496023645083009024', label: '⭐ 派大星' },
+  { id: '1503574146117013555', label: '🐡 泡芙老師' },
+  { id: '1503698574477627482', label: '🦑 章魚哥' },
+  { id: '1504275756488986774', label: '🐿️ 珊迪' },
+  { id: '1509104920954142871', label: '🐋 珍珍' },
+  { id: '1509105546060501184', label: '🦞 蝦霸' },
+]
+
+// Mock work directory files
+const mockFiles = [
+  { name: '_projects.md', type: 'file', size: '1.5 KB' },
+  { name: 'ai-chatbox/', type: 'dir' },
+  { name: 'als/', type: 'dir' },
+  { name: 'bikini-bottom/', type: 'dir' },
+  { name: 'company-knowledge-base/', type: 'dir' },
+  { name: 'mes-frontend/', type: 'dir' },
+  { name: 'video-digest-push/', type: 'dir' },
+]
 
 // ─── Mock Data ───
 const cfg = reactive({
