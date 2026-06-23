@@ -238,6 +238,7 @@
                 <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
                 <span class="text-sm text-white/70 flex-1 truncate">{{ c.message }}</span>
                 <span class="text-xs text-white/40 shrink-0">{{ getChannelName(c.channel_id) }}</span>
+                <button @click.stop="deleteCron(i)" type="button" class="text-red-400/60 hover:text-red-400 shrink-0">✕</button>
               </div>
             </div>
             <div v-if="mockCrons.length > cronLimit" class="mt-3 text-center">
@@ -746,6 +747,11 @@ function applyCronTemplate(expr) {
   cronFields.day = parts[2] || '*'
   cronFields.month = parts[3] || '*'
   cronFields.dow = parts[4] || '*'
+}
+
+function deleteCron(idx) {
+  mockCrons.splice(idx, 1)
+  dirty.cron = true
 }
 
 function saveCronDialog() {
