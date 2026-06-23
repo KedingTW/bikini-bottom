@@ -53,8 +53,9 @@ const shortcodes = {
 
 const filteredEmojis = computed(() => {
   if (search.value) {
+    const q = search.value.toLowerCase()
     const all = groups.flatMap(grp => grp.emojis)
-    return all.filter(e => e.includes(search.value))
+    return all.filter(e => e.includes(search.value) || (shortcodes[e] && shortcodes[e].toLowerCase().includes(q)))
   }
   const found = groups.find(grp => grp.name === activeGroup.value)
   return found ? found.emojis : []
