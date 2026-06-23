@@ -33,17 +33,7 @@
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
                   <span v-if="rangeWarn(cfg.discord.max_bot_turns, 1, 1000)" class="text-xs text-red-400">超出建議範圍（1–1000）</span>
                 </Field>
-                <Field label="訊息處理模式（message_processing_mode）" tip="per-message=逐則、per-thread=整串、per-lane=分道">
-                  <select v-model="cfg.discord.message_processing_mode" class="field-input"><option value="per-message">逐則處理（per-message）</option><option value="per-thread">整串處理（per-thread）</option><option value="per-lane">分道處理（per-lane）</option></select>
-                </Field>
-                <Field label="緩衝訊息數（max_buffered_messages）" tip="建議範圍：1–100，預設 10。per-thread/per-lane 時有效">
-                  <input v-model.number="cfg.discord.max_buffered_messages" type="number" min="1" max="100" class="field-input">
-                  <span v-if="rangeWarn(cfg.discord.max_buffered_messages, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span>
-                </Field>
-                <Field label="批次 Token 上限（max_batch_tokens）" tip="建議範圍：1000–200000，預設 24000。per-thread/per-lane 時有效">
-                  <input v-model.number="cfg.discord.max_batch_tokens" type="number" min="1000" max="200000" class="field-input">
-                  <span v-if="rangeWarn(cfg.discord.max_batch_tokens, 1000, 200000)" class="text-xs text-red-400">超出建議範圍（1000–200000）</span>
-                </Field>
+<!-- TODO: 等 OpenAB 升級後加回 message_processing_mode / max_buffered_messages / max_batch_tokens -->
               </div>
               <!-- Discord additional toggles -->
               <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -364,34 +354,43 @@ function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
 
 async function loadConfig(agentName) {
   const res = await get(`/api/agents/${agentName}/config`)
+  console.log('[loadConfig]', agentName, 'parsed:', res?.parsed)
   if (res?.parsed && Object.keys(res.parsed).length) {
     const p = res.parsed
     if (p.discord) {
-      // Ensure arrays exist
       const d = p.discord
-      cfg.discord.allow_bot_messages = d.allow_bot_messages || 'mentions'
-      cfg.discord.allow_user_messages = d.allow_user_messages || 'multibot-mentions'
-      cfg.discord.max_bot_turns = d.max_bot_turns || 100
-      cfg.discord.message_processing_mode = d.message_processing_mode || 'per-message'
-      cfg.discord.max_buffered_messages = d.max_buffered_messages || 10
-      cfg.discord.max_batch_tokens = d.max_batch_tokens || 24000
-      cfg.discord.allowed_channels = d.allowed_channels || []
-      cfg.discord.allowed_role_ids = d.allowed_role_ids || []
-      cfg.discord.trusted_bot_ids = d.trusted_bot_ids || []
-      cfg.discord.allowed_users = d.allowed_users || []
-      cfg.discord.allow_all_channels = d.allow_all_channels || false
-      cfg.discord.allow_all_users = d.allow_all_users || false
-      cfg.discord.allow_dm = d.allow_dm || false
+      if ('allow_bot_messages' in d) cfg.discord.allow_bot_messages = d.allow_bot_messages
+      if ('allow_user_messages' in d) cfg.discord.allow_user_messages = d.allow_user_messages
+      if ('max_bot_turns' in d) cfg.discord.max_bot_turns = d.max_bot_turns
+      cfg.discord.allowed_channels = Array.isArray(d.allowed_channels) ? d.allowed_channels : []
+      cfg.discord.allowed_role_ids = Array.isArray(d.allowed_role_ids) ? d.allowed_role_ids : []
+      cfg.discord.trusted_bot_ids = Array.isArray(d.trusted_bot_ids) ? d.trusted_bot_ids : []
+      cfg.discord.allowed_users = Array.isArray(d.allowed_users) ? d.allowed_users : []
+      if ('allow_all_channels' in d) cfg.discord.allow_all_channels = d.allow_all_channels
+      if ('allow_all_users' in d) cfg.discord.allow_all_users = d.allow_all_users
+      if ('allow_dm' in d) cfg.discord.allow_dm = d.allow_dm
     }
-    if (p.agent) Object.assign(cfg.agent, p.agent)
-    if (p.pool) Object.assign(cfg.pool, p.pool)
+    if (p.agent) {
+      if ('command' in p.agent) cfg.agent.command = p.agent.command
+      if ('working_dir' in p.agent) cfg.agent.working_dir = p.agent.working_dir
+      cfg.agent.args = Array.isArray(p.agent.args) ? p.agent.args : []
+      cfg.agent.inherit_env = Array.isArray(p.agent.inherit_env) ? p.agent.inherit_env : []
+    }
+    if (p.pool) {
+      if ('max_sessions' in p.pool) cfg.pool.max_sessions = p.pool.max_sessions
+      if ('session_ttl_hours' in p.pool) cfg.pool.session_ttl_hours = p.pool.session_ttl_hours
+    }
     if (p.reactions) {
-      if (p.reactions.emojis) Object.assign(cfg.reactions.emojis, p.reactions.emojis)
       if ('enabled' in p.reactions) cfg.reactions.enabled = p.reactions.enabled
       if ('remove_after_reply' in p.reactions) cfg.reactions.remove_after_reply = p.reactions.remove_after_reply
-      if (p.reactions.tool_display) cfg.reactions.tool_display = p.reactions.tool_display
+      if ('tool_display' in p.reactions) cfg.reactions.tool_display = p.reactions.tool_display
+      if (p.reactions.emojis && typeof p.reactions.emojis === 'object') Object.assign(cfg.reactions.emojis, p.reactions.emojis)
+      if (p.reactions.mapping && typeof p.reactions.mapping === 'object') cfg.reactions.mapping = { ...p.reactions.mapping }
     }
-    if (p.cron) Object.assign(cfg.cron, p.cron)
+    if (p.cron) {
+      if ('usercron_enabled' in p.cron) cfg.cron.usercron_enabled = p.cron.usercron_enabled
+      if ('usercron_path' in p.cron) cfg.cron.usercron_path = p.cron.usercron_path
+    }
   }
   nextTick(() => { ready.value = true })
 }
@@ -485,7 +484,7 @@ const mockFiles = [
 
 // ─── Mock Data ───
 const cfg = reactive({
-  discord: { allow_bot_messages: 'mentions', allow_user_messages: 'multibot-mentions', max_bot_turns: 100, message_processing_mode: 'per-message', max_buffered_messages: 10, max_batch_tokens: 24000, allowed_channels: [], allowed_role_ids: [], trusted_bot_ids: [], allowed_users: [], allow_all_channels: false, allow_all_users: false, allow_dm: false },
+  discord: { allow_bot_messages: 'mentions', allow_user_messages: 'multibot-mentions', max_bot_turns: 100, allowed_channels: [], allowed_role_ids: [], trusted_bot_ids: [], allowed_users: [], allow_all_channels: false, allow_all_users: false, allow_dm: false },
   agent: { command: 'kiro', args: ['chat', '--json'], working_dir: '/home/agent/projects', inherit_env: ['GH_TOKEN', 'AWS_REGION'] },
   pool: { max_sessions: 3, session_ttl_hours: 4 },
   reactions: { enabled: true, remove_after_reply: true, tool_display: 'full', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' }, mapping: {} },
