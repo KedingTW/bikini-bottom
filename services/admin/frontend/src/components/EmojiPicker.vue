@@ -23,6 +23,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { groups, shortcodes } from '../data/emoji-data.js'
 
 const props = defineProps({ modelValue: { type: String, default: '😀' } })
 const emit = defineEmits(['update:modelValue'])
@@ -31,25 +32,7 @@ const open = ref(false)
 const search = ref('')
 const activeGroup = ref('比奇堡')
 
-const groups = [
-  { name: '比奇堡', icon: '🏝️', emojis: ['🐌','🧽','⭐','🐡','🦑','🐿️','🦞','🐋','🐚','🔥','👀','🤔','⚡','🆗','😱','👨‍💻','📋','🪨','🍔','🏝️','🌊','🎣','⚓','🪸','🐠','🦀','🐙','🫧'] },
-  { name: '表情', icon: '😀', emojis: ['😀','😂','🤣','😅','😊','😎','🥳','😢','😡','🤯','🫠','😱','🥹','😤','🫡','🤝','👋','✋','👍','👎','👏','🙏','💪','🫶','🤌','✌️','🤞','🖐️','🙌','🤷','🤦','💀','🥺','😏','🙄','😴','🤗','🫣','🤫','🫢','😶','🤥','😬','🥱','😇','🤓','🧐','😈','👻','💩'] },
-  { name: '符號', icon: '✅', emojis: ['✅','❌','⚠️','❓','❗','💡','🔔','📌','📎','🔗','🏷️','✏️','📝','📋','🗂️','📂','📁','📄','📊','📈','📉','🔒','🔑','🛡️','⭕','❎','☑️','✔️','🔄','↩️','↪️','⏩','⏪','▶️','⏸️','⏹️','🔇','🔊','📣','📢','🚨','🆕','🆗','🆘','🈲','🈳','💠','♻️','✳️','❇️','🔰','⚜️'] },
-  { name: '工具', icon: '🔧', emojis: ['🔧','🛠️','⚙️','🔩','🔨','💻','🖥️','⌨️','📱','🖨️','💾','📀','🔌','🔋','📡','🛜','🤖','🧠','💡','🔬','🧪','📐','📏','✂️','🗑️','📦','🚀','🎯'] },
-  { name: '時間', icon: '⏰', emojis: ['⏰','⏱️','⏳','🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗','🕘','🕙','🕚','🕛','📅','🗓️','📆','🌅','🌇','🌃','🌙','☀️','⭐','🌟','💫','✨','🎆'] },
-  { name: '動物', icon: '🐱', emojis: ['🐱','🐶','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅','🐝','🐛','🦋','🐌','🐙','🦑','🐠','🐳'] },
-  { name: '食物', icon: '🍔', emojis: ['🍔','🍟','🌮','🍕','🍣','🍜','🍝','🍛','🍲','🍱','🍙','🍘','🍡','🍧','🍰','🎂','🍪','☕','🍵','🧋','🥤','🍺','🍷','🧃','🍎','🍊','🍋','🍉'] },
-  { name: '其他', icon: '🎨', emojis: ['🎨','🎭','🎪','🎠','🎡','🎢','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎫','🎟️','🎪','♠️','♥️','♦️','♣️','🃏','🀄','🎲','🎮','🕹️','🎯','🎳','🎰'] },
-]
 
-const shortcodes = {
-  '😀':':grinning:','😂':':joy:','🤣':':rofl:','😅':':sweat_smile:','😊':':blush:','😎':':sunglasses:','🥳':':partying_face:','😢':':cry:','😡':':rage:','🤯':':exploding_head:','🫠':':melting_face:','😱':':scream:','🥹':':holding_back_tears:','😤':':triumph:','🫡':':saluting_face:','🤝':':handshake:','👋':':wave:','✋':':raised_hand:','👍':':thumbsup:','👎':':thumbsdown:','👏':':clap:','🙏':':pray:','💪':':muscle:','🫶':':heart_hands:','🤌':':pinched_fingers:','✌️':':v:','🤞':':crossed_fingers:','🖐️':':hand_splayed:','🙌':':raised_hands:','🤷':':shrug:','🤦':':facepalm:','💀':':skull:','🥺':':pleading_face:','😏':':smirk:','🙄':':rolling_eyes:','😴':':sleeping:','🤗':':hugging:','🫣':':peeking:','🤫':':shushing_face:','🫢':':face_with_open_eyes_and_hand_over_mouth:','😶':':no_mouth:','🤥':':lying_face:','😬':':grimacing:','🥱':':yawning_face:','😇':':innocent:','🤓':':nerd:','🧐':':monocle_face:','😈':':smiling_imp:','👻':':ghost:','💩':':poop:',
-  '✅':':white_check_mark:','❌':':x:','⚠️':':warning:','❓':':question:','❗':':exclamation:','💡':':bulb:','🔔':':bell:','📌':':pushpin:','📎':':paperclip:','🔗':':link:','🏷️':':label:','✏️':':pencil2:','📝':':memo:','📋':':clipboard:','🗂️':':card_index_dividers:','📂':':open_file_folder:','📁':':file_folder:','📄':':page_facing_up:','📊':':bar_chart:','📈':':chart_with_upwards_trend:','📉':':chart_with_downwards_trend:','🔒':':lock:','🔑':':key:','🛡️':':shield:','⭕':':o:','❎':':negative_squared_cross_mark:','☑️':':ballot_box_with_check:','✔️':':heavy_check_mark:','🔄':':arrows_counterclockwise:','↩️':':leftwards_arrow_with_hook:','↪️':':arrow_right_hook:','⏩':':fast_forward:','⏪':':rewind:','▶️':':arrow_forward:','⏸️':':pause_button:','⏹️':':stop_button:','🔇':':mute:','🔊':':loud_sound:','📣':':mega:','📢':':loudspeaker:','🚨':':rotating_light:','🆕':':new:','🆗':':ok:','🆘':':sos:','💠':':diamond_shape_with_a_dot_inside:','♻️':':recycle:','✳️':':eight_spoked_asterisk:','❇️':':sparkle:','🔰':':beginner:','⚜️':':fleur_de_lis:',
-  '🔧':':wrench:','🛠️':':hammer_and_wrench:','⚙️':':gear:','🔩':':nut_and_bolt:','🔨':':hammer:','💻':':computer:','🖥️':':desktop:','⌨️':':keyboard:','📱':':iphone:','🖨️':':printer:','💾':':floppy_disk:','📀':':dvd:','🔌':':electric_plug:','🔋':':battery:','📡':':satellite:','🛜':':wireless:','🤖':':robot:','🧠':':brain:','🔬':':microscope:','🧪':':test_tube:','📐':':triangular_ruler:','📏':':straight_ruler:','✂️':':scissors:','🗑️':':wastebasket:','📦':':package:','🚀':':rocket:','🎯':':dart:',
-  '⏰':':alarm_clock:','⏱️':':stopwatch:','⏳':':hourglass_flowing_sand:','📅':':date:','🗓️':':spiral_calendar:','🌅':':sunrise:','🌙':':crescent_moon:','☀️':':sunny:','⭐':':star:','🌟':':star2:','💫':':dizzy:','✨':':sparkles:',
-  '🐌':':snail:','🧽':':sponge:','⭐':':star:','🐡':':blowfish:','🦑':':squid:','🐿️':':chipmunk:','🦞':':lobster:','🐋':':whale2:','🐚':':shell:','🔥':':fire:','👀':':eyes:','🤔':':thinking:','⚡':':zap:','👨‍💻':':technologist:','🪨':':rock:','🍔':':hamburger:','🏝️':':island:','🌊':':ocean:','🎣':':fishing_pole:','⚓':':anchor:','🐠':':tropical_fish:','🦀':':crab:','🐙':':octopus:','🫧':':bubbles:',
-  '❤️':':heart:','🎉':':tada:','🏆':':trophy:','🥇':':first_place:','🎨':':art:','🎮':':video_game:','🎬':':clapper:','📸':':camera_with_flash:','☕':':coffee:','🍟':':fries:','🌮':':taco:','🍕':':pizza:',
-}
 
 const filteredEmojis = computed(() => {
   if (search.value) {
