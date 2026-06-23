@@ -288,7 +288,7 @@
           </div>
           <div class="flex gap-3 justify-end mt-5">
             <button @click="cronDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
-            <button @click="cronDialog = null" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">儲存</button>
+            <button @click="saveCronDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">儲存</button>
           </div>
         </div>
       </div>
@@ -688,6 +688,20 @@ const mockSkills = reactive([])
 const mockCrons = reactive([])
 const visibleCrons = computed(() => mockCrons.slice(0, cronLimit.value))
 function editCron(c) { cronDialog.value = c ? { ...c, isNew: false } : { schedule: '', message: '', channel_id: '', timezone: 'Asia/Taipei', enabled: true, isNew: true } }
+
+function saveCronDialog() {
+  const d = cronDialog.value
+  if (!d.schedule || !d.message) return
+  if (d.isNew) {
+    mockCrons.push({ schedule: d.schedule, message: d.message, channel_id: d.channel_id, timezone: d.timezone, enabled: d.enabled })
+  } else {
+    // Find and update in-place
+    const idx = mockCrons.findIndex(c => c.schedule === d.schedule && c.message === d.message)
+    if (idx >= 0) Object.assign(mockCrons[idx], d)
+  }
+  cronDialog.value = null
+  dirty.cron = true
+}
 
 const mockKb = reactive([
   { id: 1, name: '專案清單', items: 12, source: '_projects.md' },
