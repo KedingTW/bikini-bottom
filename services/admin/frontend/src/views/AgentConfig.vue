@@ -339,8 +339,16 @@ function onSelect(a) {
   ready.value = false
   selectAgent(a)
   Object.keys(dirty).forEach(k => dirty[k] = false)
-  loadConfig(a.name)
 }
+
+// Always load config when selectedAgent changes (covers auto-select on mount too)
+watch(selectedAgent, (a) => {
+  if (a) {
+    ready.value = false
+    Object.keys(dirty).forEach(k => dirty[k] = false)
+    loadConfig(a.name)
+  }
+})
 
 const newMapping = ref({ emoji: '', cmd: '' })
 function addMapping() {
