@@ -2346,10 +2346,12 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     else:
         doc = tomlkit.document()
 
-    # Deep merge
+    # Deep merge (with full-replace for leaf dicts like mapping/emojis)
+    REPLACE_KEYS = {'mapping', 'emojis', 'allowed_channels', 'allowed_role_ids', 'trusted_bot_ids', 'allowed_users'}
+
     def deep_merge(base, override):
         for key, val in override.items():
-            if isinstance(val, dict) and key in base and isinstance(base[key], dict):
+            if isinstance(val, dict) and key in base and isinstance(base[key], dict) and key not in REPLACE_KEYS:
                 deep_merge(base[key], val)
             else:
                 base[key] = val
