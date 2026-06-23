@@ -519,16 +519,6 @@ AGENT_GROUPS = {
         "guild_id": "",
         "agents": [],
     },
-    "south-park": {
-        "display": "南方公園",
-        "icon": "🏔️",
-        "agents_subdir": "south-park",
-        "platform": "discord",
-        "guild_id": os.environ.get("SOUTH_PARK_GUILD_ID", ""),
-        "agents": [
-            {"name": "kenny", "display": "阿尼", "role": "測試角色", "type": "agent", "icon": "🧡"},
-        ],
-    },
 }
 
 # Flat list for backward compatibility (all agents across groups)
@@ -2166,7 +2156,7 @@ async def api_groups(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png", "south-park": "/group-south-park.png"}
+    GROUP_IMAGES = {"bikini-bottom": "/group-bikini-bottom.png", "keding-dc": "/group-keding.png", "keding-wecom": "/group-keding.png"}
     groups = [{"id": k, "display": v["display"], "icon": v["icon"], "image": GROUP_IMAGES.get(k, ""), "platform": v["platform"], "agent_count": len(v["agents"])} for k, v in AGENT_GROUPS.items()]
     return JSONResponse({"groups": groups})
 
