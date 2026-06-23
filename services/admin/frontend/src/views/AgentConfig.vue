@@ -256,6 +256,7 @@
           </button>
           <div v-if="open.kb" @change.capture="markDirty('kb')" @input.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
+              <div v-if="!mockKb.length" class="text-sm text-white/40 py-4">暫無知識庫</div>
               <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3">
                 <span class="text-cyan-400">📖</span>
                 <div class="flex-1 min-w-0">
@@ -365,6 +366,7 @@ watch(selectedAgent, (a) => {
     loadCrons()
     loadSkills()
     loadMcp()
+    loadKb()
   }
 })
 
@@ -572,6 +574,18 @@ async function doSave(restart) {
   }
 }
 
+async function loadKb() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/kb`)
+  if (res?.contexts) {
+    mockKb.splice(0, mockKb.length, ...res.contexts.map(c => ({
+      id: c.id || c.name, name: c.name, items: c.item_count || 0, source: c.source_path || ''
+    })))
+  } else {
+    mockKb.splice(0, mockKb.length)
+  }
+}
+
 // Deep watchers for dirty tracking — defined after data declarations below
 const ready = ref(false)
 onMounted(() => nextTick(() => { ready.value = true }))
@@ -703,11 +717,19 @@ function saveCronDialog() {
   dirty.cron = true
 }
 
-const mockKb = reactive([
-  { id: 1, name: '專案清單', items: 12, source: '_projects.md' },
-  { id: 2, name: 'AI Chatbox 狀態', items: 8, source: 'ai-chatbox/_status.md' },
-  { id: 3, name: 'ALS Vue 狀態', items: 15, source: 'als/als-vue/_status.md' },
-])
+const mockKb = reactive([])
+
+async function loadKb() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/kb`)
+  if (res?.contexts) {
+    mockKb.splice(0, mockKb.length, ...res.contexts.map(c => ({
+      id: c.id || c.name, name: c.name, items: c.item_count || 0, source: c.source_path || ''
+    })))
+  } else {
+    mockKb.splice(0, mockKb.length)
+  }
+}
 
 // Deep watchers for dirty tracking
 watch(cfg, () => { if (ready.value) dirty.basic = true }, { deep: true })
