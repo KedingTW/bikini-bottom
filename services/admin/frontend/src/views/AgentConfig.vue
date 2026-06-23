@@ -118,10 +118,10 @@
               <div class="mt-4">
                 <div class="text-sm text-white/60 mb-2">表情指令對照（reactions.mapping）</div>
                 <div class="space-y-2">
-                  <div v-for="(cmd, emoji, idx) in cfg.reactions.mapping || {}" :key="idx" class="flex items-center gap-2">
-                    <div class="w-[60px] shrink-0"><EmojiPicker :model-value="emoji" @update:model-value="renameMapping(emoji, $event, cmd)" /></div>
-                    <input :value="cmd" @change="cfg.reactions.mapping[emoji] = $event.target.value" class="flex-1 field-input font-mono" placeholder="指令或 prompt">
-                    <button @click="deleteMapping(emoji)" type="button" class="text-red-400/60 hover:text-red-400 text-lg shrink-0 w-8 text-center">✕</button>
+                  <div v-for="item in mappingList" :key="item.emoji" class="flex items-center gap-2">
+                    <div class="w-[60px] shrink-0"><EmojiPicker :model-value="item.emoji" @update:model-value="renameMapping(item.emoji, $event, item.cmd)" /></div>
+                    <input :value="item.cmd" @change="updateMappingCmd(item.emoji, $event.target.value)" class="flex-1 field-input font-mono" placeholder="指令或 prompt">
+                    <button @click="deleteMapping(item.emoji)" type="button" class="text-red-400/60 hover:text-red-400 text-lg shrink-0 w-8 text-center">✕</button>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 mt-3">
@@ -359,6 +359,8 @@ function addMapping() {
     newMapping.value = { emoji: '', cmd: '' }
   }
 }
+const mappingList = computed(() => Object.entries(cfg.reactions.mapping || {}).map(([emoji, cmd]) => ({ emoji, cmd })))
+function updateMappingCmd(emoji, cmd) { cfg.reactions.mapping[emoji] = cmd }
 function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
 function renameMapping(oldEmoji, newEmoji, cmd) {
   delete cfg.reactions.mapping[oldEmoji]
@@ -377,7 +379,7 @@ async function loadConfig(agentName) {
       if ('max_bot_turns' in d) cfg.discord.max_bot_turns = d.max_bot_turns
       cfg.discord.allowed_channels = Array.isArray(d.allowed_channels) ? d.allowed_channels : []
       cfg.discord.allowed_role_ids = Array.isArray(d.allowed_role_ids) ? d.allowed_role_ids : []
-      cfg.discord.trusted_bot_ids = Array.isArray(d.trusted_bot_ids) ? d.trusted_bot_ids : []
+      cfg.discord.trusted_bot_ids = (Array.isArray(d.trusted_bot_ids) ? d.trusted_bot_ids : []).filter(id => !selectedAgent.value || String(id) !== String(selectedAgent.value.bot_id))
       cfg.discord.allowed_users = Array.isArray(d.allowed_users) ? d.allowed_users : []
       if ('allow_all_channels' in d) cfg.discord.allow_all_channels = d.allow_all_channels
       if ('allow_all_users' in d) cfg.discord.allow_all_users = d.allow_all_users
