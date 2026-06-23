@@ -507,6 +507,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
+SHARED_SKILLS_DIR = Path(os.environ.get("SHARED_SKILLS_DIR", "/data/repo/shared/skills"))
 
 # Serve Vue SPA build output
 DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolve())))
@@ -2434,6 +2435,60 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     if not skill_md.exists():
         raise HTTPException(status_code=404, detail="SKILL.md 不存在")
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
+
+
+@app.get("/api/skills/available")
+async def api_skills_available(request: Request):
+    """列出共用 skills 目錄中所有可用的 skill"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    skills = []
+    if SHARED_SKILLS_DIR.exists():
+        for d in sorted(SHARED_SKILLS_DIR.iterdir()):
+            if d.is_dir():
+                skill_md = d / "SKILL.md"
+                desc = ""
+                if skill_md.exists():
+                    try:
+                        text = skill_md.read_text()[:200]
+                        desc = text.split("\n")[0].strip("# ").strip()
+                    except Exception:
+                        pass
+                skills.append({"name": d.name, "description": desc})
+    return JSONResponse({"skills": skills})
+
+
+@app.put("/api/agents/{agent_name}/skills")
+async def api_agent_skills_save(agent_name: str, request: Request):
+    """儲存角色啟用的 skills（管理 symlinks）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    enabled_skills = body.get("enabled_skills", [])
+    if not isinstance(enabled_skills, list):
+        raise HTTPException(status_code=400, detail="enabled_skills 必須是陣列")
+
+    agent_skills_dir = _get_agent_dir(agent_name) / ".kiro" / "skills"
+    agent_skills_dir.mkdir(parents=True, exist_ok=True)
+
+    # 移除現有 symlinks
+    for item in agent_skills_dir.iterdir():
+        if item.is_symlink():
+            item.unlink()
+
+    # 建立新 symlinks
+    created = []
+    for skill_name in enabled_skills:
+        safe_name = Path(skill_name).name
+        source = SHARED_SKILLS_DIR / safe_name
+        if source.is_dir():
+            target = agent_skills_dir / safe_name
+            target.symlink_to(source)
+            created.append(safe_name)
+
+    return JSONResponse({"ok": True, "message": f"已設定 {len(created)} 個 skills", "enabled": created})
 
 
 @app.get("/api/agents/{agent_name}/cronjob")
