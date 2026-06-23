@@ -2696,14 +2696,14 @@ async def api_mcp_pool_for_agent(agent_name: str, request: Request):
 async def api_mcp_save_agent_config(agent_name: str, request: Request):
     """儲存角色的 MCP 配置到 MySQL（transaction 保護）"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     body = await request.json()
     config = body.get("config", {})
     tool_filter = body.get("toolFilter", {})
     with get_db() as conn:
-        # Explicit transaction for atomic delete+insert
-        conn.execute("BEGIN")
+        if USE_MYSQL:
+            conn._conn.autocommit = False
         try:
             conn.execute("DELETE FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             conn.execute("DELETE FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
@@ -2718,7 +2718,12 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
                                  (agent_name, sid, tool))
             conn.commit()
         except Exception as e:
+            if USE_MYSQL:
+                conn._conn.rollback()
             raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
+        finally:
+            if USE_MYSQL:
+                conn._conn.autocommit = True
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
 
