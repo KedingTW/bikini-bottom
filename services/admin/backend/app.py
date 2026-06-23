@@ -2290,7 +2290,7 @@ async def api_agent_config(agent_name: str, request: Request):
         return JSONResponse({"error": None, "raw": "", "parsed": {}})
     try:
         raw = config_path.read_text()
-        parsed = dict(tomlkit.parse(raw))
+        parsed = tomlkit.parse(raw).unwrap()
         return JSONResponse({"error": None, "raw": raw, "parsed": parsed})
     except Exception as e:
         return JSONResponse({"error": str(e), "raw": "", "parsed": {}})

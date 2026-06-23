@@ -24,13 +24,14 @@
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Field label="角色訊息觸發（allow_bot_messages）" tip="off=關閉、mentions=被提及時觸發、all=全部觸發">
-                  <select v-model="cfg.discord.allow_bot_messages" class="field-input"><option value="off">關閉</option><option value="mentions">被提及時觸發</option><option value="all">全部觸發</option></select>
+                  <select v-model="cfg.discord.allow_bot_messages" class="field-input"><option value="off">關閉（off）</option><option value="mentions">被提及時觸發（mentions）</option><option value="all">全部觸發（all）</option></select>
                 </Field>
                 <Field label="使用者訊息觸發（allow_user_messages）" tip="involved=參與對話時、mentions=被提及時、multibot-mentions=多角色提及時">
-                  <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="involved">參與對話時觸發</option><option value="mentions">被提及時觸發</option><option value="multibot-mentions">多角色提及時</option></select>
+                  <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="involved">參與對話時（involved）</option><option value="mentions">被提及時觸發（mentions）</option><option value="multibot-mentions">多角色提及時（multibot-mentions）</option></select>
                 </Field>
                 <Field label="最大對話輪數（max_bot_turns）" tip="建議範圍：1–1000，預設 100">
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
+                  <span v-if="rangeWarn(cfg.discord.max_bot_turns, 1, 1000)" class="text-xs text-red-400">超出建議範圍（1–1000）</span>
                 </Field>
               </div>
               <div class="mt-4 space-y-3">
@@ -66,8 +67,10 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">連線池（pool）</legend>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="工作階段數（max_sessions）" tip="建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input"></Field>
-                <Field label="存活時數（session_ttl_hours）" tip="建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input"></Field>
+                <Field label="工作階段數（max_sessions）" tip="建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
+                  <span v-if="rangeWarn(cfg.pool.max_sessions, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span></Field>
+                <Field label="存活時數（session_ttl_hours）" tip="建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input">
+                  <span v-if="rangeWarn(cfg.pool.session_ttl_hours, 1, 720)" class="text-xs text-red-400">超出建議範圍（1–720）</span></Field>
               </div>
             </fieldset>
             <!-- Reactions -->
@@ -298,9 +301,33 @@ const cronDialog = ref(null)
 const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
-function onSelect(a) { ready.value = false; selectAgent(a); Object.keys(dirty).forEach(k => dirty[k] = false); nextTick(() => { ready.value = true }) }
+function onSelect(a) {
+  ready.value = false
+  selectAgent(a)
+  Object.keys(dirty).forEach(k => dirty[k] = false)
+  loadConfig(a.name)
+}
+
+async function loadConfig(agentName) {
+  const res = await get(`/api/agents/${agentName}/config`)
+  if (res?.parsed && Object.keys(res.parsed).length) {
+    const p = res.parsed
+    if (p.discord) Object.assign(cfg.discord, p.discord)
+    if (p.agent) Object.assign(cfg.agent, p.agent)
+    if (p.pool) Object.assign(cfg.pool, p.pool)
+    if (p.reactions) {
+      if (p.reactions.emojis) Object.assign(cfg.reactions.emojis, p.reactions.emojis)
+      if ('enabled' in p.reactions) cfg.reactions.enabled = p.reactions.enabled
+      if ('remove_after_reply' in p.reactions) cfg.reactions.remove_after_reply = p.reactions.remove_after_reply
+      if (p.reactions.tool_display) cfg.reactions.tool_display = p.reactions.tool_display
+    }
+    if (p.cron) Object.assign(cfg.cron, p.cron)
+  }
+  nextTick(() => { ready.value = true })
+}
 function getChannelName(id) { const ch = channelOptions.value.find(c => c.id === id); return ch ? ch.label : id }
 function markDirty(key) { dirty[key] = true }
+function rangeWarn(val, min, max) { return val !== '' && val !== null && (val < min || val > max) }
 function saveSection(key) { saveDialogKey.value = key }
 const saveDialogKey = ref(null)
 async function doSave(restart) {
