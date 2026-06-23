@@ -114,19 +114,17 @@
               <!-- Reactions Mapping -->
               <div class="mt-4">
                 <div class="text-sm text-white/60 mb-2">表情指令對照（reactions.mapping）</div>
-                <div class="space-y-1">
+                <div class="space-y-2">
                   <div v-for="(cmd, emoji, idx) in cfg.reactions.mapping || {}" :key="idx" class="flex items-center gap-2">
-                    <input :value="emoji" readonly class="w-16 field-input text-center">
-                    <span class="text-white/40">→</span>
-                    <input :value="cmd" readonly class="flex-1 field-input font-mono">
-                    <button @click="deleteMapping(emoji)" type="button" class="text-red-400/60 hover:text-red-400 text-sm">✕</button>
+                    <div class="w-[60px] shrink-0"><EmojiPicker :model-value="emoji" @update:model-value="renameMapping(emoji, $event, cmd)" /></div>
+                    <input :value="cmd" @change="cfg.reactions.mapping[emoji] = $event.target.value" class="flex-1 field-input font-mono" placeholder="指令或 prompt">
+                    <button @click="deleteMapping(emoji)" type="button" class="text-red-400/60 hover:text-red-400 text-lg shrink-0 w-8 text-center">✕</button>
                   </div>
                 </div>
-                <div class="flex items-center gap-2 mt-2">
-                  <input v-model="newMapping.emoji" class="w-16 field-input text-center" placeholder="😀">
-                  <span class="text-white/40">→</span>
-                  <input v-model="newMapping.cmd" class="flex-1 field-input font-mono" placeholder="command">
-                  <button @click="addMapping()" type="button" class="px-3 py-1.5 text-xs rounded bg-cyan-600 text-white">+</button>
+                <div class="flex items-center gap-2 mt-3">
+                  <div class="w-[60px] shrink-0"><EmojiPicker v-model="newMapping.emoji" /></div>
+                  <input v-model="newMapping.cmd" class="flex-1 field-input font-mono" placeholder="輸入指令或 prompt">
+                  <button @click="addMapping()" type="button" class="px-3 py-1.5 text-xs rounded bg-cyan-600 text-white shrink-0">+ 新增</button>
                 </div>
               </div>
             </fieldset>
@@ -359,6 +357,10 @@ function addMapping() {
   }
 }
 function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
+function renameMapping(oldEmoji, newEmoji, cmd) {
+  delete cfg.reactions.mapping[oldEmoji]
+  cfg.reactions.mapping[newEmoji] = cmd
+}
 
 async function loadConfig(agentName) {
   const res = await get(`/api/agents/${agentName}/config`)
