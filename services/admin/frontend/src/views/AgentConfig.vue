@@ -368,10 +368,9 @@ const mappingList = computed(() => Object.entries(cfg.reactions.mapping || {}).m
 function updateMappingCmd(emoji, cmd) { cfg.reactions.mapping[emoji] = cmd }
 function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
 
-const defaultEmojis = { thinking: '👀', tool_use: '🤔', responding: '🔥', done: '👨‍💻', error: '😱', queued: '⚡', cancelled: '🆗' }
-let originalEmojis = null
+const defaultEmojis = { queued: '👀', thinking: '🤔', tool: '🔥', coding: '👨‍💻', web: '⚡', done: '🆗', error: '😱' }
 
-function resetEmojis() { Object.assign(cfg.reactions.emojis, originalEmojis || defaultEmojis) }
+function resetEmojis() { Object.keys(cfg.reactions.emojis).forEach(k => delete cfg.reactions.emojis[k]); Object.assign(cfg.reactions.emojis, defaultEmojis) }
 
 function resetBasicConfig() {
   cfg.discord.allow_bot_messages = 'off'
@@ -432,7 +431,7 @@ async function loadConfig(agentName) {
       if ('session_ttl_hours' in p.pool) cfg.pool.session_ttl_hours = p.pool.session_ttl_hours
     }
     if (p.reactions) {
-      if (p.reactions.emojis) originalEmojis = { ...p.reactions.emojis }
+
       if ('enabled' in p.reactions) cfg.reactions.enabled = p.reactions.enabled
       if ('remove_after_reply' in p.reactions) cfg.reactions.remove_after_reply = p.reactions.remove_after_reply
       if ('tool_display' in p.reactions) cfg.reactions.tool_display = p.reactions.tool_display
