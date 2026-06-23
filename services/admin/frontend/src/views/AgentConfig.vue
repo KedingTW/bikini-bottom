@@ -363,6 +363,7 @@ watch(selectedAgent, (a) => {
     Object.keys(dirty).forEach(k => dirty[k] = false)
     loadConfig(a.name)
     loadCrons()
+    loadSkills()
   }
 })
 
@@ -417,9 +418,30 @@ async function saveMcp() {
 }
 
 async function saveSkill() {
-  // TODO: wait for backend API
-  console.log('[saveSkill] not implemented yet')
-  dirty.skill = false
+  if (!selectedAgent.value) return
+  const enabled = mockSkills.filter(s => s.enabled).map(s => s.name)
+  const res = await fetch(`/api/agents/${selectedAgent.value.name}/skills`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled_skills: enabled })
+  })
+  if (res.ok) dirty.skill = false
+  console.log('[saveSkill]', enabled, await res.json())
+}
+
+async function loadSkills() {
+  if (!selectedAgent.value) return
+  const [availRes, agentSkills] = await Promise.all([
+    get('/api/skills/available'),
+    Promise.resolve(selectedAgent.value.skills || [])
+  ])
+  if (availRes?.skills) {
+    mockSkills.splice(0, mockSkills.length, ...availRes.skills.map(s => ({
+      name: s.name,
+      desc: s.description ? `${s.description}（${s.name}）` : s.name,
+      enabled: agentSkills.includes(s.name)
+    })))
+  }
 }
 
 async function saveCron() {
@@ -642,15 +664,7 @@ function mcpSelectAll(s) { s.tools.forEach(t => { t.enabled = true }); updateMcp
 function mcpDeselectAll(s) { s.tools.forEach(t => { t.enabled = false }); updateMcpCount(s) }
 function updateMcpCount(s) { s.enabledTools = s.tools.filter(t => t.enabled).length; s.enabled = s.enabledTools > 0; s.partial = s.enabledTools > 0 && s.enabledTools < s.tools.length }
 
-const mockSkills = reactive([
-  { name: 'doc-coauthoring', desc: '文件協作（doc-coauthoring）', enabled: true },
-  { name: 'docx', desc: 'Word 文件（docx）', enabled: true },
-  { name: 'pdf', desc: 'PDF 文件（pdf）', enabled: true },
-  { name: 'pptx', desc: 'PowerPoint 簡報（pptx）', enabled: true },
-  { name: 'xlsx', desc: 'Excel 試算表（xlsx）', enabled: true },
-  { name: 'kd-pricing-assistant', desc: '報價助手（kd-pricing-assistant）', enabled: false },
-  { name: 'kd-product-knowledge', desc: '產品知識庫（kd-product-knowledge）', enabled: false },
-])
+const mockSkills = reactive([])
 
 const mockCrons = reactive([])
 const visibleCrons = computed(() => mockCrons.slice(0, cronLimit.value))
