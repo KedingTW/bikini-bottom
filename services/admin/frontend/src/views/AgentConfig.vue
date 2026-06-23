@@ -203,7 +203,7 @@
           <div class="flex items-center px-4 py-3">
             <button @click="toggle('skill')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
               <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
-              <span class="font-medium">📚 技能配置（Skill）</span>
+              <span class="font-medium">📚 技能配置</span>
               <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
             </button>
             <button :disabled="!dirty.skill" @click="saveSkill()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
