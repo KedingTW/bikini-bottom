@@ -705,14 +705,15 @@ function editCron(c) { cronDialog.value = c ? { ...c, isNew: false } : { schedul
 
 function saveCronDialog() {
   const d = cronDialog.value
-  if (!d.schedule || !d.message) return
+  console.log('[saveCronDialog]', d)
+  if (!d.schedule || !d.message) { console.log('[saveCronDialog] missing schedule or message'); return }
   if (d.isNew) {
     mockCrons.push({ schedule: d.schedule, message: d.message, channel_id: d.channel_id, timezone: d.timezone, enabled: d.enabled })
   } else {
-    // Find and update in-place
     const idx = mockCrons.findIndex(c => c.schedule === d.schedule && c.message === d.message)
     if (idx >= 0) Object.assign(mockCrons[idx], d)
   }
+  console.log('[saveCronDialog] mockCrons.length:', mockCrons.length)
   cronDialog.value = null
   dirty.cron = true
 }
