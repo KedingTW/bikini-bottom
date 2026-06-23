@@ -2749,7 +2749,8 @@ async def api_mcp_pool_for_agent(agent_name: str, request: Request):
 
 @app.post("/api/mcp-servers/save-agent-config/{agent_name}")
 async def api_mcp_save_agent_config(agent_name: str, request: Request):
-    """儲存角色的 MCP 配置到 MySQL（transaction 保護）"""
+    """儲存角色的 MCP 配置到 MySQL + 生成 mcp.json"""
+    import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2779,6 +2780,34 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
         finally:
             if USE_MYSQL:
                 conn._conn.autocommit = True
+
+        # 生成 mcp.json 到角色目錄
+        try:
+            cur = conn.execute("SELECT id, name, path FROM mcp_servers")
+            server_map = {r[0]: {"name": r[1], "path": r[2]} for r in cur.fetchall()}
+            cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            agent_cfg = cur2.fetchall()
+
+            mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
+            mcp_token = os.environ.get("MCP_AUTH_TOKEN", "")
+            mcp_json = {"mcpServers": {}}
+            for server_id, env, enabled in agent_cfg:
+                if not enabled:
+                    continue
+                srv = server_map.get(server_id)
+                if not srv:
+                    continue
+                entry = {"url": f"{mcp_base_url}{srv['path']}"}
+                if mcp_token:
+                    entry["headers"] = {"Authorization": f"Bearer {mcp_token}"}
+                mcp_json["mcpServers"][srv["name"]] = entry
+
+            mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
+            mcp_path.parent.mkdir(parents=True, exist_ok=True)
+            mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
+        except Exception as e:
+            logging.error(f"生成 mcp.json 失敗：{e}")
+
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
 
