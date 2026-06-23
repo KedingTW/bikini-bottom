@@ -160,11 +160,14 @@
 
         <!-- 2. MCP 配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('mcp')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
-            <span class="text-white/30">{{ open.mcp ? '▼' : '▶' }}</span>
-            <span class="font-medium">🔌 MCP 配置</span>
-            <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
-          </button>
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('mcp')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.mcp ? '▼' : '▶' }}</span>
+              <span class="font-medium">🔌 MCP 配置</span>
+              <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
+            </button>
+            <button :disabled="!dirty.mcp" @click="saveMcp()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+          </div>
           <div v-if="open.mcp" @change.capture="markDirty('mcp')" @input.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
             <div class="flex justify-end mb-2">
               <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP 伺服器管理</router-link>
@@ -197,11 +200,14 @@
 
         <!-- 3. Skill 配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('skill')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
-            <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
-            <span class="font-medium">📚 技能配置（Skill）</span>
-            <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
-          </button>
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('skill')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
+              <span class="font-medium">📚 技能配置（Skill）</span>
+              <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
+            </button>
+            <button :disabled="!dirty.skill" @click="saveSkill()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+          </div>
           <div v-if="open.skill" @change.capture="markDirty('skill')" @input.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
               <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
@@ -217,12 +223,15 @@
 
         <!-- 4. 排程任務 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <button @click="toggle('cron')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
-            <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
-            <span class="font-medium">⏰ 排程任務</span>
-            <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
-            <button @click.stop="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄</button>
-          </button>
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('cron')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
+              <span class="font-medium">⏰ 排程任務</span>
+              <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
+            </button>
+            <button @click="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄</button>
+            <button :disabled="!dirty.cron" @click="saveCron()" class="ml-1 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+          </div>
           <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5" :class="{'opacity-40 pointer-events-none': !cfg.cron.usercron_enabled}">
             <div class="space-y-2">
               <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
@@ -386,6 +395,52 @@ function resetBasicConfig() {
   cfg.reactions.remove_after_reply = false
   cfg.reactions.tool_display = 'full'
   Object.assign(cfg.reactions.emojis, defaultEmojis)
+}
+
+async function saveMcp() {
+  if (!selectedAgent.value) return
+  // Build payload from mockMcp state
+  const config = {}
+  const toolFilter = {}
+  mockMcp.forEach(s => {
+    if (s.enabled) {
+      config[s.name] = { env: 'local', enabled: true }
+      const enabledTools = s.tools.filter(t => t.enabled).map(t => t.name)
+      if (enabledTools.length < s.tools.length) {
+        toolFilter[s.name] = enabledTools
+      }
+    }
+  })
+  const res = await post(`/api/mcp-servers/save-agent-config/${selectedAgent.value.name}`, { config, toolFilter })
+  if (res?.ok) dirty.mcp = false
+  console.log('[saveMcp]', res)
+}
+
+async function saveSkill() {
+  // TODO: wait for backend API
+  console.log('[saveSkill] not implemented yet')
+  dirty.skill = false
+}
+
+async function saveCron() {
+  if (!selectedAgent.value) return
+  // Build TOML content from mockCrons
+  const lines = mockCrons.map(c => {
+    let block = '[[jobs]]\n'
+    block += `schedule = "${c.schedule}"\n`
+    block += `channel = "${c.channel_id}"\n`
+    block += `message = "${c.message}"\n`
+    if (c.timezone) block += `timezone = "${c.timezone}"\n`
+    if ('enabled' in c) block += `enabled = ${c.enabled}\n`
+    return block
+  }).join('\n')
+  const res = await fetch(`/api/agents/${selectedAgent.value.name}/cronjob`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: lines })
+  })
+  if (res.ok) dirty.cron = false
+  console.log('[saveCron]', await res.json())
 }
 
 async function loadCrons() {
