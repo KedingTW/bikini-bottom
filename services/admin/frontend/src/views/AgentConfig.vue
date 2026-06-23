@@ -364,6 +364,7 @@ watch(selectedAgent, (a) => {
     loadConfig(a.name)
     loadCrons()
     loadSkills()
+    loadMcp()
   }
 })
 
@@ -398,23 +399,47 @@ function resetBasicConfig() {
   Object.assign(cfg.reactions.emojis, defaultEmojis)
 }
 
+async function loadMcp() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/mcp-servers/pool-for-agent/${selectedAgent.value.name}`)
+  if (res?.servers) {
+    const agentCfg = res.agent_config || {}
+    const agentFilter = res.tool_filter || {}
+    mockMcp.splice(0, mockMcp.length, ...res.servers.map(s => {
+      const cfg = agentCfg[s.id]
+      const isEnabled = cfg?.enabled ?? false
+      const filterTools = agentFilter[s.id] || []
+      const tools = s.tools.map(t => ({
+        name: t,
+        enabled: isEnabled && (filterTools.length === 0 || filterTools.includes(t))
+      }))
+      const enabledTools = tools.filter(t => t.enabled).length
+      return {
+        id: s.id, name: s.name, desc: s.description || '', env: cfg?.env || 'local',
+        enabled: isEnabled, partial: enabledTools > 0 && enabledTools < tools.length,
+        _open: false, enabledTools, tools
+      }
+    }))
+  }
+}
+
 async function saveMcp() {
   if (!selectedAgent.value) return
-  // Build payload from mockMcp state
   const config = {}
   const toolFilter = {}
   mockMcp.forEach(s => {
-    if (s.enabled) {
-      config[s.name] = { env: 'local', enabled: true }
+    if (s.enabled && s.id) {
+      config[String(s.id)] = { env: s.env || 'local', enabled: true }
       const enabledTools = s.tools.filter(t => t.enabled).map(t => t.name)
       if (enabledTools.length < s.tools.length) {
-        toolFilter[s.name] = enabledTools
+        toolFilter[String(s.id)] = enabledTools
       }
     }
   })
+  console.log('[saveMcp] payload:', { config, toolFilter })
   const res = await post(`/api/mcp-servers/save-agent-config/${selectedAgent.value.name}`, { config, toolFilter })
   if (res?.ok) dirty.mcp = false
-  console.log('[saveMcp]', res)
+  console.log('[saveMcp] result:', res)
 }
 
 async function saveSkill() {
@@ -650,13 +675,7 @@ const cfg = reactive({
   cron: { usercron_enabled: true, usercron_path: '~/.openab/cronjob.toml' },
 })
 
-const mockMcp = reactive([
-  { name: 'hrs-mcp', desc: '人資系統', enabled: true, partial: false, _open: false, enabledTools: 7, tools: [{ name: 'GetLeaveBalance', enabled: true }, { name: 'GetLeaveHistory', enabled: true }, { name: 'GetLeavePolicy', enabled: true }, { name: 'SaveLeaveRequest', enabled: true }, { name: 'GetUser', enabled: true }, { name: 'GetDepartment', enabled: true }, { name: 'GetOrganizationCalendar', enabled: true }] },
-  { name: 'crm-mcp', desc: '客戶管理', enabled: true, partial: false, _open: false, enabledTools: 5, tools: [{ name: 'SearchCustomer', enabled: true }, { name: 'SearchCustomerContact', enabled: true }, { name: 'GetCrmDescription', enabled: true }, { name: 'GetRegionSales', enabled: true }, { name: 'CreateQuote', enabled: true }] },
-  { name: 'sap-mcp', desc: 'ERP 系統', enabled: true, partial: true, _open: false, enabledTools: 1, tools: [{ name: 'SearchProductItem', enabled: true }, { name: 'ValidateProductCode', enabled: false }] },
-  { name: 'pricing-mcp', desc: '報價系統', enabled: false, partial: false, _open: false, enabledTools: 0, tools: [{ name: 'GetRoomDoorPrice', enabled: false }, { name: 'GetFlooringPrice', enabled: false }] },
-  { name: 'image-mcp', desc: '圖片生成', enabled: true, partial: false, _open: false, enabledTools: 4, tools: [{ name: 'GenerateImage', enabled: true }, { name: 'ResizeImage', enabled: true }, { name: 'ComposeImage', enabled: true }, { name: 'AddBrandFrame', enabled: true }] },
-])
+const mockMcp = reactive([])
 
 const mcpEnabledCount = computed(() => mockMcp.filter(s => s.enabled).length)
 function toggleMcpServer(s) { s.enabled = !s.enabled; s.tools.forEach(t => { t.enabled = s.enabled }); updateMcpCount(s) }
