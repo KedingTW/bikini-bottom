@@ -58,18 +58,16 @@ async def list_members(limit=100, after=None, guild_id=None):
 
 
 async def list_roles(guild_id=None):
-    """List guild roles, excluding bot-specific and @everyone."""
+    """List guild roles, excluding @everyone."""
     gid = guild_id or GUILD_ID
-    BOT_ROLE_NAMES = {"海綿寶寶", "派大星", "泡芙老師", "章魚哥", "珊迪", "神奇海螺", "小蝸", "珍珍", "蝦霸", "凱倫", "海超人"}
-
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(f"{BASE}/guilds/{gid}/roles", headers=_headers())
         r.raise_for_status()
         roles = r.json()
     return sorted(
-        [{"id": r["id"], "name": r["name"], "color": r["color"], "position": r["position"]}
+        [{"id": r["id"], "name": r["name"], "color": r["color"], "position": r["position"], "managed": r.get("managed", False)}
          for r in roles
-         if not r.get("managed", False) and r["name"] != "@everyone" and r["name"] not in BOT_ROLE_NAMES],
+         if r["name"] != "@everyone"],
         key=lambda x: x["position"],
         reverse=True,
     )
