@@ -342,6 +342,8 @@ function onSelect(a) {
   ready.value = false
   selectAgent(a)
   Object.keys(dirty).forEach(k => dirty[k] = false)
+  // Fallback: ensure ready becomes true even if loadConfig is slow
+  setTimeout(() => { ready.value = true }, 500)
 }
 
 // Always load config when selectedAgent changes (covers auto-select on mount too)
@@ -350,6 +352,7 @@ watch(selectedAgent, (a) => {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
     loadConfig(a.name)
+    loadCrons()
   }
 })
 
@@ -386,8 +389,14 @@ function resetBasicConfig() {
 }
 
 async function loadCrons() {
-  // TODO: call real API when available
-  console.log('[loadCrons] reload')
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/cronjob`)
+  console.log('[loadCrons]', res)
+  if (res?.jobs) {
+    mockCrons.splice(0, mockCrons.length, ...res.jobs)
+  } else {
+    mockCrons.splice(0, mockCrons.length)
+  }
 }
 function renameMapping(oldEmoji, newEmoji, cmd) {
   delete cfg.reactions.mapping[oldEmoji]
@@ -588,11 +597,7 @@ const mockSkills = reactive([
   { name: 'kd-product-knowledge', desc: '產品知識庫（kd-product-knowledge）', enabled: false },
 ])
 
-const mockCrons = reactive([
-  { schedule: '0 9 * * 1-5', message: '每日站會提醒', channel_id: '1492090122257170526', timezone: 'Asia/Taipei', enabled: true },
-  { schedule: '0 18 * * 5', message: '週五下班前確認 PR 狀態', channel_id: '1492090122257170526', timezone: 'Asia/Taipei', enabled: true },
-  { schedule: '30 8 * * 1', message: '週一開工打招呼', channel_id: '1503940169252999198', timezone: 'Asia/Taipei', enabled: true },
-])
+const mockCrons = reactive([])
 const visibleCrons = computed(() => mockCrons.slice(0, cronLimit.value))
 function editCron(c) { cronDialog.value = c ? { ...c, isNew: false } : { schedule: '', message: '', channel_id: '', timezone: 'Asia/Taipei', enabled: true, isNew: true } }
 
