@@ -29,17 +29,17 @@
                 <Field label="使用者訊息觸發" tip="是否接收使用者的訊息並處理">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_user_messages" /><span class="text-sm text-white/70">{{ cfg.discord.allow_user_messages ? '啟用' : '停用' }}</span></div>
                 </Field>
-                <Field label="最大角色對話輪數" tip="連續回覆角色訊息的上限次數，避免無限迴圈">
-                  <input v-model.number="cfg.discord.max_bot_turns" type="number" class="field-input">
+                <Field label="最大角色對話輪數" tip="建議範圍：1–1000，預設 100">
+                  <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
                 </Field>
                 <Field label="訊息處理模式" tip="批次處理=累積後一起處理、逐則處理=即時處理每則訊息">
                   <select v-model="cfg.discord.message_processing_mode" class="field-input"><option value="buffered">批次處理</option><option value="immediate">逐則處理</option></select>
                 </Field>
-                <Field label="緩衝訊息數上限" tip="批次處理模式下，累積幾則訊息後觸發處理">
-                  <input v-model.number="cfg.discord.max_buffered_messages" type="number" class="field-input">
+                <Field label="緩衝訊息數上限" tip="建議範圍：1–100，預設 10">
+                  <input v-model.number="cfg.discord.max_buffered_messages" type="number" min="1" max="100" class="field-input">
                 </Field>
-                <Field label="批次 Token 上限" tip="單次批次處理的最大 Token 數量">
-                  <input v-model.number="cfg.discord.max_batch_tokens" type="number" class="field-input">
+                <Field label="批次 Token 上限" tip="建議範圍：1000–200000，預設 24000">
+                  <input v-model.number="cfg.discord.max_batch_tokens" type="number" min="1000" max="200000" class="field-input">
                 </Field>
               </div>
               <div class="mt-4 space-y-3">
@@ -75,8 +75,8 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">連線池（Pool）</legend>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="最大工作階段數" tip="同時可執行的工作階段上限"><input v-model.number="cfg.pool.max_sessions" type="number" class="field-input"></Field>
-                <Field label="工作階段存活時數" tip="工作階段閒置幾小時後自動清除"><input v-model.number="cfg.pool.session_ttl_hours" type="number" class="field-input"></Field>
+                <Field label="最大工作階段數" tip="建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input"></Field>
+                <Field label="工作階段存活時數" tip="建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input"></Field>
               </div>
             </fieldset>
             <!-- Reactions -->
@@ -252,6 +252,19 @@
         </div>
       </div>
 
+      <!-- Save Dialog -->
+      <div v-if="saveDialogKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="saveDialogKey = null">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-xs p-6 shadow-2xl border border-white/10 text-center">
+          <h3 class="text-lg font-semibold mb-4">儲存設定</h3>
+          <p class="text-sm text-white/60 mb-5">選擇儲存方式</p>
+          <div class="space-y-2">
+            <button @click="doSave(false)" class="w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">💾 儲存</button>
+            <button @click="doSave(true)" class="w-full py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium">💾 儲存 + 重啟</button>
+            <button @click="saveDialogKey = null" class="w-full py-2.5 rounded-lg border border-white/20 text-white/70 hover:bg-white/10 text-sm">取消</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Work Directory Dialog -->
       <div v-if="showWorkDir" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showWorkDir = false">
         <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
@@ -284,7 +297,7 @@ import TagInput from '../components/TagInput.vue'
 import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
-const { get } = useApi()
+const { get, post } = useApi()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
@@ -297,7 +310,17 @@ function toggle(key) { open[key] = !open[key] }
 function onSelect(a) { ready.value = false; selectAgent(a); Object.keys(dirty).forEach(k => dirty[k] = false); nextTick(() => { ready.value = true }) }
 function getChannelName(id) { const ch = channelOptions.value.find(c => c.id === id); return ch ? ch.label : id }
 function markDirty(key) { dirty[key] = true }
-function saveSection(key) { dirty[key] = false; /* TODO: call API */ }
+function saveSection(key) { saveDialogKey.value = key }
+const saveDialogKey = ref(null)
+async function doSave(restart) {
+  const key = saveDialogKey.value
+  dirty[key] = false
+  saveDialogKey.value = null
+  // TODO: call save API
+  if (restart && selectedAgent.value) {
+    await post(`/api/restart/${selectedAgent.value.name}`)
+  }
+}
 
 // Deep watchers for dirty tracking — defined after data declarations below
 const ready = ref(false)
