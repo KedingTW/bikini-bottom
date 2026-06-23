@@ -471,7 +471,13 @@ watch(currentGroup, () => nextTick(loadRoles))
 // Bot's own role is locked (can't be removed from allowed_role_ids)
 const lockedRoleIds = computed(() => {
   if (!selectedAgent.value) return []
-  const ownRole = roleOptions.value.find(r => r.label === selectedAgent.value.display)
+  const display = selectedAgent.value.display || ''
+  const name = selectedAgent.value.name || ''
+  console.log('[lockedRoleIds] agent display:', display, 'name:', name, 'roles:', roleOptions.value.map(r => r.label))
+  // Match: role name equals display, or role name is contained in display, or display contains role name
+  const ownRole = roleOptions.value.find(r =>
+    r.label === display || r.label === name || display.includes(r.label) || r.label.includes(display)
+  )
   return ownRole ? [ownRole.id] : []
 })
 
