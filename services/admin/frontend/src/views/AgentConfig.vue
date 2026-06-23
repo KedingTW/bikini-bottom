@@ -274,7 +274,24 @@
         <div class="bg-ocean-700 rounded-xl w-full max-w-lg p-6 shadow-2xl border border-white/10">
           <h3 class="text-lg font-semibold mb-4">{{ cronDialog.isNew ? '新增' : '編輯' }}排程任務</h3>
           <div class="space-y-4">
-            <Field label="排程時間（Cron）" tip="5 欄位 POSIX cron：分 時 日 月 週"><input v-model="cronDialog.schedule" class="field-input font-mono" placeholder="0 9 * * 1-5"></Field>
+            <Field label="排程時間" tip="5 欄位 POSIX cron：分 時 日 月 週">
+              <select @change="applyCronTemplate($event.target.value); $event.target.value = ''" class="field-input mb-2">
+                <option value="">預設模板...</option>
+                <option value="0 * * * *">每小時</option>
+                <option value="0 9 * * *">每天早上 9 點</option>
+                <option value="0 9 * * 1">每週一早上 9 點</option>
+                <option value="0 9 * * 1-5">平日早上 9 點</option>
+              </select>
+              <div class="grid grid-cols-5 gap-2">
+                <div><label class="text-[10px] text-white/40 block mb-0.5">分(0-59)</label><input v-model="cronFields.min" class="field-input font-mono text-center" placeholder="*"></div>
+                <div><label class="text-[10px] text-white/40 block mb-0.5">時(0-23)</label><input v-model="cronFields.hour" class="field-input font-mono text-center" placeholder="*"></div>
+                <div><label class="text-[10px] text-white/40 block mb-0.5">日(1-31)</label><input v-model="cronFields.day" class="field-input font-mono text-center" placeholder="*"></div>
+                <div><label class="text-[10px] text-white/40 block mb-0.5">月(1-12)</label><input v-model="cronFields.month" class="field-input font-mono text-center" placeholder="*"></div>
+                <div><label class="text-[10px] text-white/40 block mb-0.5">週(0-7)</label><input v-model="cronFields.dow" class="field-input font-mono text-center" placeholder="*"></div>
+              </div>
+              <div class="mt-1 text-xs font-mono text-white/40">{{ cronExpression }}</div>
+              <div v-if="cronError" class="mt-1 text-xs text-red-400">{{ cronError }}</div>
+            </Field>
             <Field label="頻道" tip="要發送到的 Discord 頻道">
               <select v-model="cronDialog.channel_id" class="field-input">
                 <option value="">請選擇頻道</option>
@@ -701,17 +718,47 @@ const mockSkills = reactive([])
 
 const mockCrons = reactive([])
 const visibleCrons = computed(() => mockCrons.slice(0, cronLimit.value))
-function editCron(c) { cronDialog.value = c ? { ...c, isNew: false } : { schedule: '', message: '', channel_id: '', timezone: 'Asia/Taipei', enabled: true, isNew: true } }
+function editCron(c) {
+  const parts = c ? c.schedule.split(' ') : ['', '', '', '', '']
+  cronFields.min = parts[0] || '*'
+  cronFields.hour = parts[1] || '*'
+  cronFields.day = parts[2] || '*'
+  cronFields.month = parts[3] || '*'
+  cronFields.dow = parts[4] || '*'
+  cronDialog.value = c ? { ...c, isNew: false } : { schedule: '', message: '', channel_id: '', timezone: 'Asia/Taipei', enabled: true, isNew: true }
+}
+
+const cronFields = reactive({ min: '*', hour: '*', day: '*', month: '*', dow: '*' })
+const cronExpression = computed(() => `${cronFields.min} ${cronFields.hour} ${cronFields.day} ${cronFields.month} ${cronFields.dow}`)
+const cronError = computed(() => {
+  const valid = /^[\d,\-\*\/]+$/
+  for (const v of [cronFields.min, cronFields.hour, cronFields.day, cronFields.month, cronFields.dow]) {
+    if (v && !valid.test(v)) return `格式不合法：${v}`
+  }
+  return ''
+})
+
+function applyCronTemplate(expr) {
+  if (!expr) return
+  const parts = expr.split(' ')
+  cronFields.min = parts[0] || '*'
+  cronFields.hour = parts[1] || '*'
+  cronFields.day = parts[2] || '*'
+  cronFields.month = parts[3] || '*'
+  cronFields.dow = parts[4] || '*'
+}
 
 function saveCronDialog() {
   const d = cronDialog.value
-  console.log('[saveCronDialog]', d)
-  if (!d.schedule || !d.message) { console.log('[saveCronDialog] missing schedule or message'); return }
+  const schedule = cronExpression.value
+  console.log('[saveCronDialog]', d, 'schedule:', schedule)
+  if (!schedule.trim() || !d.message) { console.log('[saveCronDialog] missing schedule or message'); return }
+  if (cronError.value) return
   if (d.isNew) {
-    mockCrons.push({ schedule: d.schedule, message: d.message, channel_id: d.channel_id, timezone: d.timezone, enabled: d.enabled })
+    mockCrons.push({ schedule, message: d.message, channel_id: d.channel_id, timezone: d.timezone, enabled: d.enabled })
   } else {
     const idx = mockCrons.findIndex(c => c.schedule === d.schedule && c.message === d.message)
-    if (idx >= 0) Object.assign(mockCrons[idx], d)
+    if (idx >= 0) Object.assign(mockCrons[idx], { ...d, schedule })
   }
   console.log('[saveCronDialog] mockCrons.length:', mockCrons.length)
   cronDialog.value = null
