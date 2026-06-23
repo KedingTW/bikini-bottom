@@ -2300,6 +2300,44 @@ async def api_agent_config_save(agent_name: str, request: Request):
     return JSONResponse({"ok": True, "message": "已儲存"})
 
 
+@app.patch("/api/agents/{agent_name}/config")
+async def api_agent_config_patch(agent_name: str, request: Request):
+    """部分更新 config.toml（deep merge，保留格式和註解）"""
+    import tomlkit
+
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Body 必須是 JSON 物件")
+
+    config_path = AGENTS_DIR / agent_name / "config.toml"
+    if not config_path.parent.exists():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    # 讀現有 config（保留格式）
+    if config_path.exists():
+        doc = tomlkit.parse(config_path.read_text())
+    else:
+        doc = tomlkit.document()
+
+    # Deep merge
+    def deep_merge(base, override):
+        for key, val in override.items():
+            if isinstance(val, dict) and key in base and isinstance(base[key], dict):
+                deep_merge(base[key], val)
+            else:
+                base[key] = val
+
+    deep_merge(doc, body)
+    config_path.write_text(tomlkit.dumps(doc))
+    return JSONResponse({"ok": True, "message": "已儲存"})
+
+
 @app.get("/api/agents/{agent_name}/mcp")
 async def api_agent_mcp(agent_name: str, request: Request):
     """取得角色的 MCP 配置"""
