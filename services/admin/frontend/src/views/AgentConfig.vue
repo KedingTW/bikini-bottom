@@ -229,7 +229,7 @@
               <span class="font-medium">⏰ 排程任務</span>
               <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
             </button>
-            <button @click="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄</button>
+            <button @click="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 重新載入</button>
             <button :disabled="!dirty.cron" @click="saveCron()" class="ml-1 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
           </div>
           <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5" :class="{'opacity-40 pointer-events-none': !cfg.cron.usercron_enabled}">
@@ -483,7 +483,7 @@ async function loadSkills() {
   if (availRes?.skills) {
     mockSkills.splice(0, mockSkills.length, ...availRes.skills.map(s => ({
       name: s.name,
-      desc: s.description ? `${s.description}（${s.name}）` : s.name,
+      desc: s.description || s.name,
       enabled: agentSkills.includes(s.name)
     })))
   }
