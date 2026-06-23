@@ -2281,16 +2281,19 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
 @app.get("/api/agents/{agent_name}/config")
 async def api_agent_config(agent_name: str, request: Request):
     """取得角色的 config.toml"""
+    import tomlkit
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.exists():
-        return JSONResponse({"error": None, "raw": ""})
+        return JSONResponse({"error": None, "raw": "", "parsed": {}})
     try:
-        return JSONResponse({"error": None, "raw": config_path.read_text()})
+        raw = config_path.read_text()
+        parsed = dict(tomlkit.parse(raw))
+        return JSONResponse({"error": None, "raw": raw, "parsed": parsed})
     except Exception as e:
-        return JSONResponse({"error": str(e), "raw": ""})
+        return JSONResponse({"error": str(e), "raw": "", "parsed": {}})
 
 
 @app.put("/api/agents/{agent_name}/config")
