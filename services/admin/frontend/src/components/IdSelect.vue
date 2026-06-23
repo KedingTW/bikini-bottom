@@ -2,6 +2,7 @@
   <div>
     <div class="flex flex-wrap gap-1.5 mb-2">
       <span v-for="id in modelValue" :key="id" class="inline-flex items-center gap-1 bg-cyan-600/20 text-cyan-300 text-sm px-2 py-1 rounded">
+        <img v-if="getAvatar(id)" :src="getAvatar(id)" class="w-4 h-4 rounded-full">
         {{ getLabel(id) }}
         <button @click="remove(id)" class="text-cyan-400/60 hover:text-white ml-0.5">×</button>
       </span>
@@ -28,6 +29,11 @@ const available = computed(() => props.options.filter(o => !props.modelValue.som
 function getLabel(id) {
   const opt = props.options.find(o => String(o.id) === String(id))
   return opt ? opt.label : id
+}
+
+function getAvatar(id) {
+  const opt = props.options.find(o => String(o.id) === String(id))
+  return opt?.avatar || ''
 }
 
 function add(id) {

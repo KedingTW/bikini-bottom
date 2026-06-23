@@ -23,22 +23,22 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Field label="Bot 訊息觸發" tip="是否接收其他 Bot 的訊息並處理">
+                <Field label="角色訊息觸發" tip="是否接收其他角色的訊息並處理">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_bot_messages" /><span class="text-sm text-white/70">{{ cfg.discord.allow_bot_messages ? '啟用' : '停用' }}</span></div>
                 </Field>
                 <Field label="使用者訊息觸發" tip="是否接收使用者的訊息並處理">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_user_messages" /><span class="text-sm text-white/70">{{ cfg.discord.allow_user_messages ? '啟用' : '停用' }}</span></div>
                 </Field>
-                <Field label="最大 Bot 對話輪數" tip="連續回覆 Bot 訊息的上限次數，避免無限迴圈">
+                <Field label="最大角色對話輪數" tip="連續回覆角色訊息的上限次數，避免無限迴圈">
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" class="field-input">
                 </Field>
-                <Field label="訊息處理模式" tip="buffered=累積後批次處理、immediate=即時處理每則訊息">
-                  <select v-model="cfg.discord.message_processing_mode" class="field-input"><option>buffered</option><option>immediate</option></select>
+                <Field label="訊息處理模式" tip="批次處理=累積後一起處理、逐則處理=即時處理每則訊息">
+                  <select v-model="cfg.discord.message_processing_mode" class="field-input"><option value="buffered">批次處理</option><option value="immediate">逐則處理</option></select>
                 </Field>
-                <Field label="緩衝訊息數上限" tip="buffered 模式下，累積幾則訊息後觸發處理">
+                <Field label="緩衝訊息數上限" tip="批次處理模式下，累積幾則訊息後觸發處理">
                   <input v-model.number="cfg.discord.max_buffered_messages" type="number" class="field-input">
                 </Field>
-                <Field label="批次 Token 上限" tip="單次批次處理的最大 token 數量">
+                <Field label="批次 Token 上限" tip="單次批次處理的最大 Token 數量">
                   <input v-model.number="cfg.discord.max_batch_tokens" type="number" class="field-input">
                 </Field>
               </div>
@@ -49,14 +49,14 @@
                 <Field label="允許身分組" tip="只有這些身分組的訊息會被處理">
                   <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" placeholder="身分組" />
                 </Field>
-                <Field label="信任 Bot ID" tip="這些 Bot 的訊息會被當作可信來源處理">
-                  <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="Bot" />
+                <Field label="信任的角色" tip="這些角色的訊息會被當作可信來源處理">
+                  <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
                 </Field>
               </div>
             </fieldset>
             <!-- Agent -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">Agent</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式（Agent）</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="啟動指令" tip="Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono"></Field>
                 <Field label="工作目錄" tip="Agent 的工作路徑">
@@ -73,28 +73,28 @@
             </fieldset>
             <!-- Pool -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">Pool</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">連線池（Pool）</legend>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="最大 Session 數" tip="同時可執行的 Kiro session 上限"><input v-model.number="cfg.pool.max_sessions" type="number" class="field-input"></Field>
-                <Field label="Session 存活時數" tip="Session 閒置幾小時後自動清除"><input v-model.number="cfg.pool.session_ttl_hours" type="number" class="field-input"></Field>
+                <Field label="最大工作階段數" tip="同時可執行的工作階段上限"><input v-model.number="cfg.pool.max_sessions" type="number" class="field-input"></Field>
+                <Field label="工作階段存活時數" tip="工作階段閒置幾小時後自動清除"><input v-model.number="cfg.pool.session_ttl_hours" type="number" class="field-input"></Field>
               </div>
             </fieldset>
             <!-- Reactions -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">Reactions</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">表情回饋（Reactions）</legend>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="啟用反應" tip="是否在訊息上添加 emoji 反應表示處理狀態">
+                <Field label="啟用表情回饋" tip="是否在訊息上添加 emoji 表示處理狀態">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.enabled" /><span class="text-sm text-white/70">{{ cfg.reactions.enabled ? '啟用' : '停用' }}</span></div>
                 </Field>
-                <Field label="回覆後移除" tip="回覆完成後是否移除過程中的 emoji">
+                <Field label="回覆後移除表情" tip="回覆完成後是否移除過程中的 emoji">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.remove_after_reply" /><span class="text-sm text-white/70">{{ cfg.reactions.remove_after_reply ? '是' : '否' }}</span></div>
                 </Field>
-                <Field label="工具顯示模式" tip="使用工具時的顯示方式">
-                  <select v-model="cfg.reactions.tool_display" class="field-input"><option>emoji</option><option>text</option><option>none</option></select>
+                <Field label="工具顯示模式" tip="使用工具時的顯示方式（emoji/文字/無）">
+                  <select v-model="cfg.reactions.tool_display" class="field-input"><option value="emoji">Emoji</option><option value="text">文字</option><option value="none">不顯示</option></select>
                 </Field>
               </div>
               <div class="mt-4">
-                <div class="text-sm text-white/60 mb-2">Emoji 設定</div>
+                <div class="text-sm text-white/60 mb-2">表情符號設定</div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                   <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="'狀態：'+key">
                     <EmojiPicker v-model="cfg.reactions.emojis[key]" />
@@ -104,7 +104,7 @@
             </fieldset>
             <!-- STT -->
             <fieldset class="border border-white/10 rounded-lg p-4 opacity-50 pointer-events-none relative">
-              <legend class="text-sm text-white/40 px-1 font-medium">STT 語音轉文字</legend>
+              <legend class="text-sm text-white/40 px-1 font-medium">STT（語音轉文字）</legend>
               <div class="absolute inset-0 flex items-center justify-center z-10">
                 <span class="bg-ocean-800 px-3 py-1.5 rounded text-sm text-white/60 border border-white/10">🚧 目前尚未開放</span>
               </div>
@@ -136,7 +136,7 @@
           </button>
           <div v-if="open.mcp" @change.capture="markDirty('mcp')" @input.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
             <div class="flex justify-end mb-2">
-              <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP Servers 管理</router-link>
+              <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP 伺服器管理</router-link>
             </div>
             <div v-for="s in mockMcp" :key="s.name" class="bg-ocean-700/50 rounded-lg overflow-hidden">
               <div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-white/5" @click="s._open = !s._open">
@@ -168,7 +168,7 @@
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <button @click="toggle('skill')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
             <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
-            <span class="font-medium">📚 Skill 配置</span>
+            <span class="font-medium">📚 技能配置（Skill）</span>
             <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
           </button>
           <div v-if="open.skill" @change.capture="markDirty('skill')" @input.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
@@ -210,7 +210,7 @@
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <button @click="toggle('kb')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
             <span class="text-white/30">{{ open.kb ? '▼' : '▶' }}</span>
-            <span class="font-medium">🧠 知識庫配置</span>
+            <span class="font-medium">🧠 知識庫</span>
             <span class="ml-auto text-sm text-white/40">{{ mockKb.length }} 個</span>
           </button>
           <div v-if="open.kb" @change.capture="markDirty('kb')" @input.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
@@ -343,13 +343,16 @@ async function loadBots() {
   console.log('[AgentConfig] loadBots group=', group)
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
-    botOptions.value = res.members.filter(m => m.bot).map(m => ({ id: String(m.id), label: `🤖 ${m.name}` }))
+    botOptions.value = res.members
+      .filter(m => m.bot && (!selectedAgent.value || String(m.id) !== String(selectedAgent.value.bot_id)))
+      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar }))
   } else {
     botOptions.value = []
   }
 }
 loadBots()
 watch(currentGroup, () => nextTick(loadBots))
+watch(selectedAgent, () => nextTick(loadBots))
 
 // Mock work directory files
 const mockFiles = [

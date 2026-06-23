@@ -61,12 +61,12 @@ const subTabs = {
     { path: '/thread-analytics', icon: '📈', label: '分析', admin: true },
   ],
   more: [
-    { path: '/logs', icon: '📋', label: 'Log', admin: true },
+    { path: '/logs', icon: '📋', label: '日誌', admin: true },
     { path: '/deploy', icon: '🚀', label: '部署', admin: true },
     { path: '/system', icon: '🖥️', label: '系統', admin: false },
     { path: '/users', icon: '👤', label: '使用者', admin: true },
     { path: '/knowledge', icon: '🧠', label: '知識庫', admin: true },
-    { path: '/api-keys', icon: '🔑', label: 'API Key', admin: true },
+    { path: '/api-keys', icon: '🔑', label: '金鑰', admin: true },
   ],
 }
 
