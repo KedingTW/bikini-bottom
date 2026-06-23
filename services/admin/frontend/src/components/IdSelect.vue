@@ -1,10 +1,12 @@
 <template>
   <div>
     <div class="flex flex-wrap gap-1.5 mb-2">
-      <span v-for="id in modelValue" :key="id" class="inline-flex items-center gap-1 bg-cyan-600/20 text-cyan-300 text-sm px-2 py-1 rounded">
+      <span v-for="id in modelValue" :key="id" class="inline-flex items-center gap-1 text-sm px-2 py-1 rounded"
+        :class="isLocked(id) ? 'bg-white/10 text-white/50' : 'bg-cyan-600/20 text-cyan-300'">
         <img v-if="getAvatar(id)" :src="getAvatar(id)" class="w-4 h-4 rounded-full">
         {{ getLabel(id) }}
-        <button @click="remove(id)" class="text-cyan-400/60 hover:text-white ml-0.5">×</button>
+        <span v-if="isLocked(id)" class="text-[10px] text-white/30 ml-1">🔒</span>
+        <button v-else @click="remove(id)" type="button" class="text-cyan-400/60 hover:text-white ml-0.5">×</button>
       </span>
     </div>
     <select @change="add($event.target.value); $event.target.value = ''" class="field-input">
@@ -20,11 +22,14 @@ import { computed } from 'vue'
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   options: { type: Array, default: () => [] },
-  placeholder: { type: String, default: '' }
+  placeholder: { type: String, default: '' },
+  lockedIds: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['update:modelValue'])
 
 const available = computed(() => props.options.filter(o => !props.modelValue.some(v => String(v) === String(o.id))))
+
+function isLocked(id) { return props.lockedIds.some(l => String(l) === String(id)) }
 
 function getLabel(id) {
   const opt = props.options.find(o => String(o.id) === String(id))
@@ -37,13 +42,14 @@ function getAvatar(id) {
 }
 
 function add(id) {
-  if (id && !props.modelValue.includes(id)) {
+  if (id && !props.modelValue.some(v => String(v) === String(id))) {
     emit('update:modelValue', [...props.modelValue, id])
   }
 }
 
 function remove(id) {
-  emit('update:modelValue', props.modelValue.filter(v => v !== id))
+  if (isLocked(id)) return
+  emit('update:modelValue', props.modelValue.filter(v => String(v) !== String(id)))
 }
 </script>
 

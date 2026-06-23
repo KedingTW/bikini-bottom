@@ -56,8 +56,8 @@
                   <IdSelect v-model="cfg.discord.allowed_users" :options="userOptions" placeholder="使用者" />
                 </Field>
                 <!-- 身分組 -->
-                <Field label="允許身分組（allowed_role_ids）" tip="只有這些身分組的訊息會被處理">
-                  <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" placeholder="身分組" />
+                <Field label="允許身分組（allowed_role_ids）" tip="只有這些身分組的訊息會被處理。角色自己的同名身分組已鎖定">
+                  <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" :locked-ids="lockedRoleIds" placeholder="身分組" />
                 </Field>
                 <!-- 信任角色 -->
                 <Field label="信任的角色（trusted_bot_ids）" tip="這些角色的訊息會被當作可信來源處理">
@@ -467,6 +467,20 @@ async function loadRoles() {
 }
 loadRoles()
 watch(currentGroup, () => nextTick(loadRoles))
+
+// Bot's own role is locked (can't be removed from allowed_role_ids)
+const lockedRoleIds = computed(() => {
+  if (!selectedAgent.value) return []
+  const ownRole = roleOptions.value.find(r => r.label === selectedAgent.value.display)
+  return ownRole ? [ownRole.id] : []
+})
+
+// Ensure bot's own role is always in allowed_role_ids
+watch([selectedAgent, roleOptions], () => {
+  if (lockedRoleIds.value.length && !cfg.discord.allowed_role_ids.some(id => String(id) === String(lockedRoleIds.value[0]))) {
+    cfg.discord.allowed_role_ids.push(lockedRoleIds.value[0])
+  }
+})
 const botOptions = ref([])
 async function loadBots() {
   const group = currentGroup.value
