@@ -582,6 +582,17 @@ def _get_deploy_name(agent_name: str) -> str:
     return agent_name
 
 
+def _get_agent_dir(agent_name: str) -> Path:
+    """Resolve agent name to its filesystem directory (considering agents_subdir)."""
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                if grp["agents_subdir"]:
+                    return AGENTS_DIR / grp["agents_subdir"] / agent_name
+                return AGENTS_DIR / agent_name
+    return AGENTS_DIR / agent_name
+
+
 def _get_guild_id(group: str) -> str:
     """Resolve group to Discord Guild ID."""
     grp = AGENT_GROUPS.get(group)
@@ -2273,7 +2284,7 @@ async def api_agent_config(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    config_path = AGENTS_DIR / agent_name / "config.toml"
+    config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.exists():
         return JSONResponse({"error": None, "raw": ""})
     try:
@@ -2293,7 +2304,7 @@ async def api_agent_config_save(agent_name: str, request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="請求格式錯誤")
     raw = body.get("raw", "") if isinstance(body, dict) else ""
-    config_path = AGENTS_DIR / agent_name / "config.toml"
+    config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent 不存在")
     config_path.write_text(raw)
@@ -2315,7 +2326,7 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="Body 必須是 JSON 物件")
 
-    config_path = AGENTS_DIR / agent_name / "config.toml"
+    config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent 不存在")
 
@@ -2345,7 +2356,7 @@ async def api_agent_mcp(agent_name: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
-    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
     if not mcp_path.exists():
         return JSONResponse({"error": None, "config": {}, "raw": "{}"})
     try:
@@ -2370,7 +2381,7 @@ async def api_agent_mcp_save(agent_name: str, request: Request):
         json_mod.loads(raw)
     except json_mod.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"JSON 語法錯誤：{e}")
-    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
     mcp_path.parent.mkdir(parents=True, exist_ok=True)
     mcp_path.write_text(raw)
     return JSONResponse({"ok": True, "message": "已儲存"})
@@ -2382,7 +2393,7 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / filename
+    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="檔案不存在")
     return JSONResponse({"content": path.read_text(), "filename": filename})
@@ -2400,7 +2411,7 @@ async def api_agent_steering_save(agent_name: str, filename: str, request: Reque
         raise HTTPException(status_code=400, detail="無效的檔案名稱")
     body = await request.json()
     content = body.get("content", "")
-    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / safe_name
+    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
     if not path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent steering 目錄不存在")
     path.write_text(content)
@@ -2413,7 +2424,7 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    skill_path = AGENTS_DIR / agent_name / ".kiro" / "skills" / skill_name
+    skill_path = _get_agent_dir(agent_name) / ".kiro" / "skills" / skill_name
     if skill_path.is_symlink():
         skill_path = skill_path.resolve()
     skill_md = skill_path / "SKILL.md"
@@ -2428,7 +2439,7 @@ async def api_agent_cronjob(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     if not path.exists():
         return JSONResponse({"content": "", "jobs": []})
     raw = path.read_text()
@@ -2441,7 +2452,7 @@ async def api_agent_cronjob_toggle(agent_name: str, job_index: int, request: Req
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     if not path.exists():
         raise HTTPException(status_code=404, detail="cronjob.toml 不存在")
     raw = path.read_text()
@@ -2480,7 +2491,7 @@ async def api_agent_cronjob_save(agent_name: str, request: Request):
     # Try parse to validate
     if _parse_cronjob_toml(raw) is None:
         raise HTTPException(status_code=400, detail="TOML 語法錯誤")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(raw)
     return JSONResponse({"ok": True})
@@ -2492,7 +2503,7 @@ async def api_agent_kb(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    kb_path = _get_agent_dir(agent_name) / ".local" / "share" / "kiro-cli" / "knowledge_bases"
     contexts = _read_kb_contexts(kb_path) if kb_path.exists() else []
     return JSONResponse({"contexts": contexts})
 
@@ -2504,7 +2515,7 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
-    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    kb_path = _get_agent_dir(agent_name) / ".local" / "share" / "kiro-cli" / "knowledge_bases"
     contexts_file = kb_path / "kiro_default" / "contexts.json"
     if not contexts_file.exists():
         raise HTTPException(status_code=404, detail="contexts.json 不存在")
