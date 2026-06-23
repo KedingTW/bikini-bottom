@@ -201,6 +201,7 @@ def _init_db():
                 name VARCHAR(64) NOT NULL UNIQUE,
                 path VARCHAR(128) NOT NULL,
                 description VARCHAR(255) DEFAULT '',
+                token TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -238,6 +239,11 @@ def _init_db():
         cur.execute("SELECT COUNT(*) FROM mcp_servers")
         if cur.fetchone()[0] == 0:
             _seed_mcp_data(conn)
+        # Migration: add token column if not exists
+        try:
+            cur.execute("ALTER TABLE mcp_servers ADD COLUMN token TEXT")
+        except Exception:
+            pass  # column already exists
         cur.close()
         conn.close()
     else:
@@ -2614,12 +2620,12 @@ async def api_mcp_servers_list(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_db() as conn:
         cur = conn.execute("""
-            SELECT s.id, s.name, s.path, s.description,
+            SELECT s.id, s.name, s.path, s.description, s.token,
                    (SELECT COUNT(*) FROM mcp_server_tools t WHERE t.server_id = s.id) as tool_count
             FROM mcp_servers s ORDER BY s.name
         """)
         rows = cur.fetchall()
-    return JSONResponse({"servers": [{"id": r[0], "name": r[1], "path": r[2], "description": r[3], "tool_count": r[4]} for r in rows]})
+    return JSONResponse({"servers": [{"id": r[0], "name": r[1], "path": r[2], "description": r[3], "has_token": bool(r[4]), "tool_count": r[5]} for r in rows]})
 
 
 @app.get("/api/mcp-servers/{server_id}")
@@ -2629,11 +2635,11 @@ async def api_mcp_server_detail(server_id: int, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers WHERE id = ?", (server_id,))
+        cur = conn.execute("SELECT id, name, path, description, token FROM mcp_servers WHERE id = ?", (server_id,))
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Server not found")
-        server = {"id": row[0], "name": row[1], "path": row[2], "description": row[3]}
+        server = {"id": row[0], "name": row[1], "path": row[2], "description": row[3], "has_token": bool(row[4])}
         cur2 = conn.execute("SELECT id, tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (server_id,))
         server["tools"] = [{"id": r[0], "name": r[1]} for r in cur2.fetchall()]
     return JSONResponse(server)
@@ -2649,11 +2655,12 @@ async def api_mcp_server_create(request: Request):
     name = body.get("name", "").strip()
     path = body.get("path", "").strip()
     desc = body.get("description", "").strip()
+    token = body.get("token", "").strip() or None
     if not name or not path:
         raise HTTPException(status_code=400, detail="name 和 path 為必填")
     with get_db() as conn:
         try:
-            conn.execute("INSERT INTO mcp_servers (name, path, description) VALUES (?, ?, ?)", (name, path, desc))
+            conn.execute("INSERT INTO mcp_servers (name, path, description, token) VALUES (?, ?, ?, ?)", (name, path, desc, token))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
         cur = conn.execute("SELECT id FROM mcp_servers WHERE name = ?", (name,))
@@ -2677,7 +2684,7 @@ async def api_mcp_server_update(server_id: int, request: Request):
             raise HTTPException(status_code=404, detail="Server not found")
         updates = []
         params = []
-        for field in ["name", "path", "description"]:
+        for field in ["name", "path", "description", "token"]:
             if field in body:
                 updates.append(f"{field} = ?")
                 params.append(body[field])
@@ -2789,8 +2796,8 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
     # 生成 mcp.json（用新連線讀取剛寫入的資料）
     try:
         with get_db() as conn:
-            cur = conn.execute("SELECT id, name, path FROM mcp_servers")
-            server_map = {r[0]: {"name": r[1], "path": r[2]} for r in cur.fetchall()}
+            cur = conn.execute("SELECT id, name, path, token FROM mcp_servers")
+            server_map = {r[0]: {"name": r[1], "path": r[2], "token": r[3]} for r in cur.fetchall()}
             cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
             cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
@@ -2799,7 +2806,6 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
                 tool_filters.setdefault(r[0], []).append(r[1])
 
         mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
-        mcp_token = os.environ.get("MCP_AUTH_TOKEN", "")
         mcp_json = {"mcpServers": {}}
         for server_id, env, enabled in agent_cfg:
             if not enabled:
@@ -2808,8 +2814,8 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             if not srv:
                 continue
             entry = {"url": f"{mcp_base_url}{srv['path']}"}
-            if mcp_token:
-                entry["headers"] = {"Authorization": f"Bearer {mcp_token}"}
+            if srv.get("token"):
+                entry["headers"] = {"Authorization": f"Bearer {srv['token']}"}
             if server_id in tool_filters:
                 entry["allowedTools"] = tool_filters[server_id]
             mcp_json["mcpServers"][srv["name"]] = entry
