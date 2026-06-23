@@ -532,7 +532,7 @@ const cfg = reactive({
   discord: { allow_bot_messages: 'mentions', allow_user_messages: 'multibot-mentions', max_bot_turns: 100, allowed_channels: [], allowed_role_ids: [], trusted_bot_ids: [], allowed_users: [], allow_all_channels: false, allow_all_users: false, allow_dm: false },
   agent: { command: 'kiro', args: ['chat', '--json'], working_dir: '/home/agent/projects', inherit_env: ['GH_TOKEN', 'AWS_REGION'] },
   pool: { max_sessions: 3, session_ttl_hours: 4 },
-  reactions: { enabled: true, remove_after_reply: true, tool_display: 'full', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' }, mapping: {} }, mapping: {} },
+  reactions: { enabled: true, remove_after_reply: true, tool_display: 'full', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' }, mapping: {} },
   cron: { usercron_enabled: true, usercron_path: '~/.openab/cronjob.toml' },
 })
 
