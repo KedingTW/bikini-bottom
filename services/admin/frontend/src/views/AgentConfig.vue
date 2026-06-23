@@ -27,11 +27,34 @@
                   <select v-model="cfg.discord.allow_bot_messages" class="field-input"><option value="off">關閉（off）</option><option value="mentions">被提及時觸發（mentions）</option><option value="all">全部觸發（all）</option></select>
                 </Field>
                 <Field label="使用者訊息觸發（allow_user_messages）" tip="involved=參與對話時、mentions=被提及時、multibot-mentions=多角色提及時">
-                  <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="involved">參與對話時（involved）</option><option value="mentions">被提及時觸發（mentions）</option><option value="multibot-mentions">多角色提及時（multibot-mentions）</option></select>
+                  <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="multibot-mentions">多角色提及時（multibot-mentions）</option><option value="involved">參與對話時（involved）</option><option value="mentions">被提及時（mentions）</option></select>
                 </Field>
                 <Field label="最大對話輪數（max_bot_turns）" tip="建議範圍：1–1000，預設 100">
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
                   <span v-if="rangeWarn(cfg.discord.max_bot_turns, 1, 1000)" class="text-xs text-red-400">超出建議範圍（1–1000）</span>
+                </Field>
+                <Field label="訊息處理模式（message_processing_mode）" tip="per-message=逐則、per-thread=整串、per-lane=分道">
+                  <select v-model="cfg.discord.message_processing_mode" class="field-input"><option value="per-message">逐則處理（per-message）</option><option value="per-thread">整串處理（per-thread）</option><option value="per-lane">分道處理（per-lane）</option></select>
+                </Field>
+                <Field label="緩衝訊息數（max_buffered_messages）" tip="建議範圍：1–100，預設 10。per-thread/per-lane 時有效">
+                  <input v-model.number="cfg.discord.max_buffered_messages" type="number" min="1" max="100" class="field-input">
+                  <span v-if="rangeWarn(cfg.discord.max_buffered_messages, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span>
+                </Field>
+                <Field label="批次 Token 上限（max_batch_tokens）" tip="建議範圍：1000–200000，預設 24000。per-thread/per-lane 時有效">
+                  <input v-model.number="cfg.discord.max_batch_tokens" type="number" min="1000" max="200000" class="field-input">
+                  <span v-if="rangeWarn(cfg.discord.max_batch_tokens, 1000, 200000)" class="text-xs text-red-400">超出建議範圍（1000–200000）</span>
+                </Field>
+              </div>
+              <!-- Discord additional toggles -->
+              <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Field label="允許所有頻道（allow_all_channels）" tip="true=不限頻道">
+                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_channels" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_channels ? '是' : '否' }}</span></div>
+                </Field>
+                <Field label="允許所有使用者（allow_all_users）" tip="true=不限使用者">
+                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_users" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_users ? '是' : '否' }}</span></div>
+                </Field>
+                <Field label="允許私訊（allow_dm）" tip="是否接受 DM 訊息">
+                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_dm" /><span class="text-sm text-white/70">{{ cfg.discord.allow_dm ? '是' : '否' }}</span></div>
                 </Field>
               </div>
               <div class="mt-4 space-y-3">
@@ -43,6 +66,9 @@
                 </Field>
                 <Field label="信任的角色（trusted_bot_ids）" tip="這些角色的訊息會被當作可信來源處理">
                   <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
+                </Field>
+                <Field label="允許使用者（allowed_users）" tip="指定允許的使用者 ID">
+                  <TagInput v-model="cfg.discord.allowed_users" />
                 </Field>
               </div>
             </fieldset>
@@ -84,7 +110,7 @@
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.remove_after_reply" /><span class="text-sm text-white/70">{{ cfg.reactions.remove_after_reply ? '是' : '否' }}</span></div>
                 </Field>
                 <Field label="工具顯示模式（tool_display）" tip="使用工具時的顯示方式（emoji/文字/無）">
-                  <select v-model="cfg.reactions.tool_display" class="field-input"><option value="emoji">Emoji</option><option value="text">文字</option><option value="none">不顯示</option></select>
+                  <select v-model="cfg.reactions.tool_display" class="field-input"><option value="full">完整（full）</option><option value="compact">精簡（compact）</option><option value="none">不顯示（none）</option></select>
                 </Field>
               </div>
               <div class="mt-4">
@@ -93,6 +119,24 @@
                   <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="'狀態：'+key">
                     <EmojiPicker v-model="cfg.reactions.emojis[key]" />
                   </Field>
+                </div>
+              </div>
+              <!-- Reactions Mapping -->
+              <div class="mt-4">
+                <div class="text-sm text-white/60 mb-2">表情指令對照（reactions.mapping）</div>
+                <div class="space-y-1">
+                  <div v-for="(cmd, emoji, idx) in cfg.reactions.mapping || {}" :key="idx" class="flex items-center gap-2">
+                    <input :value="emoji" readonly class="w-16 field-input text-center">
+                    <span class="text-white/40">→</span>
+                    <input :value="cmd" readonly class="flex-1 field-input font-mono">
+                    <button @click="deleteMapping(emoji)" type="button" class="text-red-400/60 hover:text-red-400 text-sm">✕</button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <input v-model="newMapping.emoji" class="w-16 field-input text-center" placeholder="😀">
+                  <span class="text-white/40">→</span>
+                  <input v-model="newMapping.cmd" class="flex-1 field-input font-mono" placeholder="command">
+                  <button @click="addMapping()" type="button" class="px-3 py-1.5 text-xs rounded bg-cyan-600 text-white">+</button>
                 </div>
               </div>
             </fieldset>
@@ -308,11 +352,37 @@ function onSelect(a) {
   loadConfig(a.name)
 }
 
+const newMapping = ref({ emoji: '', cmd: '' })
+function addMapping() {
+  if (newMapping.value.emoji && newMapping.value.cmd) {
+    if (!cfg.reactions.mapping) cfg.reactions.mapping = {}
+    cfg.reactions.mapping[newMapping.value.emoji] = newMapping.value.cmd
+    newMapping.value = { emoji: '', cmd: '' }
+  }
+}
+function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
+
 async function loadConfig(agentName) {
   const res = await get(`/api/agents/${agentName}/config`)
   if (res?.parsed && Object.keys(res.parsed).length) {
     const p = res.parsed
-    if (p.discord) Object.assign(cfg.discord, p.discord)
+    if (p.discord) {
+      // Ensure arrays exist
+      const d = p.discord
+      cfg.discord.allow_bot_messages = d.allow_bot_messages || 'mentions'
+      cfg.discord.allow_user_messages = d.allow_user_messages || 'multibot-mentions'
+      cfg.discord.max_bot_turns = d.max_bot_turns || 100
+      cfg.discord.message_processing_mode = d.message_processing_mode || 'per-message'
+      cfg.discord.max_buffered_messages = d.max_buffered_messages || 10
+      cfg.discord.max_batch_tokens = d.max_batch_tokens || 24000
+      cfg.discord.allowed_channels = d.allowed_channels || []
+      cfg.discord.allowed_role_ids = d.allowed_role_ids || []
+      cfg.discord.trusted_bot_ids = d.trusted_bot_ids || []
+      cfg.discord.allowed_users = d.allowed_users || []
+      cfg.discord.allow_all_channels = d.allow_all_channels || false
+      cfg.discord.allow_all_users = d.allow_all_users || false
+      cfg.discord.allow_dm = d.allow_dm || false
+    }
     if (p.agent) Object.assign(cfg.agent, p.agent)
     if (p.pool) Object.assign(cfg.pool, p.pool)
     if (p.reactions) {
@@ -415,10 +485,10 @@ const mockFiles = [
 
 // ─── Mock Data ───
 const cfg = reactive({
-  discord: { allow_bot_messages: 'mentions', allow_user_messages: 'mentions', max_bot_turns: 5, allowed_channels: ['1492090122257170526', '1503940169252999198'], allowed_role_ids: [], trusted_bot_ids: ['1493800835853975562'] },
+  discord: { allow_bot_messages: 'mentions', allow_user_messages: 'multibot-mentions', max_bot_turns: 100, message_processing_mode: 'per-message', max_buffered_messages: 10, max_batch_tokens: 24000, allowed_channels: [], allowed_role_ids: [], trusted_bot_ids: [], allowed_users: [], allow_all_channels: false, allow_all_users: false, allow_dm: false },
   agent: { command: 'kiro', args: ['chat', '--json'], working_dir: '/home/agent/projects', inherit_env: ['GH_TOKEN', 'AWS_REGION'] },
   pool: { max_sessions: 3, session_ttl_hours: 4 },
-  reactions: { enabled: true, remove_after_reply: true, tool_display: 'emoji', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' } },
+  reactions: { enabled: true, remove_after_reply: true, tool_display: 'full', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' }, mapping: {} },
   cron: { usercron_enabled: true, usercron_path: '~/.openab/cronjob.toml' },
 })
 
