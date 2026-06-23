@@ -2308,6 +2308,10 @@ async def api_agent_config_patch(agent_name: str, request: Request):
             else:
                 base[key] = val
 
+    # Whitelist: only allow known config sections
+    ALLOWED_PATCH_KEYS = {'agent', 'discord', 'reactions', 'pool', 'stt', 'cron'}
+    body = {k: v for k, v in body.items() if k in ALLOWED_PATCH_KEYS}
+
     deep_merge(doc, body)
     config_path.write_text(tomlkit.dumps(doc))
     return JSONResponse({"ok": True, "message": "已儲存"})
