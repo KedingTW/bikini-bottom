@@ -2793,6 +2793,10 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             server_map = {r[0]: {"name": r[1], "path": r[2]} for r in cur.fetchall()}
             cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
+            cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+            tool_filters = {}
+            for r in cur3.fetchall():
+                tool_filters.setdefault(r[0], []).append(r[1])
 
         mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
         mcp_token = os.environ.get("MCP_AUTH_TOKEN", "")
@@ -2806,6 +2810,8 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             entry = {"url": f"{mcp_base_url}{srv['path']}"}
             if mcp_token:
                 entry["headers"] = {"Authorization": f"Bearer {mcp_token}"}
+            if server_id in tool_filters:
+                entry["allowedTools"] = tool_filters[server_id]
             mcp_json["mcpServers"][srv["name"]] = entry
 
         mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
