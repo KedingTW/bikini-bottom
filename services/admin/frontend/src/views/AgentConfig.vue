@@ -16,7 +16,8 @@
               <span class="text-white/30">{{ open.basic ? '▼' : '▶' }}</span>
               <span class="font-medium">⚙️ 基本配置</span>
             </button>
-            <button :disabled="!dirty.basic" @click="saveSection('basic')" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+            <button @click="resetBasicConfig()" type="button" class="ml-2 px-3 py-1 text-xs rounded bg-white/10 text-white/50 hover:text-white transition">🔄 恢復預設</button>
+            <button :disabled="!dirty.basic" @click="saveSection('basic')" class="ml-1 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
           </div>
           <div v-if="open.basic" @change.capture="markDirty('basic')" @input.capture="markDirty('basic')" class="px-4 pb-4 border-t border-white/5 space-y-4">
             <!-- Discord -->
@@ -107,7 +108,7 @@
                 </Field>
               </div>
               <div class="mt-4">
-                <div class="text-sm text-white/60 mb-2">表情符號設定</div>
+                <div class="flex items-center mb-2"><span class="text-sm text-white/60">表情符號設定</span><button @click="resetEmojis()" type="button" class="ml-auto text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 復原預設</button></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                   <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="'狀態：'+key">
                     <EmojiPicker v-model="cfg.reactions.emojis[key]" />
@@ -219,8 +220,9 @@
             <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
             <span class="font-medium">⏰ 排程任務</span>
             <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
+            <button @click.stop="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄</button>
           </button>
-          <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5">
+          <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5" :class="{'opacity-40 pointer-events-none': !cfg.cron.usercron_enabled}">
             <div class="space-y-2">
               <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
                 <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
@@ -362,6 +364,31 @@ function addMapping() {
 const mappingList = computed(() => Object.entries(cfg.reactions.mapping || {}).map(([emoji, cmd]) => ({ emoji, cmd })))
 function updateMappingCmd(emoji, cmd) { cfg.reactions.mapping[emoji] = cmd }
 function deleteMapping(emoji) { delete cfg.reactions.mapping[emoji] }
+
+const defaultEmojis = { thinking: '👀', tool_use: '🤔', responding: '🔥', done: '👨‍💻', error: '😱', queued: '⚡', cancelled: '🆗' }
+let originalEmojis = null
+
+function resetEmojis() { Object.assign(cfg.reactions.emojis, originalEmojis || defaultEmojis) }
+
+function resetBasicConfig() {
+  cfg.discord.allow_bot_messages = 'off'
+  cfg.discord.allow_user_messages = 'multibot-mentions'
+  cfg.discord.max_bot_turns = 100
+  cfg.discord.allow_all_channels = false
+  cfg.discord.allow_all_users = false
+  cfg.discord.allow_dm = false
+  cfg.pool.max_sessions = 10
+  cfg.pool.session_ttl_hours = 4
+  cfg.reactions.enabled = true
+  cfg.reactions.remove_after_reply = false
+  cfg.reactions.tool_display = 'full'
+  Object.assign(cfg.reactions.emojis, defaultEmojis)
+}
+
+async function loadCrons() {
+  // TODO: call real API when available
+  console.log('[loadCrons] reload')
+}
 function renameMapping(oldEmoji, newEmoji, cmd) {
   delete cfg.reactions.mapping[oldEmoji]
   cfg.reactions.mapping[newEmoji] = cmd
@@ -396,6 +423,7 @@ async function loadConfig(agentName) {
       if ('session_ttl_hours' in p.pool) cfg.pool.session_ttl_hours = p.pool.session_ttl_hours
     }
     if (p.reactions) {
+      if (p.reactions.emojis) originalEmojis = { ...p.reactions.emojis }
       if ('enabled' in p.reactions) cfg.reactions.enabled = p.reactions.enabled
       if ('remove_after_reply' in p.reactions) cfg.reactions.remove_after_reply = p.reactions.remove_after_reply
       if ('tool_display' in p.reactions) cfg.reactions.tool_display = p.reactions.tool_display
@@ -551,13 +579,13 @@ function mcpDeselectAll(s) { s.tools.forEach(t => { t.enabled = false }); update
 function updateMcpCount(s) { s.enabledTools = s.tools.filter(t => t.enabled).length; s.enabled = s.enabledTools > 0; s.partial = s.enabledTools > 0 && s.enabledTools < s.tools.length }
 
 const mockSkills = reactive([
-  { name: 'doc-coauthoring', desc: '文件協作', enabled: true },
-  { name: 'docx', desc: 'Word 文件', enabled: true },
-  { name: 'pdf', desc: 'PDF 文件', enabled: true },
-  { name: 'pptx', desc: 'PowerPoint 簡報', enabled: true },
-  { name: 'xlsx', desc: 'Excel 試算表', enabled: true },
-  { name: 'kd-pricing-assistant', desc: '報價助手', enabled: false },
-  { name: 'kd-product-knowledge', desc: '產品知識庫', enabled: false },
+  { name: 'doc-coauthoring', desc: '文件協作（doc-coauthoring）', enabled: true },
+  { name: 'docx', desc: 'Word 文件（docx）', enabled: true },
+  { name: 'pdf', desc: 'PDF 文件（pdf）', enabled: true },
+  { name: 'pptx', desc: 'PowerPoint 簡報（pptx）', enabled: true },
+  { name: 'xlsx', desc: 'Excel 試算表（xlsx）', enabled: true },
+  { name: 'kd-pricing-assistant', desc: '報價助手（kd-pricing-assistant）', enabled: false },
+  { name: 'kd-product-knowledge', desc: '產品知識庫（kd-product-knowledge）', enabled: false },
 ])
 
 const mockCrons = reactive([
