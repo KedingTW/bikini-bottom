@@ -81,11 +81,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/mermaid-man/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/mermaid-man/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/mermaid-man
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/mermaid-man
             type: Directory
         - name: nas
           persistentVolumeClaim:

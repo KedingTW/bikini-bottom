@@ -81,11 +81,11 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/conch/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/conch/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/conch
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/conch
             type: Directory
         - name: nas
           persistentVolumeClaim:

@@ -105,6 +105,25 @@ spec:
                 secretKeyRef:
                   name: admin-discord-secrets
                   key: DISCORD_GUILD_ID
+            - name: MYSQL_HOST
+              value: "admin-mysql"
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: admin-mysql-secret
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: admin-mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: admin-mysql-secret
+                  key: MYSQL_DATABASE
           volumeMounts:
             - name: agents-data
               mountPath: /data/agents
@@ -187,10 +206,9 @@ metadata:
   labels:
     app: admin
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: admin
   ports:
     - port: 8501
       targetPort: 8501
-      nodePort: 30080

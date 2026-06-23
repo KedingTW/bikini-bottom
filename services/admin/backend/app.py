@@ -172,7 +172,7 @@ def _init_db():
                 agent VARCHAR(64) NOT NULL,
                 action VARCHAR(32) NOT NULL,
                 status VARCHAR(16) NOT NULL,
-                message TEXT DEFAULT ''
+                message TEXT
             )
         """)
         cur.execute("""
@@ -470,6 +470,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
 SHARED_SKILLS_DIR = Path(os.environ.get("SHARED_SKILLS_DIR", "/data/repo/shared/skills"))
+SKILLS_SYMLINK_TARGET = Path(os.environ.get("SKILLS_SYMLINK_TARGET", "/opt/skills"))
 
 # Serve Vue SPA build output
 DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolve())))
@@ -481,7 +482,7 @@ AGENT_GROUPS = {
     "bikini-bottom": {
         "display": "比奇堡海灘",
         "icon": "🏝️",
-        "agents_subdir": "",
+        "agents_subdir": "bikini-bottom",
         "platform": "discord",
         "guild_id": os.environ.get("DISCORD_GUILD_ID", ""),
         "agents": [
@@ -2445,14 +2446,14 @@ async def api_agent_skills_save(agent_name: str, request: Request):
         if item.is_symlink():
             item.unlink()
 
-    # 建立新 symlinks
+    # 建立新 symlinks（指向 bot 容器可見的 /opt/skills/ 路徑）
     created = []
     for skill_name in enabled_skills:
         safe_name = Path(skill_name).name
         source = SHARED_SKILLS_DIR / safe_name
         if source.is_dir():
             target = agent_skills_dir / safe_name
-            target.symlink_to(source)
+            target.symlink_to(SKILLS_SYMLINK_TARGET / safe_name)
             created.append(safe_name)
 
     return JSONResponse({"ok": True, "message": f"已設定 {len(created)} 個 skills", "enabled": created})
