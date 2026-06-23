@@ -1,14 +1,11 @@
 <template>
-  <div class="flex h-full">
-    <AgentListPanel :agents="agents" :selected="selectedAgent" :loading="loading" @select="onSelect" />
-
-    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div v-if="!selectedAgent" class="text-center py-20 text-white/50">
+  <AgentDetailLayout :agents="agents" :selected-agent="selectedAgent" :loading="loading" @select="onSelect" @back="selectedAgent = null">
+    <div v-if="!selectedAgent" class="text-center py-20 text-white/50 hidden md:block">
         <div class="text-3xl mb-2">📜</div>
         <div>請選擇角色查看 Steering 文件</div>
       </div>
 
-      <template v-else>
+      <div v-if="selectedAgent">
         <h2 class="text-lg font-semibold mb-5">{{ selectedAgent.display }} — Steering（{{ selectedAgent.steering?.length || 0 }}）</h2>
 
         <div v-if="!selectedAgent.steering?.length" class="text-white/50 text-sm py-4">無 Steering 文件</div>
@@ -22,8 +19,7 @@
             </div>
           </div>
         </div>
-      </template>
-    </div>
+      </div>
 
     <!-- File Viewer -->
     <div v-if="fileView" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" @click.self="fileView = null">
@@ -37,14 +33,14 @@
         </div>
       </div>
     </div>
-  </div>
+  </AgentDetailLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
 import { useApi } from '../composables/useApi.js'
-import AgentListPanel from '../components/AgentListPanel.vue'
+import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 
 const { get } = useApi()
 const { agents, selectedAgent, loading, selectAgent } = useAgentList()

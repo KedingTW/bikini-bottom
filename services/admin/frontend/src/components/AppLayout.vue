@@ -2,6 +2,10 @@
   <!-- Top Header -->
   <header class="glass-darker sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Mobile hamburger -->
+      <button @click="drawerOpen = true" class="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/80">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
       <img src="/header.png" alt="Logo" class="h-7">
     </div>
     <h1 class="text-base sm:text-lg font-semibold whitespace-nowrap truncate flex-1 text-center mx-2">
@@ -24,6 +28,33 @@
   <!-- Click outside to close menu -->
   <div v-if="menuOpen" class="fixed inset-0 z-40" @click="menuOpen = false"></div>
 
+  <!-- Mobile Drawer -->
+  <div v-if="drawerOpen" class="fixed inset-0 z-50 md:hidden" @click="drawerOpen = false">
+    <div class="absolute inset-y-0 left-0 w-64 glass-darker border-r border-white/10 shadow-2xl" @click.stop>
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <img src="/header.png" alt="Logo" class="h-6">
+        <button @click="drawerOpen = false" class="text-white/60 hover:text-white text-xl">&times;</button>
+      </div>
+      <!-- Server switcher -->
+      <div class="p-3 border-b border-white/10">
+        <div class="text-xs text-white/50 uppercase mb-2">伺服器</div>
+        <button v-for="g in groups" :key="g.id" @click="currentGroup = g.id; onGroupChange(); drawerOpen = false"
+          class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm mb-1 transition"
+          :class="g.id === currentGroup ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-400/30' : 'text-white/80 hover:bg-white/10'">
+          <span>{{ g.icon }}</span><span>{{ g.display }}</span>
+          <span v-if="g.id === currentGroup" class="ml-auto text-xs">✓</span>
+        </button>
+      </div>
+      <!-- Quick links -->
+      <div class="p-3">
+        <div class="text-xs text-white/50 uppercase mb-2">快速連結</div>
+        <router-link to="/users" @click="drawerOpen = false" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-white/80 hover:bg-white/10">
+          <span>👤</span><span>使用者管理</span>
+        </router-link>
+      </div>
+    </div>
+  </div>
+
   <div class="flex h-[calc(100vh-60px)]">
     <!-- Desktop sidebar (hidden on mobile) -->
     <div class="hidden md:block">
@@ -31,7 +62,7 @@
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <main class="flex-1 overflow-y-auto pb-16 md:pb-0" id="main-scroll">
+      <main class="flex-1 overflow-y-auto pb-28 md:pb-0" id="main-scroll">
         <slot />
       </main>
       <img class="hidden md:block w-full max-h-12 object-contain bg-[#111827] py-2 shrink-0" src="/footer.png" alt="Footer">
@@ -81,6 +112,7 @@ const userName = ref('...')
 const userId = ref('')
 const userRole = ref('viewer')
 const menuOpen = ref(false)
+const drawerOpen = ref(false)
 const showPwDialog = ref(false)
 const pwForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwError = ref('')
@@ -113,9 +145,9 @@ const pageTitle = computed(() => {
   const map = {
     home: '總覽', metrics: '資源監控', costs: '成本監控', alerts: '異常通知',
     messaging: '訊息推送', members: '成員管理', threads: '討論串管理', 'thread-analytics': '討論串分析',
-    'agent-config': '角色配置', mcp: 'MCP 管理', skills: 'Skill 管理', steering: 'Steering',
-    cronjobs: 'Cronjob', knowledge: 'Knowledge Base',
-    system: '系統資源', logs: 'Log 搜尋', deploy: '部署管理', 'api-keys': 'API Key',
+    'agent-config': '角色配置', mcp: 'MCP 管理', 'mcp-servers': 'MCP 伺服器', skills: '技能管理', steering: '行為指引',
+    cronjobs: '排程任務', knowledge: '知識庫',
+    system: '系統資源', logs: '日誌搜尋', deploy: '部署管理', 'api-keys': 'API 金鑰',
     users: '使用者管理',
   }
   return map[route.name] || '總覽'

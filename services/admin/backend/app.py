@@ -194,6 +194,53 @@ def _init_db():
                 ts VARCHAR(32)
             )
         """)
+        # ─── MCP Pool tables ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_servers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(64) NOT NULL UNIQUE,
+                path VARCHAR(128) NOT NULL,
+                description VARCHAR(255) DEFAULT '',
+                token TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_server_tools (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_server_tool (server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_agent_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                server_id INT NOT NULL,
+                env VARCHAR(16) NOT NULL DEFAULT 'local',
+                enabled TINYINT DEFAULT 1,
+                UNIQUE KEY uk_agent_server (agent_name, server_id),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_agent_tool_filter (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_agent_tool (agent_name, server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Migration: add token column if not exists
+        try:
+            cur.execute("ALTER TABLE mcp_servers ADD COLUMN token TEXT")
+        except Exception:
+            pass  # column already exists
         cur.close()
         conn.close()
     else:
@@ -411,6 +458,7 @@ def _fetch_k8s_metrics() -> dict:
     return result
 
 
+
 _init_db()
 _start_metrics_collector()
 
@@ -421,6 +469,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
+SHARED_SKILLS_DIR = Path(os.environ.get("SHARED_SKILLS_DIR", "/data/repo/shared/skills"))
 
 # Serve Vue SPA build output
 DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolve())))
@@ -484,6 +533,17 @@ def _get_deploy_name(agent_name: str) -> str:
         if a["name"] == agent_name:
             return a.get("deployment", agent_name)
     return agent_name
+
+
+def _get_agent_dir(agent_name: str) -> Path:
+    """Resolve agent name to its filesystem directory (considering agents_subdir)."""
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                if grp["agents_subdir"]:
+                    return AGENTS_DIR / grp["agents_subdir"] / agent_name
+                return AGENTS_DIR / agent_name
+    return AGENTS_DIR / agent_name
 
 
 def _get_guild_id(group: str) -> str:
@@ -1596,9 +1656,12 @@ async def api_discord_members(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定", "members": []})
     try:
         from discord_api import list_members
-        members = await list_members(limit=200, guild_id=_get_guild_id(group))
+        members = await list_members(limit=200, guild_id=gid)
         return JSONResponse({"error": None, "members": members})
     except Exception as e:
         return JSONResponse({"error": str(e), "members": []})
@@ -1609,9 +1672,12 @@ async def api_discord_roles(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定", "roles": []})
     try:
         from discord_api import list_roles
-        roles = await list_roles(guild_id=_get_guild_id(group))
+        roles = await list_roles(guild_id=gid)
         return JSONResponse({"error": None, "roles": roles})
     except Exception as e:
         return JSONResponse({"error": str(e), "roles": []})
@@ -1663,9 +1729,12 @@ async def api_discord_channels(request: Request, group: str = "bikini-bottom"):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    gid = _get_guild_id(group)
+    if not gid:
+        return JSONResponse({"error": f"群組 '{group}' 的 guild_id 未設定（檢查 DISCORD_GUILD_ID 環境變數）", "channels": []})
     try:
         from discord_api import list_channels
-        channels = await list_channels(guild_id=_get_guild_id(group))
+        channels = await list_channels(guild_id=gid)
         return JSONResponse({"error": None, "channels": channels})
     except Exception as e:
         return JSONResponse({"error": str(e), "channels": []})
@@ -2165,16 +2234,19 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
 @app.get("/api/agents/{agent_name}/config")
 async def api_agent_config(agent_name: str, request: Request):
     """取得角色的 config.toml"""
+    import tomlkit
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    config_path = AGENTS_DIR / agent_name / "config.toml"
+    config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.exists():
-        return JSONResponse({"error": None, "raw": ""})
+        return JSONResponse({"error": None, "raw": "", "parsed": {}})
     try:
-        return JSONResponse({"error": None, "raw": config_path.read_text()})
+        raw = config_path.read_text()
+        parsed = tomlkit.parse(raw).unwrap()
+        return JSONResponse({"error": None, "raw": raw, "parsed": parsed})
     except Exception as e:
-        return JSONResponse({"error": str(e), "raw": ""})
+        return JSONResponse({"error": str(e), "raw": "", "parsed": {}})
 
 
 @app.put("/api/agents/{agent_name}/config")
@@ -2188,10 +2260,60 @@ async def api_agent_config_save(agent_name: str, request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="請求格式錯誤")
     raw = body.get("raw", "") if isinstance(body, dict) else ""
-    config_path = AGENTS_DIR / agent_name / "config.toml"
+    config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent 不存在")
     config_path.write_text(raw)
+    return JSONResponse({"ok": True, "message": "已儲存"})
+
+
+@app.patch("/api/agents/{agent_name}/config")
+async def api_agent_config_patch(agent_name: str, request: Request):
+    """部分更新 config.toml（deep merge，保留格式和註解）"""
+    import tomlkit
+
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="請求格式錯誤")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Body 必須是 JSON 物件")
+
+    # 只允許修改已知的 top-level keys
+    ALLOWED_PATCH_KEYS = {"agent", "discord", "reactions", "pool", "stt", "timing"}
+    body = {k: v for k, v in body.items() if k in ALLOWED_PATCH_KEYS}
+    if not body:
+        raise HTTPException(status_code=400, detail="沒有可更新的欄位")
+
+    config_path = _get_agent_dir(agent_name) / "config.toml"
+    if not config_path.parent.exists():
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    # 讀現有 config（保留格式）
+    if config_path.exists():
+        doc = tomlkit.parse(config_path.read_text())
+    else:
+        doc = tomlkit.document()
+
+    # Deep merge (with full-replace for leaf dicts like mapping/emojis)
+    REPLACE_KEYS = {'mapping', 'emojis', 'allowed_channels', 'allowed_role_ids', 'trusted_bot_ids', 'allowed_users'}
+
+    def deep_merge(base, override):
+        for key, val in override.items():
+            if isinstance(val, dict) and key in base and isinstance(base[key], dict) and key not in REPLACE_KEYS:
+                deep_merge(base[key], val)
+            else:
+                base[key] = val
+
+    # Whitelist: only allow known config sections
+    ALLOWED_PATCH_KEYS = {'agent', 'discord', 'reactions', 'pool', 'stt', 'cron'}
+    body = {k: v for k, v in body.items() if k in ALLOWED_PATCH_KEYS}
+
+    deep_merge(doc, body)
+    config_path.write_text(tomlkit.dumps(doc))
     return JSONResponse({"ok": True, "message": "已儲存"})
 
 
@@ -2202,7 +2324,7 @@ async def api_agent_mcp(agent_name: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
-    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
     if not mcp_path.exists():
         return JSONResponse({"error": None, "config": {}, "raw": "{}"})
     try:
@@ -2227,7 +2349,7 @@ async def api_agent_mcp_save(agent_name: str, request: Request):
         json_mod.loads(raw)
     except json_mod.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"JSON 語法錯誤：{e}")
-    mcp_path = AGENTS_DIR / agent_name / ".kiro" / "settings" / "mcp.json"
+    mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
     mcp_path.parent.mkdir(parents=True, exist_ok=True)
     mcp_path.write_text(raw)
     return JSONResponse({"ok": True, "message": "已儲存"})
@@ -2239,10 +2361,32 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".kiro" / "steering" / filename
+    safe_name = Path(filename).name
+    if safe_name != filename:
+        raise HTTPException(status_code=400, detail="無效的檔案名稱")
+    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
     if not path.exists():
         raise HTTPException(status_code=404, detail="檔案不存在")
-    return JSONResponse({"content": path.read_text(), "filename": filename})
+    return JSONResponse({"content": path.read_text(), "filename": safe_name})
+
+
+@app.put("/api/agents/{agent_name}/steering/{filename}")
+async def api_agent_steering_save(agent_name: str, filename: str, request: Request):
+    """儲存 steering 檔案內容"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    # 防止 path traversal
+    safe_name = Path(filename).name
+    if safe_name != filename or not safe_name.endswith(".md"):
+        raise HTTPException(status_code=400, detail="無效的檔案名稱")
+    body = await request.json()
+    content = body.get("content", "")
+    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
+    if not path.parent.exists():
+        raise HTTPException(status_code=404, detail="Agent steering 目錄不存在")
+    path.write_text(content)
+    return JSONResponse({"ok": True, "message": "已儲存"})
 
 
 @app.get("/api/agents/{agent_name}/skills/{skill_name}")
@@ -2251,7 +2395,7 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    skill_path = AGENTS_DIR / agent_name / ".kiro" / "skills" / skill_name
+    skill_path = _get_agent_dir(agent_name) / ".kiro" / "skills" / skill_name
     if skill_path.is_symlink():
         skill_path = skill_path.resolve()
     skill_md = skill_path / "SKILL.md"
@@ -2260,13 +2404,67 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
 
 
+@app.get("/api/skills/available")
+async def api_skills_available(request: Request):
+    """列出共用 skills 目錄中所有可用的 skill"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    skills = []
+    if SHARED_SKILLS_DIR.exists():
+        for d in sorted(SHARED_SKILLS_DIR.iterdir()):
+            if d.is_dir():
+                skill_md = d / "SKILL.md"
+                desc = ""
+                if skill_md.exists():
+                    try:
+                        text = skill_md.read_text()[:200]
+                        desc = text.split("\n")[0].strip("# ").strip()
+                    except Exception:
+                        pass
+                skills.append({"name": d.name, "description": desc})
+    return JSONResponse({"skills": skills})
+
+
+@app.put("/api/agents/{agent_name}/skills")
+async def api_agent_skills_save(agent_name: str, request: Request):
+    """儲存角色啟用的 skills（管理 symlinks）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    enabled_skills = body.get("enabled_skills", [])
+    if not isinstance(enabled_skills, list):
+        raise HTTPException(status_code=400, detail="enabled_skills 必須是陣列")
+
+    agent_skills_dir = _get_agent_dir(agent_name) / ".kiro" / "skills"
+    agent_skills_dir.mkdir(parents=True, exist_ok=True)
+
+    # 移除現有 symlinks
+    for item in agent_skills_dir.iterdir():
+        if item.is_symlink():
+            item.unlink()
+
+    # 建立新 symlinks
+    created = []
+    for skill_name in enabled_skills:
+        safe_name = Path(skill_name).name
+        source = SHARED_SKILLS_DIR / safe_name
+        if source.is_dir():
+            target = agent_skills_dir / safe_name
+            target.symlink_to(source)
+            created.append(safe_name)
+
+    return JSONResponse({"ok": True, "message": f"已設定 {len(created)} 個 skills", "enabled": created})
+
+
 @app.get("/api/agents/{agent_name}/cronjob")
 async def api_agent_cronjob(agent_name: str, request: Request):
     """取得角色的 cronjob 配置（含 raw 與 parsed）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     if not path.exists():
         return JSONResponse({"content": "", "jobs": []})
     raw = path.read_text()
@@ -2279,7 +2477,7 @@ async def api_agent_cronjob_toggle(agent_name: str, job_index: int, request: Req
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     if not path.exists():
         raise HTTPException(status_code=404, detail="cronjob.toml 不存在")
     raw = path.read_text()
@@ -2318,7 +2516,7 @@ async def api_agent_cronjob_save(agent_name: str, request: Request):
     # Try parse to validate
     if _parse_cronjob_toml(raw) is None:
         raise HTTPException(status_code=400, detail="TOML 語法錯誤")
-    path = AGENTS_DIR / agent_name / ".openab" / "cronjob.toml"
+    path = _get_agent_dir(agent_name) / ".openab" / "cronjob.toml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(raw)
     return JSONResponse({"ok": True})
@@ -2330,7 +2528,7 @@ async def api_agent_kb(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    kb_path = _get_agent_dir(agent_name) / ".local" / "share" / "kiro-cli" / "knowledge_bases"
     contexts = _read_kb_contexts(kb_path) if kb_path.exists() else []
     return JSONResponse({"contexts": contexts})
 
@@ -2342,7 +2540,7 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
-    kb_path = AGENTS_DIR / agent_name / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    kb_path = _get_agent_dir(agent_name) / ".local" / "share" / "kiro-cli" / "knowledge_bases"
     contexts_file = kb_path / "kiro_default" / "contexts.json"
     if not contexts_file.exists():
         raise HTTPException(status_code=404, detail="contexts.json 不存在")
@@ -2373,9 +2571,232 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     })
 
 
+# ─── MCP Servers CRUD API ───
+
+@app.get("/api/mcp-servers")
+async def api_mcp_servers_list(request: Request):
+    """列出所有 MCP Servers（含 tools 數量）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("""
+            SELECT s.id, s.name, s.path, s.description, s.token,
+                   (SELECT COUNT(*) FROM mcp_server_tools t WHERE t.server_id = s.id) as tool_count
+            FROM mcp_servers s ORDER BY s.name
+        """)
+        rows = cur.fetchall()
+    return JSONResponse({"servers": [{"id": r[0], "name": r[1], "path": r[2], "description": r[3], "has_token": bool(r[4]), "tool_count": r[5]} for r in rows]})
+
+
+@app.get("/api/mcp-servers/{server_id}")
+async def api_mcp_server_detail(server_id: int, request: Request):
+    """取得單一 server 詳情 + tools 列表"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT id, name, path, description, token FROM mcp_servers WHERE id = ?", (server_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Server not found")
+        server = {"id": row[0], "name": row[1], "path": row[2], "description": row[3], "has_token": bool(row[4])}
+        cur2 = conn.execute("SELECT id, tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (server_id,))
+        server["tools"] = [{"id": r[0], "name": r[1]} for r in cur2.fetchall()]
+    return JSONResponse(server)
+
+
+@app.post("/api/mcp-servers")
+async def api_mcp_server_create(request: Request):
+    """新增 MCP Server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    name = body.get("name", "").strip()
+    path = body.get("path", "").strip()
+    desc = body.get("description", "").strip()
+    token = body.get("token", "").strip() or None
+    if not name or not path:
+        raise HTTPException(status_code=400, detail="name 和 path 為必填")
+    with get_db() as conn:
+        try:
+            conn.execute("INSERT INTO mcp_servers (name, path, description, token) VALUES (?, ?, ?, ?)", (name, path, desc, token))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
+        cur = conn.execute("SELECT id FROM mcp_servers WHERE name = ?", (name,))
+        new_id = cur.fetchone()[0]
+        tools = body.get("tools", [])
+        for tool in tools:
+            conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool))
+    return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
+
+
+@app.put("/api/mcp-servers/{server_id}")
+async def api_mcp_server_update(server_id: int, request: Request):
+    """更新 MCP Server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    with get_db() as conn:
+        cur = conn.execute("SELECT id FROM mcp_servers WHERE id = ?", (server_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Server not found")
+        updates = []
+        params = []
+        for field in ["name", "path", "description", "token"]:
+            if field in body:
+                updates.append(f"{field} = ?")
+                params.append(body[field])
+        if updates:
+            params.append(server_id)
+            conn.execute(f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = ?", tuple(params))
+    return JSONResponse({"ok": True, "message": "已更新"})
+
+
+@app.delete("/api/mcp-servers/{server_id}")
+async def api_mcp_server_delete(server_id: int, request: Request):
+    """刪除 MCP Server（CASCADE 刪除 tools + agent configs）"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        conn.execute("DELETE FROM mcp_servers WHERE id = ?", (server_id,))
+    return JSONResponse({"ok": True, "message": "已刪除"})
+
+
+@app.post("/api/mcp-servers/{server_id}/tools")
+async def api_mcp_server_add_tool(server_id: int, request: Request):
+    """新增 tool 到 server"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    tool_name = body.get("name", "").strip()
+    if not tool_name:
+        raise HTTPException(status_code=400, detail="tool name 為必填")
+    with get_db() as conn:
+        conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/mcp-servers/{server_id}/tools/{tool_id}")
+async def api_mcp_server_del_tool(server_id: int, tool_id: int, request: Request):
+    """刪除 server 的 tool"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        conn.execute("DELETE FROM mcp_server_tools WHERE id = ? AND server_id = ?", (tool_id, server_id))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
+async def api_mcp_pool_for_agent(agent_name: str, request: Request):
+    """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers ORDER BY name")
+        servers = []
+        for r in cur.fetchall():
+            sid = r[0]
+            cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
+            tools = [t[0] for t in cur2.fetchall()]
+            servers.append({"id": sid, "name": r[1], "path": r[2], "description": r[3], "tools": tools})
+        cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+        agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
+        cur4 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+        tool_filter = {}
+        for r in cur4.fetchall():
+            tool_filter.setdefault(r[0], []).append(r[1])
+    return JSONResponse({"servers": servers, "agent_config": agent_config, "tool_filter": tool_filter})
+
+
+@app.post("/api/mcp-servers/save-agent-config/{agent_name}")
+async def api_mcp_save_agent_config(agent_name: str, request: Request):
+    """儲存角色的 MCP 配置到 MySQL + 生成 mcp.json"""
+    import json as json_mod
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    config = body.get("config", {})
+    tool_filter = body.get("toolFilter", {})
+    logging.info(f"[MCP Save] agent={agent_name}, config_keys={list(config.keys())}, toolFilter_keys={list(tool_filter.keys())}")
+
+    # 寫 DB
+    with get_db() as conn:
+        if USE_MYSQL:
+            conn._conn.autocommit = False
+        try:
+            conn.execute("DELETE FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            conn.execute("DELETE FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+            for sid_str, cfg in config.items():
+                sid = int(sid_str)
+                conn.execute("INSERT INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (?, ?, ?, ?)",
+                             (agent_name, sid, cfg.get("env", "local"), 1 if cfg.get("enabled", True) else 0))
+            for sid_str, tools in tool_filter.items():
+                sid = int(sid_str)
+                for tool in tools:
+                    conn.execute("INSERT INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (?, ?, ?)",
+                                 (agent_name, sid, tool))
+            conn.commit()
+            logging.info(f"[MCP Save] DB commit 成功, inserted {len(config)} servers")
+        except Exception as e:
+            logging.error(f"[MCP Save] DB 寫入失敗：{e}")
+            if USE_MYSQL:
+                conn._conn.rollback()
+            raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
+        finally:
+            if USE_MYSQL:
+                conn._conn.autocommit = True
+
+    # 生成 mcp.json（用新連線讀取剛寫入的資料）
+    try:
+        with get_db() as conn:
+            cur = conn.execute("SELECT id, name, path, token FROM mcp_servers")
+            server_map = {r[0]: {"name": r[1], "path": r[2], "token": r[3]} for r in cur.fetchall()}
+            cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            agent_cfg = cur2.fetchall()
+            cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+            tool_filters = {}
+            for r in cur3.fetchall():
+                tool_filters.setdefault(r[0], []).append(r[1])
+
+        mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
+        mcp_json = {"mcpServers": {}}
+        for server_id, env, enabled in agent_cfg:
+            if not enabled:
+                continue
+            srv = server_map.get(server_id)
+            if not srv:
+                continue
+            entry = {"url": f"{mcp_base_url}{srv['path']}"}
+            if srv.get("token"):
+                entry["headers"] = {"Authorization": f"Bearer {srv['token']}"}
+            if server_id in tool_filters:
+                entry["allowedTools"] = tool_filters[server_id]
+            mcp_json["mcpServers"][srv["name"]] = entry
+
+        mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
+        mcp_path.parent.mkdir(parents=True, exist_ok=True)
+        mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
+        logging.info(f"[MCP Save] mcp.json 生成成功: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
+    except Exception as e:
+        logging.error(f"[MCP Save] 生成 mcp.json 失敗：{e}")
+
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
+
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
+
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:

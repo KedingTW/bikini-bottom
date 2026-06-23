@@ -16,7 +16,7 @@ const titles = {
   members: '成員管理',
   'thread-analytics': '討論串分析',
   'agent-config': '角色配置',
-  cronjobs: 'Cronjob 管理',
+  cronjobs: '排程任務管理',
   knowledge: 'Knowledge Base',
   system: '系統資源',
   logs: 'Log 搜尋',
