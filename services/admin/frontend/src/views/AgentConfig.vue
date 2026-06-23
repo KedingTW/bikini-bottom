@@ -23,44 +23,44 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Field label="角色訊息觸發（allow_bot_messages）" tip="off=關閉、mentions=被提及時觸發、all=全部觸發">
+                <Field label="角色訊息觸發" tip="allow_bot_messages — off=關閉、mentions=被提及時觸發、all=全部觸發">
                   <select v-model="cfg.discord.allow_bot_messages" class="field-input"><option value="off">關閉（off）</option><option value="mentions">被提及時觸發（mentions）</option><option value="all">全部觸發（all）</option></select>
                 </Field>
-                <Field label="使用者訊息觸發（allow_user_messages）" tip="involved=參與對話時、mentions=被提及時、multibot-mentions=多角色提及時">
+                <Field label="使用者訊息觸發" tip="allow_user_messages — involved=參與對話時、mentions=被提及時、multibot-mentions=多角色提及時">
                   <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="multibot-mentions">多角色提及時（multibot-mentions）</option><option value="involved">參與對話時（involved）</option><option value="mentions">被提及時（mentions）</option></select>
                 </Field>
-                <Field label="最大對話輪數（max_bot_turns）" tip="建議範圍：1–1000，預設 100">
+                <Field label="最大對話輪數" tip="max_bot_turns — 建議範圍：1–1000，預設 100">
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
                   <span v-if="rangeWarn(cfg.discord.max_bot_turns, 1, 1000)" class="text-xs text-red-400">超出建議範圍（1–1000）</span>
                 </Field>
 <!-- TODO: 等 OpenAB 升級後加回 message_processing_mode / max_buffered_messages / max_batch_tokens -->
               </div>
               <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="允許私訊（allow_dm）" tip="是否接受 DM 訊息">
+                <Field label="允許私訊" tip="allow_dm — 是否接受 DM 訊息">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_dm" /><span class="text-sm text-white/70">{{ cfg.discord.allow_dm ? '是' : '否' }}</span></div>
                 </Field>
               </div>
               <div class="mt-4 space-y-3">
                 <!-- 頻道 -->
-                <Field label="允許所有頻道（allow_all_channels）" tip="開啟後不限頻道">
+                <Field label="允許所有頻道" tip="allow_all_channels — 開啟後不限頻道">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_channels" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_channels ? '是（不限頻道）' : '否（指定頻道）' }}</span></div>
                 </Field>
-                <Field v-show="!cfg.discord.allow_all_channels" label="允許頻道（allowed_channels）" tip="只有這些頻道的訊息會被處理">
+                <Field v-show="!cfg.discord.allow_all_channels" label="允許頻道" tip="allowed_channels — 只有這些頻道的訊息會被處理">
                   <IdSelect v-model="cfg.discord.allowed_channels" :options="channelOptions" placeholder="頻道" />
                 </Field>
                 <!-- 使用者 -->
-                <Field label="允許所有使用者（allow_all_users）" tip="開啟後不限使用者">
+                <Field label="允許所有使用者" tip="allow_all_users — 開啟後不限使用者">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_users" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_users ? '是（不限使用者）' : '否（指定使用者）' }}</span></div>
                 </Field>
-                <Field v-show="!cfg.discord.allow_all_users" label="允許使用者（allowed_users）" tip="指定允許的使用者">
+                <Field v-show="!cfg.discord.allow_all_users" label="允許使用者" tip="allowed_users — 指定允許的使用者">
                   <IdSelect v-model="cfg.discord.allowed_users" :options="userOptions" placeholder="使用者" />
                 </Field>
                 <!-- 身分組 -->
-                <Field label="允許身分組（allowed_role_ids）" tip="只有這些身分組的訊息會被處理。角色自己的同名身分組已鎖定">
+                <Field label="允許身分組" tip="allowed_role_ids — 只有這些身分組的訊息會被處理。自己的同名身分組已鎖定">
                   <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" :locked-ids="lockedRoleIds" placeholder="身分組" />
                 </Field>
                 <!-- 信任角色 -->
-                <Field label="信任的角色（trusted_bot_ids）" tip="這些角色的訊息會被當作可信來源處理">
+                <Field label="信任的角色" tip="trusted_bot_ids — 這些角色的訊息會被當作可信來源處理">
                   <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
                 </Field>
               </div>
@@ -69,8 +69,8 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式（agent）</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="啟動指令（command）" tip="Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono" placeholder="kiro-cli"></Field>
-                <Field label="工作目錄（working_dir）" tip="Agent 的工作路徑">
+                <Field label="啟動指令" tip="command — Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono" placeholder="kiro-cli"></Field>
+                <Field label="工作目錄" tip="working_dir — Agent 的工作路徑">
                   <div class="flex gap-2">
                     <input v-model="cfg.agent.working_dir" class="field-input font-mono flex-1">
                     <button @click="showWorkDir = true" type="button" class="px-2 py-1 text-xs rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white shrink-0">📂</button>
@@ -78,17 +78,17 @@
                 </Field>
               </div>
               <div class="mt-3 space-y-3">
-                <Field label="啟動參數（args）" tip="傳給 command 的參數列表"><TagInput v-model="cfg.agent.args" /></Field>
-                <Field label="繼承環境變數（inherit_env）" tip="從容器傳入 Agent 的環境變數名稱"><TagInput v-model="cfg.agent.inherit_env" /></Field>
+                <Field label="啟動參數" tip="args — 傳給 command 的參數列表"><TagInput v-model="cfg.agent.args" /></Field>
+                <Field label="繼承環境變數" tip="inherit_env — 從容器傳入 Agent 的環境變數名稱"><TagInput v-model="cfg.agent.inherit_env" /></Field>
               </div>
             </fieldset>
             <!-- Pool -->
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">連線池（pool）</legend>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="工作階段數（max_sessions）" tip="建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
+                <Field label="工作階段數" tip="max_sessions — 建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
                   <span v-if="rangeWarn(cfg.pool.max_sessions, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span></Field>
-                <Field label="存活時數（session_ttl_hours）" tip="建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input">
+                <Field label="存活時數" tip="session_ttl_hours — 建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input">
                   <span v-if="rangeWarn(cfg.pool.session_ttl_hours, 1, 720)" class="text-xs text-red-400">超出建議範圍（1–720）</span></Field>
               </div>
             </fieldset>
@@ -96,13 +96,13 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">表情回饋（reactions）</legend>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="啟用表情回饋（enabled）" tip="是否在訊息上添加 emoji 表示處理狀態">
+                <Field label="啟用表情回饋" tip="reactions.enabled — 是否在訊息上添加 emoji 表示處理狀態">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.enabled" /><span class="text-sm text-white/70">{{ cfg.reactions.enabled ? '啟用' : '停用' }}</span></div>
                 </Field>
-                <Field label="回覆後移除（remove_after_reply）" tip="回覆完成後是否移除過程中的 emoji">
+                <Field label="回覆後移除" tip="remove_after_reply — 回覆完成後是否移除過程中的 emoji">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.remove_after_reply" /><span class="text-sm text-white/70">{{ cfg.reactions.remove_after_reply ? '是' : '否' }}</span></div>
                 </Field>
-                <Field label="工具顯示模式（tool_display）" tip="使用工具時的顯示方式（emoji/文字/無）">
+                <Field label="工具顯示模式" tip="tool_display — full=完整 / compact=精簡 / none=不顯示">
                   <select v-model="cfg.reactions.tool_display" class="field-input"><option value="full">完整（full）</option><option value="compact">精簡（compact）</option><option value="none">不顯示（none）</option></select>
                 </Field>
               </div>
@@ -147,10 +147,10 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">排程設定</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="使用者排程（usercron_enabled）" tip="是否啟用角色自訂的排程任務">
+                <Field label="使用者排程" tip="usercron_enabled — 是否啟用角色自訂的排程任務">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.cron.usercron_enabled" /><span class="text-sm text-white/70">{{ cfg.cron.usercron_enabled ? '啟用' : '停用' }}</span></div>
                 </Field>
-                <Field label="排程路徑（usercron_path）" tip="cronjob.toml 的檔案位置"><input v-model="cfg.cron.usercron_path" class="field-input font-mono"></Field>
+                <Field label="排程路徑" tip="usercron_path — 固定路徑，不可修改"><input value="cronjob.toml" disabled class="field-input font-mono opacity-50"></Field>
               </div>
             </fieldset>
           </div>

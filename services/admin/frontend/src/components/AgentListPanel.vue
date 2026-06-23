@@ -5,7 +5,7 @@
     'w-full md:w-56 lg:w-64 shrink-0 md:border-r border-white/10 overflow-y-auto'
   ]">
     <div class="p-3 border-b border-white/10 flex items-center justify-between">
-      <h3 class="text-xs font-medium text-white/50 uppercase tracking-wider">選擇角色</h3>
+      <h3 class="text-xs font-medium text-white/50 uppercase tracking-wider">角色 · {{ agents.length }} 位</h3>
     </div>
     <div v-if="loading" class="p-4 text-center text-white/50 text-sm">載入中...</div>
     <div v-else-if="!agents.length" class="p-4 text-center text-white/50 text-sm">無角色</div>
