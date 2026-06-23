@@ -111,7 +111,8 @@
                 <div class="flex items-center mb-2"><span class="text-sm text-white/60">表情符號設定</span><button @click="resetEmojis()" type="button" class="ml-auto text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 復原預設</button></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                   <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="'狀態：'+key">
-                    <EmojiPicker v-model="cfg.reactions.emojis[key]" />
+                    <EmojiPicker v-if="key !== 'done'" v-model="cfg.reactions.emojis[key]" />
+                    <div v-else class="flex items-center bg-ocean-800 border border-white/15 rounded px-3 py-2 text-xl opacity-60 cursor-not-allowed">🆗</div>
                   </Field>
                 </div>
               </div>
