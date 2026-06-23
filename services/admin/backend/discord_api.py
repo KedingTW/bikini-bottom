@@ -20,7 +20,7 @@ NICK_MAP = {
 
 
 def _headers():
-    return {"Authorization": f"Bot {BOT_TOKEN}", "Content-Type": "application/json"}
+    return {"Authorization": f"Bot {BOT_TOKEN}", "Content-Type": "application/json", "User-Agent": "DiscordBot (https://bikini-bottom.dev, 1.0)"}
 
 
 async def list_members(limit=100, after=None, guild_id=None):
