@@ -35,30 +35,33 @@
                 </Field>
 <!-- TODO: 等 OpenAB 升級後加回 message_processing_mode / max_buffered_messages / max_batch_tokens -->
               </div>
-              <!-- Discord additional toggles -->
-              <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Field label="允許所有頻道（allow_all_channels）" tip="true=不限頻道">
-                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_channels" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_channels ? '是' : '否' }}</span></div>
-                </Field>
-                <Field label="允許所有使用者（allow_all_users）" tip="true=不限使用者">
-                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_users" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_users ? '是' : '否' }}</span></div>
-                </Field>
+              <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="允許私訊（allow_dm）" tip="是否接受 DM 訊息">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_dm" /><span class="text-sm text-white/70">{{ cfg.discord.allow_dm ? '是' : '否' }}</span></div>
                 </Field>
               </div>
               <div class="mt-4 space-y-3">
-                <Field label="允許頻道（allowed_channels）" tip="只有這些頻道 ID 的訊息會被處理">
+                <!-- 頻道 -->
+                <Field label="允許所有頻道（allow_all_channels）" tip="開啟後不限頻道">
+                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_channels" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_channels ? '是（不限頻道）' : '否（指定頻道）' }}</span></div>
+                </Field>
+                <Field v-show="!cfg.discord.allow_all_channels" label="允許頻道（allowed_channels）" tip="只有這些頻道的訊息會被處理">
                   <IdSelect v-model="cfg.discord.allowed_channels" :options="channelOptions" placeholder="頻道" />
                 </Field>
+                <!-- 使用者 -->
+                <Field label="允許所有使用者（allow_all_users）" tip="開啟後不限使用者">
+                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_all_users" /><span class="text-sm text-white/70">{{ cfg.discord.allow_all_users ? '是（不限使用者）' : '否（指定使用者）' }}</span></div>
+                </Field>
+                <Field v-show="!cfg.discord.allow_all_users" label="允許使用者（allowed_users）" tip="指定允許的使用者">
+                  <IdSelect v-model="cfg.discord.allowed_users" :options="userOptions" placeholder="使用者" />
+                </Field>
+                <!-- 身分組 -->
                 <Field label="允許身分組（allowed_role_ids）" tip="只有這些身分組的訊息會被處理">
                   <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" placeholder="身分組" />
                 </Field>
+                <!-- 信任角色 -->
                 <Field label="信任的角色（trusted_bot_ids）" tip="這些角色的訊息會被當作可信來源處理">
                   <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
-                </Field>
-                <Field label="允許使用者（allowed_users）" tip="指定允許的使用者 ID">
-                  <TagInput v-model="cfg.discord.allowed_users" />
                 </Field>
               </div>
             </fieldset>
@@ -473,10 +476,15 @@ async function loadBots() {
     botOptions.value = res.members
       .filter(m => m.bot && (!selectedAgent.value || String(m.id) !== String(selectedAgent.value.bot_id)))
       .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar }))
+    userOptions.value = res.members
+      .filter(m => !m.bot)
+      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar }))
   } else {
     botOptions.value = []
+    userOptions.value = []
   }
 }
+const userOptions = ref([])
 loadBots()
 watch(currentGroup, () => nextTick(loadBots))
 watch(selectedAgent, () => nextTick(loadBots))
