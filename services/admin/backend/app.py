@@ -2757,6 +2757,9 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
     body = await request.json()
     config = body.get("config", {})
     tool_filter = body.get("toolFilter", {})
+    logging.info(f"[MCP Save] agent={agent_name}, config_keys={list(config.keys())}, toolFilter_keys={list(tool_filter.keys())}")
+
+    # 寫 DB
     with get_db() as conn:
         if USE_MYSQL:
             conn._conn.autocommit = False
@@ -2773,7 +2776,9 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
                     conn.execute("INSERT INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (?, ?, ?)",
                                  (agent_name, sid, tool))
             conn.commit()
+            logging.info(f"[MCP Save] DB commit 成功, inserted {len(config)} servers")
         except Exception as e:
+            logging.error(f"[MCP Save] DB 寫入失敗：{e}")
             if USE_MYSQL:
                 conn._conn.rollback()
             raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
@@ -2781,32 +2786,36 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             if USE_MYSQL:
                 conn._conn.autocommit = True
 
-        # 生成 mcp.json 到角色目錄
-        try:
+    # 生成 mcp.json（用新連線讀取剛寫入的資料）
+    try:
+        with get_db() as conn:
             cur = conn.execute("SELECT id, name, path FROM mcp_servers")
             server_map = {r[0]: {"name": r[1], "path": r[2]} for r in cur.fetchall()}
             cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
 
-            mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
-            mcp_token = os.environ.get("MCP_AUTH_TOKEN", "")
-            mcp_json = {"mcpServers": {}}
-            for server_id, env, enabled in agent_cfg:
-                if not enabled:
-                    continue
-                srv = server_map.get(server_id)
-                if not srv:
-                    continue
-                entry = {"url": f"{mcp_base_url}{srv['path']}"}
-                if mcp_token:
-                    entry["headers"] = {"Authorization": f"Bearer {mcp_token}"}
-                mcp_json["mcpServers"][srv["name"]] = entry
+        mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
+        mcp_token = os.environ.get("MCP_AUTH_TOKEN", "")
+        mcp_json = {"mcpServers": {}}
+        for server_id, env, enabled in agent_cfg:
+            if not enabled:
+                continue
+            srv = server_map.get(server_id)
+            if not srv:
+                continue
+            entry = {"url": f"{mcp_base_url}{srv['path']}"}
+            if mcp_token:
+                entry["headers"] = {"Authorization": f"Bearer {mcp_token}"}
+            mcp_json["mcpServers"][srv["name"]] = entry
 
-            mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
-            mcp_path.parent.mkdir(parents=True, exist_ok=True)
-            mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
-        except Exception as e:
-            logging.error(f"生成 mcp.json 失敗：{e}")
+        mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
+        mcp_path.parent.mkdir(parents=True, exist_ok=True)
+        mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
+        logging.info(f"[MCP Save] mcp.json 生成成功: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
+    except Exception as e:
+        logging.error(f"[MCP Save] 生成 mcp.json 失敗：{e}")
+
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
