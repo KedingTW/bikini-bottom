@@ -23,11 +23,11 @@
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">Discord</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Field label="角色訊息觸發" tip="是否接收其他角色的訊息並處理">
-                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_bot_messages" /><span class="text-sm text-white/70">{{ cfg.discord.allow_bot_messages ? '啟用' : '停用' }}</span></div>
+                <Field label="角色訊息觸發" tip="off=關閉、mentions=被提及時觸發、all=全部觸發">
+                  <select v-model="cfg.discord.allow_bot_messages" class="field-input"><option value="off">關閉</option><option value="mentions">被提及時觸發</option><option value="all">全部觸發</option></select>
                 </Field>
-                <Field label="使用者訊息觸發" tip="是否接收使用者的訊息並處理">
-                  <div class="flex items-center gap-2"><Toggle v-model="cfg.discord.allow_user_messages" /><span class="text-sm text-white/70">{{ cfg.discord.allow_user_messages ? '啟用' : '停用' }}</span></div>
+                <Field label="使用者訊息觸發" tip="off=關閉、mentions=被提及時觸發、all=全部觸發">
+                  <select v-model="cfg.discord.allow_user_messages" class="field-input"><option value="off">關閉</option><option value="mentions">被提及時觸發</option><option value="all">全部觸發</option></select>
                 </Field>
                 <Field label="最大角色對話輪數" tip="建議範圍：1–1000，預設 100">
                   <input v-model.number="cfg.discord.max_bot_turns" type="number" min="1" max="1000" class="field-input">
@@ -397,7 +397,7 @@ const mockFiles = [
 
 // ─── Mock Data ───
 const cfg = reactive({
-  discord: { allow_bot_messages: true, allow_user_messages: true, max_bot_turns: 5, allowed_channels: ['1492090122257170526', '1503940169252999198'], allowed_role_ids: [], trusted_bot_ids: ['1493800835853975562'], message_processing_mode: 'buffered', max_buffered_messages: 5, max_batch_tokens: 10000 },
+  discord: { allow_bot_messages: 'mentions', allow_user_messages: 'all', max_bot_turns: 5, allowed_channels: ['1492090122257170526', '1503940169252999198'], allowed_role_ids: [], trusted_bot_ids: ['1493800835853975562'], message_processing_mode: 'buffered', max_buffered_messages: 5, max_batch_tokens: 10000 },
   agent: { command: 'kiro', args: ['chat', '--json'], working_dir: '/home/agent/projects', inherit_env: ['GH_TOKEN', 'AWS_REGION'] },
   pool: { max_sessions: 3, session_ttl_hours: 4 },
   reactions: { enabled: true, remove_after_reply: true, tool_display: 'emoji', emojis: { thinking: '🤔', tool_use: '🔧', responding: '✍️', done: '✅', error: '❌', queued: '📋', cancelled: '🚫' } },
