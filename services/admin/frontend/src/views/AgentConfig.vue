@@ -314,11 +314,18 @@ function saveSection(key) { saveDialogKey.value = key }
 const saveDialogKey = ref(null)
 async function doSave(restart) {
   const key = saveDialogKey.value
-  dirty[key] = false
   saveDialogKey.value = null
-  // TODO: call save API
-  if (restart && selectedAgent.value) {
-    await post(`/api/restart/${selectedAgent.value.name}`)
+  // Send cfg to PATCH API
+  if (selectedAgent.value) {
+    const res = await fetch(`/api/agents/${selectedAgent.value.name}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    })
+    if (res.ok) dirty[key] = false
+    if (restart) {
+      await post(`/api/restart/${selectedAgent.value.name}`)
+    }
   }
 }
 
