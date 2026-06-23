@@ -720,17 +720,6 @@ function saveCronDialog() {
 
 const mockKb = reactive([])
 
-async function loadKb() {
-  if (!selectedAgent.value) return
-  const res = await get(`/api/agents/${selectedAgent.value.name}/kb`)
-  if (res?.contexts) {
-    mockKb.splice(0, mockKb.length, ...res.contexts.map(c => ({
-      id: c.id || c.name, name: c.name, items: c.item_count || 0, source: c.source_path || ''
-    })))
-  } else {
-    mockKb.splice(0, mockKb.length)
-  }
-}
 
 // Deep watchers for dirty tracking
 watch(cfg, () => { if (ready.value) dirty.basic = true }, { deep: true })
