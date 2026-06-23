@@ -2282,6 +2282,12 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="Body 必須是 JSON 物件")
 
+    # 只允許修改已知的 top-level keys
+    ALLOWED_PATCH_KEYS = {"agent", "discord", "reactions", "pool", "stt", "timing"}
+    body = {k: v for k, v in body.items() if k in ALLOWED_PATCH_KEYS}
+    if not body:
+        raise HTTPException(status_code=400, detail="沒有可更新的欄位")
+
     config_path = _get_agent_dir(agent_name) / "config.toml"
     if not config_path.parent.exists():
         raise HTTPException(status_code=404, detail="Agent 不存在")
@@ -2351,10 +2357,13 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / filename
+    safe_name = Path(filename).name
+    if safe_name != filename:
+        raise HTTPException(status_code=400, detail="無效的檔案名稱")
+    path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
     if not path.exists():
         raise HTTPException(status_code=404, detail="檔案不存在")
-    return JSONResponse({"content": path.read_text(), "filename": filename})
+    return JSONResponse({"content": path.read_text(), "filename": safe_name})
 
 
 @app.put("/api/agents/{agent_name}/steering/{filename}")
