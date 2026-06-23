@@ -4,6 +4,7 @@
       <span v-for="id in modelValue" :key="id" class="inline-flex items-center gap-1 text-sm px-2 py-1 rounded"
         :class="isLocked(id) ? 'bg-white/10 text-white/50' : 'bg-cyan-600/20 text-cyan-300'">
         <img v-if="getAvatar(id)" :src="getAvatar(id)" class="w-4 h-4 rounded-full">
+        <span v-else-if="getColor(id)" class="w-3 h-3 rounded-full shrink-0" :style="{background: getColor(id)}"></span>
         {{ getLabel(id) }}
         <span v-if="isLocked(id)" class="text-[10px] text-white/30 ml-1">🔒</span>
         <button v-else @click="remove(id)" type="button" class="text-cyan-400/60 hover:text-white ml-0.5">×</button>
@@ -34,6 +35,11 @@ function isLocked(id) { return props.lockedIds.some(l => String(l) === String(id
 function getLabel(id) {
   const opt = props.options.find(o => String(o.id) === String(id))
   return opt ? opt.label : id
+}
+
+function getColor(id) {
+  const opt = props.options.find(o => String(o.id) === String(id))
+  return opt?.color || ''
 }
 
 function getAvatar(id) {

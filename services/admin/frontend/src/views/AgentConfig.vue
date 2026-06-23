@@ -462,7 +462,10 @@ async function loadRoles() {
   console.log('[AgentConfig] loadRoles group=', group)
   const res = await get(`/api/discord/roles?group=${group}`)
   if (res?.roles) {
-    roleOptions.value = res.roles.map(r => ({ id: String(r.id), label: r.name }))
+    roleOptions.value = res.roles.map(r => {
+      const hex = r.color ? '#' + r.color.toString(16).padStart(6, '0') : ''
+      return { id: String(r.id), label: r.name, color: hex }
+    })
   } else {
     roleOptions.value = []
   }
@@ -497,10 +500,10 @@ async function loadBots() {
   if (res?.members) {
     botOptions.value = res.members
       .filter(m => m.bot && (!selectedAgent.value || String(m.id) !== String(selectedAgent.value.bot_id)))
-      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar }))
+      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
     userOptions.value = res.members
       .filter(m => !m.bot)
-      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar }))
+      .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
   } else {
     botOptions.value = []
     userOptions.value = []
