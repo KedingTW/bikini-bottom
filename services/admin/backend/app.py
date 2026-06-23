@@ -235,10 +235,7 @@ def _init_db():
                 FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
         """)
-        # Seed MCP data if empty
-        cur.execute("SELECT COUNT(*) FROM mcp_servers")
-        if cur.fetchone()[0] == 0:
-            _seed_mcp_data(conn)
+
         # Migration: add token column if not exists
         try:
             cur.execute("ALTER TABLE mcp_servers ADD COLUMN token TEXT")
@@ -460,47 +457,6 @@ def _fetch_k8s_metrics() -> dict:
             }
     return result
 
-
-def _seed_mcp_data(conn):
-    """Seed MCP test data into MySQL."""
-    cur = conn.cursor()
-    servers = [
-        ("hrs-mcp", "/mcp/hrs", "人資系統 MCP"),
-        ("crm-mcp", "/mcp/crm", "CRM 客戶管理"),
-        ("sap-mcp", "/mcp/sap", "SAP 產品查詢"),
-        ("pricing-mcp", "/mcp/pricing", "報價系統"),
-        ("image-mcp", "/mcp/image", "圖片生成/處理"),
-    ]
-    for name, path, desc in servers:
-        cur.execute("INSERT IGNORE INTO mcp_servers (name, path, description) VALUES (%s, %s, %s)", (name, path, desc))
-
-    cur.execute("SELECT id, name FROM mcp_servers")
-    server_map = {name: sid for sid, name in cur.fetchall()}
-
-    tools_data = {
-        "hrs-mcp": ["GetLeaveBalance", "GetLeaveHistory", "GetLeavePolicy", "SaveLeaveRequest", "GetUser", "GetDepartment", "GetOrganizationCalendar"],
-        "crm-mcp": ["SearchCustomer", "SearchCustomerContact", "GetCrmDescription", "GetRegionSales", "CreateQuote"],
-        "sap-mcp": ["SearchProductItem", "ValidateProductCode"],
-        "pricing-mcp": ["GetRoomDoorPrice", "GetRoomDoorFramePrice", "GetFlooringPrice", "GetCabinetDoorPrice"],
-        "image-mcp": ["GenerateImage", "ResizeImage", "ComposeImage", "AddBrandFrame"],
-    }
-    for server_name, tools in tools_data.items():
-        sid = server_map.get(server_name)
-        if not sid:
-            continue
-        for tool in tools:
-            cur.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (%s, %s)", (sid, tool))
-
-    # Seed bob's config
-    for sname in ["hrs-mcp", "crm-mcp", "sap-mcp"]:
-        sid = server_map.get(sname)
-        if sid:
-            cur.execute("INSERT IGNORE INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (%s, %s, %s, %s)", ("bob", sid, "local", 1))
-    hrs_id = server_map.get("hrs-mcp")
-    if hrs_id:
-        for tool in ["GetLeaveBalance", "GetLeaveHistory", "GetUser"]:
-            cur.execute("INSERT IGNORE INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (%s, %s, %s)", ("bob", hrs_id, tool))
-    cur.close()
 
 
 _init_db()
