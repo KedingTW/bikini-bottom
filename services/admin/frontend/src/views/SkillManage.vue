@@ -6,9 +6,9 @@
       </div>
 
       <div v-if="selectedAgent">
-        <h2 class="text-lg font-semibold mb-5">{{ selectedAgent.display }} — Skills（{{ selectedAgent.skills_meta?.length || 0 }}）</h2>
+        <h2 class="text-lg font-semibold mb-5">{{ selectedAgent.display }} — 技能配置（{{ selectedAgent.skills_meta?.length || 0 }}）</h2>
 
-        <div v-if="!selectedAgent.skills_meta?.length" class="text-white/50 text-sm py-4">無 Skills</div>
+        <div v-if="!selectedAgent.skills_meta?.length" class="text-white/50 text-sm py-4">尚無技能</div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div v-for="s in selectedAgent.skills_meta" :key="s.name"
             class="bg-ocean-800/50 rounded-lg px-4 py-3 cursor-pointer hover:bg-ocean-800/70 transition border border-white/5 hover:border-cyan-400/20"

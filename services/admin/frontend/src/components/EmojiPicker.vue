@@ -4,7 +4,7 @@
       <span class="text-xl">{{ modelValue }}</span>
       <span class="text-xs text-white/40 ml-auto">▾</span>
     </button>
-    <div v-if="open" class="absolute bottom-full left-0 mb-1 z-50 bg-ocean-700 border border-white/20 rounded-lg shadow-xl w-72 max-w-[calc(100vw-2rem)] max-h-[320px] flex flex-col">
+    <div v-if="open" class="absolute bottom-full right-0 mb-1 z-50 bg-ocean-700 border border-white/20 rounded-lg shadow-xl w-72 max-w-[calc(100vw-2rem)] max-h-[320px] flex flex-col">
       <input v-model="search" placeholder="搜尋或自行輸入 emoji..." class="w-full bg-ocean-800 border-b border-white/15 rounded-t-lg px-3 py-2 text-sm text-white focus:outline-none" @keydown.enter="selectCustom">
       <div class="flex gap-1 px-2 py-1.5 border-b border-white/10 overflow-x-auto no-scrollbar">
         <button v-for="g in groups" :key="g.name" @click="activeGroup = g.name"
