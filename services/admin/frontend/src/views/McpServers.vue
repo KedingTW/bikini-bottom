@@ -100,10 +100,10 @@
         <div v-if="dialog.error" class="mb-3 text-sm text-red-400">{{ dialog.error }}</div>
         <div class="flex gap-3 justify-end">
           <button @click="dialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
-          <button v-if="dialog.type !== 'remote' || testResult === true" @click="saveDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
+          <button v-if="dialog.mode === 'edit' || dialog.type !== 'remote' || testResult === true" @click="saveDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
             💾 {{ dialog.mode === 'add' ? '新增' : '儲存' }}
           </button>
-          <button v-else @click="testConnection()" :disabled="!dialog.url.trim() || testLoading" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-40">
+          <button v-if="dialog.mode === 'add' && dialog.type === 'remote' && testResult !== true" @click="testConnection()" :disabled="!dialog.url.trim() || testLoading" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-40">
             🔗 測試連線
           </button>
         </div>
