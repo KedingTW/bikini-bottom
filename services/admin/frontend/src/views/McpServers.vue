@@ -59,6 +59,12 @@
             </div>
           </div>
           <button @click="dialog.headers.push({ key: '', value: '' })" type="button" class="mt-2 text-xs text-cyan-400 hover:underline">+ 新增 Header</button>
+          <div class="mt-3 flex items-center gap-2">
+            <button @click="testConnection()" type="button" :disabled="!dialog.url.trim() || testLoading" class="px-3 py-1.5 text-xs rounded bg-ocean-700 border border-white/15 text-white/70 hover:text-white disabled:opacity-40">🔗 測試連線</button>
+            <span v-if="testLoading" class="text-xs text-white/40">連線中...</span>
+            <span v-else-if="testResult === true" class="text-xs text-green-400">✅ 連線成功</span>
+            <span v-else-if="testResult === false" class="text-xs text-red-400">❌ {{ testError }}</span>
+          </div>
         </div>
 
         <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
@@ -97,6 +103,9 @@ const { get, post, put } = useApi()
 const servers = ref([])
 const loading = ref(false)
 const dialog = ref(null)
+const testLoading = ref(false)
+const testResult = ref(null)
+const testError = ref('')
 
 async function load() {
   loading.value = true
@@ -105,7 +114,22 @@ async function load() {
   loading.value = false
 }
 
+async function testConnection() {
+  if (!dialog.value?.url.trim()) return
+  testLoading.value = true
+  testResult.value = null
+  testError.value = ''
+  const headers = Object.fromEntries((dialog.value.headers || []).filter(h => h.key.trim()).map(h => [h.key.trim(), h.value]))
+  try {
+    const res = await post('/api/mcp-servers/test-connection', { url: dialog.value.url.trim(), headers })
+    if (res?.ok) { testResult.value = true }
+    else { testResult.value = false; testError.value = res?.detail || res?.error || '連線失敗' }
+  } catch (e) { testResult.value = false; testError.value = String(e) }
+  testLoading.value = false
+}
+
 function openAdd() {
+  testResult.value = null; testError.value = ''
   dialog.value = {
     mode: 'add', name: '', type: 'remote', url: '', headers: [{ key: '', value: '' }], command: '', argsText: '',
     description: '', error: ''
@@ -113,6 +137,7 @@ function openAdd() {
 }
 
 function openEdit(s) {
+  testResult.value = null; testError.value = ''
   dialog.value = {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
     url: s.url || '', headers: Object.entries(s.headers || {}).map(([key, value]) => ({ key, value })),
