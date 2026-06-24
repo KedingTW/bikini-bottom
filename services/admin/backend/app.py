@@ -2393,8 +2393,7 @@ async def api_agent_config_patch(agent_name: str, request: Request):
 
 @app.patch("/api/agents/{agent_name}/display")
 async def api_agent_display_update(agent_name: str, request: Request):
-    """修改角色的 display name 和 role（更新 config.toml + 記憶體）"""
-    import tomlkit
+    """修改角色的 Discord nickname"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2404,34 +2403,32 @@ async def api_agent_display_update(agent_name: str, request: Request):
         raise HTTPException(status_code=403, detail="需要管理員權限")
     body = await request.json()
     display = body.get("display", "").strip()
-    role = body.get("role", "").strip()
     if not display:
         raise HTTPException(status_code=400, detail="display 為必填")
 
-    # 更新 config.toml
-    config_path = _get_agent_dir(agent_name) / "config.toml"
-    if config_path.exists():
-        doc = tomlkit.parse(config_path.read_text())
-    else:
-        doc = tomlkit.document()
-    if "agent" not in doc:
-        doc["agent"] = tomlkit.table()
-    doc["agent"]["display"] = display
-    if role:
-        doc["agent"]["role"] = role
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(tomlkit.dumps(doc))
-
-    # 更新記憶體中的 AGENT_GROUPS / AGENTS
+    # 找到該 agent 的 bot_id 和 guild_id
+    bot_id = ""
+    guild_id = ""
     for grp in AGENT_GROUPS.values():
         for a in grp["agents"]:
             if a["name"] == agent_name:
-                a["display"] = display
-                if role:
-                    a["role"] = role
+                bot_id = a.get("bot_id", "")
+                guild_id = grp.get("guild_id", "")
                 break
+    if not bot_id or not guild_id:
+        raise HTTPException(status_code=400, detail="找不到該角色的 bot_id 或 guild_id")
 
-    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱"})
+    # 打 Discord API 改 nickname
+    try:
+        from discord_api import set_nickname
+        await set_nickname(bot_id, display)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Discord API 失敗：{e}")
+
+    # 清除 cache 讓下次 /api/agents 重新抓
+    _discord_members_cache.pop(guild_id, None)
+
+    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱為 {display}"})
 
 
 @app.get("/api/agents/{agent_name}/mcp")
