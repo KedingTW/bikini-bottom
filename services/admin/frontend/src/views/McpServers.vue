@@ -21,7 +21,6 @@
           </div>
           <span class="text-[10px] px-2 py-0.5 rounded bg-ocean-700 text-white/60">{{ s.type }}</span>
           <span v-if="s.tool_count" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ s.tool_count }} tools</span>
-          <button @click.stop="syncTools(s)" :disabled="s._syncing" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-40">{{ s._syncing ? '⏳' : '🔄' }}</button>
           <button @click="openEdit(s)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">✏️</button>
           <button @click="del_server(s)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️</button>
         </div>
@@ -67,6 +66,12 @@
             <span v-else-if="testResult === true" class="text-xs text-green-400">✅ 連線成功</span>
             <span v-else-if="testResult === false" class="text-xs text-red-400">❌ {{ testError }}</span>
           </div>
+          <div v-if="dialog.tools && dialog.tools.length" class="mt-3">
+            <div class="text-xs text-white/50 mb-1">偵測到 {{ dialog.tools.length }} 個 tools：</div>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="t in dialog.tools" :key="t" class="text-[10px] bg-cyan-600/15 text-cyan-300 px-1.5 py-0.5 rounded">{{ t }}</span>
+            </div>
+          </div>
         </div>
 
         <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
@@ -88,7 +93,7 @@
         <div v-if="dialog.error" class="mb-3 text-sm text-red-400">{{ dialog.error }}</div>
         <div class="flex gap-3 justify-end">
           <button @click="dialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
-          <button @click="saveDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
+          <button @click="saveDialog()" :disabled="dialog.type === 'remote' && testResult !== true" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed">
             {{ dialog.mode === 'add' ? '新增' : '儲存' }}
           </button>
         </div>
@@ -116,24 +121,17 @@ async function load() {
   loading.value = false
 }
 
-async function syncTools(s) {
-  s._syncing = true
-  const res = await post(`/api/mcp-servers/${s.id}/sync-tools`)
-  if (res?.ok) { s.tool_count = res.count }
-  s._syncing = false
-  load()
-}
-
 async function testConnection() {
   if (!dialog.value?.url.trim()) return
   testLoading.value = true
   testResult.value = null
   testError.value = ''
+  dialog.value.tools = []
   const headers = Object.fromEntries((dialog.value.headers || []).filter(h => h.key.trim()).map(h => [h.key.trim(), h.value]))
   try {
     const res = await post('/api/mcp-servers/test-connection', { url: dialog.value.url.trim(), headers })
-    if (res?.ok) { testResult.value = true }
-    else { testResult.value = false; testError.value = res?.detail || res?.error || '連線失敗' }
+    if (res?.ok) { testResult.value = true; dialog.value.tools = res.tools || [] }
+    else { testResult.value = false; testError.value = res?.detail || res?.error || res?.message || '連線失敗' }
   } catch (e) { testResult.value = false; testError.value = String(e) }
   testLoading.value = false
 }
@@ -142,7 +140,7 @@ function openAdd() {
   testResult.value = null; testError.value = ''
   dialog.value = {
     mode: 'add', name: '', type: 'remote', url: '', headers: [{ key: '', value: '' }], command: '', argsText: '',
-    description: '', error: ''
+    description: '', tools: [], error: ''
   }
 }
 
@@ -152,7 +150,7 @@ function openEdit(s) {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
     url: s.url || '', headers: Object.entries(s.headers || {}).map(([key, value]) => ({ key, value })),
     command: s.command || '', argsText: (s.args || []).join('\n'),
-    description: s.description || '', error: ''
+    description: s.description || '', tools: s.tools || [], error: ''
   }
 }
 
@@ -170,7 +168,7 @@ async function saveDialog() {
   const payload = {
     name: d.name.trim(), type: d.type, url: d.url.trim(), headers: headers,
     command: d.command.trim(), args: parseLines(d.argsText),
-    description: d.description.trim()
+    description: d.description.trim(), tools: d.tools || []
   }
 
   let res
