@@ -2626,7 +2626,7 @@ async def api_mcp_servers_list(request: Request):
 
 @app.get("/api/mcp-servers/{server_id}")
 async def api_mcp_server_detail(server_id: int, request: Request):
-    """取得單一 server 詳情"""
+    """取得單一 server 詳情（含 tools）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2636,9 +2636,12 @@ async def api_mcp_server_detail(server_id: int, request: Request):
         r = cur.fetchone()
         if not r:
             raise HTTPException(status_code=404, detail="Server not found")
+        cur2 = conn.execute("SELECT tool_name, description FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (server_id,))
+        tools = [{"name": t[0], "description": t[1] or ""} for t in cur2.fetchall()]
     s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "description": r[7]}
     s["headers"] = json_mod.loads(r[4]) if r[4] else {}
     s["args"] = json_mod.loads(r[6]) if r[6] else []
+    s["tools"] = tools
     return JSONResponse(s)
 
 
@@ -2724,6 +2727,12 @@ async def api_mcp_server_delete(server_id: int, request: Request):
     return JSONResponse({"ok": True, "message": "已刪除"})
 
 
+
+def _truncate_desc(desc: str, max_len: int = 50) -> str:
+    """取 description 第一行，超過 max_len 截斷加 ..."""
+    first_line = (desc or "").split("\n")[0].strip()
+    return first_line[:max_len] + "..." if len(first_line) > max_len else first_line
+
 @app.post("/api/mcp-servers/test-connection")
 async def api_mcp_test_connection(request: Request):
     """測試 MCP Server 連線 + 取得 tools list"""
@@ -2747,9 +2756,9 @@ async def api_mcp_test_connection(request: Request):
         tools = []
         result = data.get("result", data)
         if isinstance(result, dict):
-            tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result.get("tools", []) if t.get("name")]
+            tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result.get("tools", []) if t.get("name")]
         elif isinstance(result, list):
-            tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result if isinstance(t, dict) and t.get("name")]
+            tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result if isinstance(t, dict) and t.get("name")]
         return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"連線成功，{len(tools)} 個 tools"})
     except Exception as e:
         return JSONResponse({"ok": False, "tools": [], "message": f"連線失敗：{e}"})
@@ -2786,9 +2795,9 @@ async def api_mcp_sync_tools(server_id: int, request: Request):
     tools = []
     result = data.get("result", data)
     if isinstance(result, dict):
-        tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result.get("tools", []) if t.get("name")]
+        tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result.get("tools", []) if t.get("name")]
     elif isinstance(result, list):
-        tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result if isinstance(t, dict) and t.get("name")]
+        tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result if isinstance(t, dict) and t.get("name")]
     # 存入 DB
     with get_db() as conn:
         conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
