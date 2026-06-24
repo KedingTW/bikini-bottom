@@ -707,8 +707,7 @@ watch([selectedAgent, roleOptions], () => {
 const botOptions = ref([])
 const filteredBotOptions = computed(() => {
   if (!selectedAgent.value) return botOptions.value
-  const selfNames = [selectedAgent.value.name, selectedAgent.value.display].filter(Boolean).map(n => n.toLowerCase())
-  return botOptions.value.filter(o => !selfNames.includes(o.label.toLowerCase()))
+  return botOptions.value.filter(o => String(o.id) !== String(selectedAgent.value.bot_id))
 })
 async function loadBots() {
   const group = currentGroup.value
