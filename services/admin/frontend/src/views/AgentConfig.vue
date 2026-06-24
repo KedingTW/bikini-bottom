@@ -57,18 +57,18 @@
                   <IdSelect v-model="cfg.discord.allowed_users" :options="userOptions" placeholder="使用者" />
                 </Field>
                 <!-- 身分組 -->
-                <Field label="允許身分組" tip="allowed_role_ids — 只有這些身分組的訊息會被處理。自己的同名身分組已鎖定">
+                <Field v-show="roleOptions.length" label="允許身分組" tip="allowed_role_ids — 只有這些身分組的訊息會被處理。自己的同名身分組已鎖定">
                   <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" :locked-ids="lockedRoleIds" placeholder="身分組" />
                 </Field>
                 <!-- 信任角色 -->
-                <Field label="信任的角色" tip="trusted_bot_ids — 這些角色的訊息會被當作可信來源處理">
+                <Field v-show="botOptions.length" label="信任的角色" tip="trusted_bot_ids — 這些角色的訊息會被當作可信來源處理">
                   <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
                 </Field>
               </div>
             </fieldset>
             <!-- Agent -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式（agent）</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式</legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="啟動指令" tip="command — Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono" placeholder="kiro-cli"></Field>
                 <Field label="工作目錄" tip="working_dir — Agent 的工作路徑">
@@ -85,7 +85,7 @@
             </fieldset>
             <!-- Pool -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">連線池（pool）</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">連線池</legend>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <Field label="工作階段數" tip="max_sessions — 建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
                   <span v-if="rangeWarn(cfg.pool.max_sessions, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span></Field>
@@ -95,7 +95,7 @@
             </fieldset>
             <!-- Reactions -->
             <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">表情回饋（reactions）</legend>
+              <legend class="text-sm text-cyan-400 px-1 font-medium">表情回饋</legend>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Field label="啟用表情回饋" tip="reactions.enabled — 是否在訊息上添加 emoji 表示處理狀態">
                   <div class="flex items-center gap-2"><Toggle v-model="cfg.reactions.enabled" /><span class="text-sm text-white/70">{{ cfg.reactions.enabled ? '啟用' : '停用' }}</span></div>
@@ -110,7 +110,7 @@
               <div class="mt-4">
                 <div class="flex items-center mb-2"><span class="text-sm text-white/60">表情符號設定</span><button @click="resetEmojis()" type="button" class="ml-auto text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 復原預設</button></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                  <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="'狀態：'+key">
+                  <Field v-for="(val, key) in cfg.reactions.emojis" :key="key" :label="emojiLabels[key] || key" :tip="emojiLabels[key] || key">
                     <EmojiPicker v-if="key !== 'done'" v-model="cfg.reactions.emojis[key]" />
                     <div v-else class="flex items-center bg-ocean-800 border border-white/15 rounded px-3 py-2 text-xl opacity-60 cursor-not-allowed">🆗</div>
                   </Field>
@@ -212,10 +212,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
               <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
                 <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
-                <div class="min-w-0">
-                  <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.name }}</span>
-                  <span class="text-xs text-white/40 ml-1">{{ s.desc }}</span>
-                </div>
+                <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.desc }}</span>
               </label>
             </div>
           </div>
@@ -349,6 +346,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 import Field from '../components/Field.vue'
@@ -362,16 +360,22 @@ const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentLi
 
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
 const dirty = reactive({ basic: false, mcp: false, skill: false, cron: false, kb: false })
+
+onBeforeRouteLeave(() => {
+  const hasDirty = Object.values(dirty).some(v => v)
+  if (hasDirty && !confirm('有未儲存的變更，確定要離開嗎？')) return false
+})
 const cronLimit = ref(20)
 const cronDialog = ref(null)
 const showWorkDir = ref(false)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) {
+  const hasDirty = Object.values(dirty).some(v => v)
+  if (hasDirty && !confirm('有未儲存的變更，確定要切換角色嗎？')) return
   ready.value = false
   selectAgent(a)
   Object.keys(dirty).forEach(k => dirty[k] = false)
-  // Fallback: ensure ready becomes true even if loadConfig is slow
   setTimeout(() => { ready.value = true }, 500)
 }
 
@@ -484,7 +488,7 @@ async function loadSkills() {
   if (availRes?.skills) {
     mockSkills.splice(0, mockSkills.length, ...availRes.skills.map(s => ({
       name: s.name,
-      desc: s.description || s.name,
+      desc: s.description ? s.description : s.name,
       enabled: agentSkills.includes(s.name)
     })))
   }
@@ -612,7 +616,7 @@ onMounted(() => nextTick(() => { ready.value = true }))
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
 const botMap = { '1493800835853975562': '小蝸', '1496023645083009024': '派大星', '1503574146117013555': '泡芙老師' }
-const emojiLabels = { thinking: '思考中', tool_use: '使用工具', responding: '回覆中', done: '完成', error: '錯誤', queued: '排隊中', cancelled: '已取消' }
+const emojiLabels = { queued: '排隊中', thinking: '思考中', tool: '使用工具', coding: '撰寫中', web: '搜尋中', done: '完成', error: '錯誤' }
 
 // Dropdown options
 // Dropdown options (channels loaded from API)
@@ -673,7 +677,7 @@ async function loadBots() {
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
     botOptions.value = res.members
-      .filter(m => m.bot && (!selectedAgent.value || String(m.id) !== String(selectedAgent.value.bot_id)))
+      .filter(m => m.bot && (!selectedAgent.value || (String(m.id) !== String(selectedAgent.value.bot_id) && m.name !== selectedAgent.value.display)))
       .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
     userOptions.value = res.members
       .filter(m => !m.bot)
