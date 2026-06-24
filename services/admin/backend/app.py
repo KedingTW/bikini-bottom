@@ -2665,6 +2665,10 @@ async def api_mcp_server_create(request: Request):
             raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
         cur = conn.execute("SELECT id FROM mcp_servers WHERE name = ?", (name,))
         new_id = cur.fetchone()[0]
+        # 儲存 tools
+        tools = body.get("tools", [])
+        for tool_name in tools:
+            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool_name))
     return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
 
 
@@ -2687,6 +2691,11 @@ async def api_mcp_server_update(server_id: int, request: Request):
              body.get("command", "").strip() or None,
              json_mod.dumps(body.get("args", [])),
              body.get("description", "").strip(), server_id))
+        # 更新 tools（如果有傳）
+        if "tools" in body:
+            conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
+            for tool_name in body["tools"]:
+                conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
     return JSONResponse({"ok": True, "message": "已更新"})
 
 
@@ -2703,7 +2712,7 @@ async def api_mcp_server_delete(server_id: int, request: Request):
 
 @app.post("/api/mcp-servers/test-connection")
 async def api_mcp_test_connection(request: Request):
-    """測試 MCP Server 連線（不存 DB）"""
+    """測試 MCP Server 連線 + 取得 tools list"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2714,13 +2723,22 @@ async def api_mcp_test_connection(request: Request):
         raise HTTPException(status_code=400, detail="url 為必填")
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(url, headers=headers)
-            return JSONResponse({"ok": True, "status": r.status_code, "message": f"連線成功（HTTP {r.status_code}）"})
-    except httpx.TimeoutException:
-        return JSONResponse({"ok": False, "message": "連線逾時（10s）"})
+        req_headers = {**headers, "Content-Type": "application/json"}
+        rpc_body = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(url, headers=req_headers, json=rpc_body)
+            r.raise_for_status()
+            data = r.json()
+        # 解析 tools
+        tools = []
+        result = data.get("result", data)
+        if isinstance(result, dict):
+            tools = [t.get("name", "") for t in result.get("tools", []) if t.get("name")]
+        elif isinstance(result, list):
+            tools = [t.get("name", "") for t in result if isinstance(t, dict) and t.get("name")]
+        return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"連線成功，{len(tools)} 個 tools"})
     except Exception as e:
-        return JSONResponse({"ok": False, "message": f"連線失敗：{e}"})
+        return JSONResponse({"ok": False, "tools": [], "message": f"連線失敗：{e}"})
 
 
 @app.post("/api/mcp-servers/{server_id}/sync-tools")
