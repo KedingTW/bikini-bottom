@@ -78,6 +78,11 @@
           <input v-model="dialog.description" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="選填">
         </div>
 
+        <div class="mb-3">
+          <label class="block text-sm text-white/70 mb-1">Timeout（秒）<span class="text-white/40 ml-1">{{ dialog.timeout }}s</span></label>
+          <input v-model.number="dialog.timeout" type="range" min="10" max="180" class="w-full accent-cyan-500">
+        </div>
+
         <!-- Test result + tools display -->
         <div v-if="testLoading" class="mb-3 text-sm text-white/40 text-center py-2">連線測試中...</div>
         <div v-if="testResult === false" class="mb-3 text-sm text-red-400">❌ {{ testError }}</div>
@@ -128,7 +133,7 @@ function toolLabel(t) {
   if (typeof t === 'string') return t
   const name = t.name || t.tool_name || ''
   const desc = t.description || ''
-  return desc ? `${name}：${desc}` : name
+  return desc ? `${name} – ${desc}` : name
 }
 
 async function testConnection() {
@@ -150,7 +155,7 @@ function openAdd() {
   testResult.value = null; testError.value = ''
   dialog.value = {
     mode: 'add', name: '', type: 'remote', url: '', headers: [{ key: '', value: '' }], command: '', argsText: '',
-    description: '', tools: [], error: ''
+    description: '', timeout: 180, tools: [], error: ''
   }
 }
 
@@ -160,7 +165,7 @@ async function openEdit(s) {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
     url: s.url || '', headers: Object.entries(s.headers || {}).map(([key, value]) => ({ key, value })),
     command: s.command || '', argsText: (s.args || []).join('\n'),
-    description: s.description || '', tools: [], error: ''
+    description: s.description || '', timeout: s.timeout || 180, tools: [], error: ''
   }
   // Load tools from API
   const detail = await get(`/api/mcp-servers/${s.id}`)
@@ -181,7 +186,7 @@ async function saveDialog() {
   const payload = {
     name: d.name.trim(), type: d.type, url: d.url.trim(), headers: headers,
     command: d.command.trim(), args: parseLines(d.argsText),
-    description: d.description.trim(), tools: d.tools || []
+    description: d.description.trim(), timeout: d.timeout || 180, tools: d.tools || []
   }
 
   let res
