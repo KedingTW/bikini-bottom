@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keding-dc-captain
+  namespace: bikini-bottom
+  labels:
+    app: keding-dc-captain
+    group: keding-dc
+    type: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keding-dc-captain
+  template:
+    metadata:
+      labels:
+        app: keding-dc-captain
+        group: keding-dc
+        type: agent
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: agent
+        image: keding-dc/agent:latest
+        imagePullPolicy: Never
+        command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
+        env:
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: keding-dc-secrets
+              key: CAPTAIN_BOT_TOKEN
+        - name: KIRO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: keding-dc-secrets
+              key: CAPTAIN_KIRO_KEY
+        - name: GIT_AUTHOR_NAME
+          value: "Captain America Bot"
+        - name: GIT_COMMITTER_NAME
+          value: "Captain America Bot"
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: common-env
+              key: GIT_EMAIL
+        - name: GIT_COMMITTER_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: common-env
+              key: GIT_EMAIL
+        - name: AGENT_NAME
+          value: keding-dc-captain
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 768Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/openab/config.toml
+          readOnly: true
+        - name: agent-home
+          mountPath: /home/agent
+        - name: kd-dc
+          mountPath: /mnt/kd-dc
+        - name: kd-share
+          mountPath: /mnt/kd-share
+          readOnly: true
+        - name: shared-skills
+          mountPath: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+          readOnly: true
+      volumes:
+      - name: config
+        hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/captain/config.toml
+          type: File
+      - name: agent-home
+        hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/captain
+          type: Directory
+      - name: kd-dc
+        hostPath:
+          path: /mnt/kd-dc
+          type: Directory
+      - name: kd-share
+        hostPath:
+          path: /mnt/kd-share
+          type: Directory
+      - name: shared-skills
+        hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+          type: Directory
