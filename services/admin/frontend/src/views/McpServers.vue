@@ -87,8 +87,11 @@
         <div v-if="testLoading" class="mb-3 text-sm text-white/40 text-center py-2">連線測試中...</div>
         <div v-if="testResult === false" class="mb-3 text-sm text-red-400">❌ {{ testError }}</div>
         <div v-if="dialog.tools && dialog.tools.length" class="mb-4">
-          <div class="text-sm text-green-400 mb-2" v-if="testResult === true">✅ 連線成功，偵測到 {{ dialog.tools.length }} 個 tools：</div>
-          <div class="text-sm text-white/60 mb-2" v-else>已載入 {{ dialog.tools.length }} 個 tools：</div>
+          <div class="flex items-center mb-2">
+            <div class="text-sm text-green-400" v-if="testResult === true">✅ 連線成功，偵測到 {{ dialog.tools.length }} 個 tools：</div>
+            <div class="text-sm text-white/60" v-else>已載入 {{ dialog.tools.length }} 個 tools：</div>
+            <button v-if="dialog.mode === 'edit'" @click="refreshTools()" type="button" :disabled="testLoading" class="ml-auto text-xs px-2 py-1 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white disabled:opacity-40">{{ testLoading ? '⏳' : '🔄' }} 更新 tools</button>
+          </div>
           <div class="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
             <span v-for="t in dialog.tools" :key="toolName(t)" class="text-sm bg-cyan-600/15 text-cyan-300 px-2 py-1 rounded">{{ toolLabel(t) }}</span>
           </div>
@@ -134,6 +137,15 @@ function toolLabel(t) {
   const name = t.name || t.tool_name || ''
   const desc = t.description || ''
   return desc ? `${name} – ${desc}` : name
+}
+
+async function refreshTools() {
+  if (!dialog.value?.url.trim()) return
+  testLoading.value = true
+  const headers = Object.fromEntries((dialog.value.headers || []).filter(h => h.key.trim()).map(h => [h.key.trim(), h.value]))
+  const res = await post('/api/mcp-servers/test-connection', { url: dialog.value.url.trim(), headers })
+  if (res?.ok && res.tools) { dialog.value.tools = res.tools; testResult.value = true }
+  testLoading.value = false
 }
 
 async function testConnection() {
