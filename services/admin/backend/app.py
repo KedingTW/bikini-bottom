@@ -199,19 +199,17 @@ def _init_db():
             CREATE TABLE IF NOT EXISTS mcp_servers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(64) NOT NULL UNIQUE,
-                path VARCHAR(128) NOT NULL,
+                type VARCHAR(16) NOT NULL DEFAULT 'remote',
+                url TEXT,
+                headers JSON,
+                command VARCHAR(255),
+                args JSON,
+                env JSON,
+                auto_approve JSON,
+                disabled_tools JSON,
+                disabled TINYINT DEFAULT 0,
                 description VARCHAR(255) DEFAULT '',
-                token TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS mcp_server_tools (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                server_id INT NOT NULL,
-                tool_name VARCHAR(128) NOT NULL,
-                UNIQUE KEY uk_server_tool (server_id, tool_name),
-                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
         """)
         cur.execute("""
@@ -219,28 +217,14 @@ def _init_db():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 agent_name VARCHAR(64) NOT NULL,
                 server_id INT NOT NULL,
-                env VARCHAR(16) NOT NULL DEFAULT 'local',
                 enabled TINYINT DEFAULT 1,
+                auto_approve_override JSON,
+                disabled_tools_override JSON,
                 UNIQUE KEY uk_agent_server (agent_name, server_id),
                 FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
         """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS mcp_agent_tool_filter (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                agent_name VARCHAR(64) NOT NULL,
-                server_id INT NOT NULL,
-                tool_name VARCHAR(128) NOT NULL,
-                UNIQUE KEY uk_agent_tool (agent_name, server_id, tool_name),
-                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
-            )
-        """)
 
-        # Migration: add token column if not exists
-        try:
-            cur.execute("ALTER TABLE mcp_servers ADD COLUMN token TEXT")
-        except Exception:
-            pass  # column already exists
         cur.close()
         conn.close()
     else:
@@ -2756,35 +2740,45 @@ async def api_mcp_pool_agent_save(agent_name: str, request: Request):
 
 @app.get("/api/mcp-servers")
 async def api_mcp_servers_list(request: Request):
-    """列出所有 MCP Servers（含 tools 數量）"""
+    """列出所有 MCP Servers"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("""
-            SELECT s.id, s.name, s.path, s.description, s.token,
-                   (SELECT COUNT(*) FROM mcp_server_tools t WHERE t.server_id = s.id) as tool_count
-            FROM mcp_servers s ORDER BY s.name
-        """)
+        cur = conn.execute("SELECT id, name, type, url, headers, command, args, env, auto_approve, disabled_tools, disabled, description FROM mcp_servers ORDER BY name")
         rows = cur.fetchall()
-    return JSONResponse({"servers": [{"id": r[0], "name": r[1], "path": r[2], "description": r[3], "has_token": bool(r[4]), "tool_count": r[5]} for r in rows]})
+    servers = []
+    for r in rows:
+        s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "disabled": bool(r[10]), "description": r[11]}
+        s["headers"] = json_mod.loads(r[4]) if r[4] else {}
+        s["args"] = json_mod.loads(r[6]) if r[6] else []
+        s["env"] = json_mod.loads(r[7]) if r[7] else {}
+        s["auto_approve"] = json_mod.loads(r[8]) if r[8] else []
+        s["disabled_tools"] = json_mod.loads(r[9]) if r[9] else []
+        servers.append(s)
+    return JSONResponse({"servers": servers})
 
 
 @app.get("/api/mcp-servers/{server_id}")
 async def api_mcp_server_detail(server_id: int, request: Request):
-    """取得單一 server 詳情 + tools 列表"""
+    """取得單一 server 詳情"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, path, description, token FROM mcp_servers WHERE id = ?", (server_id,))
-        row = cur.fetchone()
-        if not row:
+        cur = conn.execute("SELECT id, name, type, url, headers, command, args, env, auto_approve, disabled_tools, disabled, description FROM mcp_servers WHERE id = ?", (server_id,))
+        r = cur.fetchone()
+        if not r:
             raise HTTPException(status_code=404, detail="Server not found")
-        server = {"id": row[0], "name": row[1], "path": row[2], "description": row[3], "has_token": bool(row[4])}
-        cur2 = conn.execute("SELECT id, tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (server_id,))
-        server["tools"] = [{"id": r[0], "name": r[1]} for r in cur2.fetchall()]
-    return JSONResponse(server)
+    s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "disabled": bool(r[10]), "description": r[11]}
+    s["headers"] = json_mod.loads(r[4]) if r[4] else {}
+    s["args"] = json_mod.loads(r[6]) if r[6] else []
+    s["env"] = json_mod.loads(r[7]) if r[7] else {}
+    s["auto_approve"] = json_mod.loads(r[8]) if r[8] else []
+    s["disabled_tools"] = json_mod.loads(r[9]) if r[9] else []
+    return JSONResponse(s)
 
 
 @app.post("/api/mcp-servers")
@@ -2793,23 +2787,33 @@ async def api_mcp_server_create(request: Request):
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    import json as json_mod
     body = await request.json()
     name = body.get("name", "").strip()
-    path = body.get("path", "").strip()
-    desc = body.get("description", "").strip()
-    token = body.get("token", "").strip() or None
-    if not name or not path:
-        raise HTTPException(status_code=400, detail="name 和 path 為必填")
+    stype = body.get("type", "remote")
+    if not name:
+        raise HTTPException(status_code=400, detail="name 為必填")
+    if stype == "remote" and not body.get("url", "").strip():
+        raise HTTPException(status_code=400, detail="Remote server 的 url 為必填")
+    if stype == "stdio" and not body.get("command", "").strip():
+        raise HTTPException(status_code=400, detail="Stdio server 的 command 為必填")
     with get_db() as conn:
         try:
-            conn.execute("INSERT INTO mcp_servers (name, path, description, token) VALUES (?, ?, ?, ?)", (name, path, desc, token))
+            conn.execute("""INSERT INTO mcp_servers (name, type, url, headers, command, args, env, auto_approve, disabled_tools, disabled, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (name, stype, body.get("url", "").strip() or None,
+                 json_mod.dumps(body.get("headers", {})),
+                 body.get("command", "").strip() or None,
+                 json_mod.dumps(body.get("args", [])),
+                 json_mod.dumps(body.get("env", {})),
+                 json_mod.dumps(body.get("auto_approve", [])),
+                 json_mod.dumps(body.get("disabled_tools", [])),
+                 1 if body.get("disabled") else 0,
+                 body.get("description", "").strip()))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
         cur = conn.execute("SELECT id FROM mcp_servers WHERE name = ?", (name,))
         new_id = cur.fetchone()[0]
-        tools = body.get("tools", [])
-        for tool in tools:
-            conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool))
     return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
 
 
@@ -2819,26 +2823,30 @@ async def api_mcp_server_update(server_id: int, request: Request):
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    import json as json_mod
     body = await request.json()
     with get_db() as conn:
         cur = conn.execute("SELECT id FROM mcp_servers WHERE id = ?", (server_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Server not found")
-        updates = []
-        params = []
-        for field in ["name", "path", "description", "token"]:
-            if field in body:
-                updates.append(f"{field} = ?")
-                params.append(body[field])
-        if updates:
-            params.append(server_id)
-            conn.execute(f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = ?", tuple(params))
+        conn.execute("""UPDATE mcp_servers SET name=?, type=?, url=?, headers=?, command=?, args=?, env=?,
+            auto_approve=?, disabled_tools=?, disabled=?, description=? WHERE id=?""",
+            (body.get("name", "").strip(), body.get("type", "remote"),
+             body.get("url", "").strip() or None,
+             json_mod.dumps(body.get("headers", {})),
+             body.get("command", "").strip() or None,
+             json_mod.dumps(body.get("args", [])),
+             json_mod.dumps(body.get("env", {})),
+             json_mod.dumps(body.get("auto_approve", [])),
+             json_mod.dumps(body.get("disabled_tools", [])),
+             1 if body.get("disabled") else 0,
+             body.get("description", "").strip(), server_id))
     return JSONResponse({"ok": True, "message": "已更新"})
 
 
 @app.delete("/api/mcp-servers/{server_id}")
 async def api_mcp_server_delete(server_id: int, request: Request):
-    """刪除 MCP Server（CASCADE 刪除 tools + agent configs）"""
+    """刪除 MCP Server（CASCADE 刪除 agent configs）"""
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2847,87 +2855,52 @@ async def api_mcp_server_delete(server_id: int, request: Request):
     return JSONResponse({"ok": True, "message": "已刪除"})
 
 
-@app.post("/api/mcp-servers/{server_id}/tools")
-async def api_mcp_server_add_tool(server_id: int, request: Request):
-    """新增 tool 到 server"""
-    user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    body = await request.json()
-    tool_name = body.get("name", "").strip()
-    if not tool_name:
-        raise HTTPException(status_code=400, detail="tool name 為必填")
-    with get_db() as conn:
-        conn.execute("INSERT IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
-    return JSONResponse({"ok": True})
-
-
-@app.delete("/api/mcp-servers/{server_id}/tools/{tool_id}")
-async def api_mcp_server_del_tool(server_id: int, tool_id: int, request: Request):
-    """刪除 server 的 tool"""
-    user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    with get_db() as conn:
-        conn.execute("DELETE FROM mcp_server_tools WHERE id = ? AND server_id = ?", (tool_id, server_id))
-    return JSONResponse({"ok": True})
-
-
 @app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
 async def api_mcp_pool_for_agent(agent_name: str, request: Request):
-    """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
+    """取得所有 servers + 該角色的啟用狀態"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers ORDER BY name")
+        cur = conn.execute("SELECT id, name, type, url, command, auto_approve, disabled, description FROM mcp_servers WHERE disabled = 0 ORDER BY name")
         servers = []
         for r in cur.fetchall():
-            sid = r[0]
-            cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
-            tools = [t[0] for t in cur2.fetchall()]
-            servers.append({"id": sid, "name": r[1], "path": r[2], "description": r[3], "tools": tools})
-        cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
-        agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
-        cur4 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
-        tool_filter = {}
-        for r in cur4.fetchall():
-            tool_filter.setdefault(r[0], []).append(r[1])
-    return JSONResponse({"servers": servers, "agent_config": agent_config, "tool_filter": tool_filter})
+            servers.append({"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[4],
+                            "auto_approve": json_mod.loads(r[5]) if r[5] else [], "description": r[7]})
+        cur2 = conn.execute("SELECT server_id, enabled, auto_approve_override, disabled_tools_override FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+        agent_config = {}
+        for r in cur2.fetchall():
+            agent_config[r[0]] = {"enabled": bool(r[1]),
+                                  "auto_approve_override": json_mod.loads(r[2]) if r[2] else None,
+                                  "disabled_tools_override": json_mod.loads(r[3]) if r[3] else None}
+    return JSONResponse({"servers": servers, "agent_config": agent_config})
 
 
 @app.post("/api/mcp-servers/save-agent-config/{agent_name}")
 async def api_mcp_save_agent_config(agent_name: str, request: Request):
-    """儲存角色的 MCP 配置到 MySQL + 生成 mcp.json"""
+    """儲存角色的 MCP 配置 + 生成 mcp.json"""
     import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     body = await request.json()
-    config = body.get("config", {})
-    tool_filter = body.get("toolFilter", {})
-    logging.info(f"[MCP Save] agent={agent_name}, config_keys={list(config.keys())}, toolFilter_keys={list(tool_filter.keys())}")
+    config = body.get("config", {})  # {server_id: {enabled, auto_approve_override, disabled_tools_override}}
 
-    # 寫 DB
     with get_db() as conn:
         if USE_MYSQL:
             conn._conn.autocommit = False
         try:
             conn.execute("DELETE FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
-            conn.execute("DELETE FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
             for sid_str, cfg in config.items():
                 sid = int(sid_str)
-                conn.execute("INSERT INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (?, ?, ?, ?)",
-                             (agent_name, sid, cfg.get("env", "local"), 1 if cfg.get("enabled", True) else 0))
-            for sid_str, tools in tool_filter.items():
-                sid = int(sid_str)
-                for tool in tools:
-                    conn.execute("INSERT INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (?, ?, ?)",
-                                 (agent_name, sid, tool))
+                conn.execute("""INSERT INTO mcp_agent_config (agent_name, server_id, enabled, auto_approve_override, disabled_tools_override)
+                    VALUES (?, ?, ?, ?, ?)""",
+                    (agent_name, sid, 1 if cfg.get("enabled") else 0,
+                     json_mod.dumps(cfg["auto_approve_override"]) if cfg.get("auto_approve_override") else None,
+                     json_mod.dumps(cfg["disabled_tools_override"]) if cfg.get("disabled_tools_override") else None))
             conn.commit()
-            logging.info(f"[MCP Save] DB commit 成功, inserted {len(config)} servers")
         except Exception as e:
-            logging.error(f"[MCP Save] DB 寫入失敗：{e}")
             if USE_MYSQL:
                 conn._conn.rollback()
             raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
@@ -2935,39 +2908,55 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             if USE_MYSQL:
                 conn._conn.autocommit = True
 
-    # 生成 mcp.json（用新連線讀取剛寫入的資料）
+    # 生成 mcp.json
     try:
         with get_db() as conn:
-            cur = conn.execute("SELECT id, name, path, token FROM mcp_servers")
-            server_map = {r[0]: {"name": r[1], "path": r[2], "token": r[3]} for r in cur.fetchall()}
-            cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            cur = conn.execute("SELECT id, name, type, url, headers, command, args, env, auto_approve, disabled_tools FROM mcp_servers")
+            server_map = {}
+            for r in cur.fetchall():
+                server_map[r[0]] = {"name": r[1], "type": r[2], "url": r[3],
+                    "headers": json_mod.loads(r[4]) if r[4] else {},
+                    "command": r[5], "args": json_mod.loads(r[6]) if r[6] else [],
+                    "env": json_mod.loads(r[7]) if r[7] else {},
+                    "auto_approve": json_mod.loads(r[8]) if r[8] else [],
+                    "disabled_tools": json_mod.loads(r[9]) if r[9] else []}
+            cur2 = conn.execute("SELECT server_id, enabled, auto_approve_override, disabled_tools_override FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
-            cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
-            tool_filters = {}
-            for r in cur3.fetchall():
-                tool_filters.setdefault(r[0], []).append(r[1])
 
-        mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
         mcp_json = {"mcpServers": {}}
-        for server_id, env, enabled in agent_cfg:
+        for server_id, enabled, aa_override, dt_override in agent_cfg:
             if not enabled:
                 continue
             srv = server_map.get(server_id)
             if not srv:
                 continue
-            entry = {"url": f"{mcp_base_url}{srv['path']}"}
-            if srv.get("token"):
-                entry["headers"] = {"Authorization": f"Bearer {srv['token']}"}
-            if server_id in tool_filters:
-                entry["allowedTools"] = tool_filters[server_id]
+            entry = {}
+            if srv["type"] == "remote":
+                entry["url"] = srv["url"]
+                if srv["headers"]:
+                    entry["headers"] = srv["headers"]
+            else:
+                entry["command"] = srv["command"]
+                entry["args"] = srv["args"]
+            if srv["env"]:
+                entry["env"] = srv["env"]
+            # autoApprove: use override if set, else server default
+            aa = json_mod.loads(aa_override) if aa_override else srv["auto_approve"]
+            if aa:
+                entry["autoApprove"] = aa
+            # disabledTools: use override if set, else server default
+            dt = json_mod.loads(dt_override) if dt_override else srv["disabled_tools"]
+            if dt:
+                entry["disabledTools"] = dt
             mcp_json["mcpServers"][srv["name"]] = entry
 
         mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
         mcp_path.parent.mkdir(parents=True, exist_ok=True)
         mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
-        logging.info(f"[MCP Save] mcp.json 生成成功: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
+        logging.info(f"[MCP Save] mcp.json written: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
     except Exception as e:
         logging.error(f"[MCP Save] 生成 mcp.json 失敗：{e}")
+        return JSONResponse({"ok": True, "message": f"已儲存但生成 mcp.json 失敗：{e}"})
 
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
@@ -2975,7 +2964,7 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
 
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/skills", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
