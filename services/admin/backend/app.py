@@ -2749,10 +2749,15 @@ def _truncate_desc(desc: str, max_len: int = 50) -> str:
 
 @app.post("/api/mcp-servers/test-connection")
 async def api_mcp_test_connection(request: Request):
-    """測試 MCP Server 連線 + 取得 tools list"""
+    """測試 MCP Server 連線 + 取得 tools list（需 admin）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    # SSRF 防護：限制 admin 才能使用
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理員權限")
     body = await request.json()
     url = body.get("url", "").strip()
     headers = body.get("headers", {})
@@ -2812,12 +2817,23 @@ async def api_mcp_sync_tools(server_id: int, request: Request):
         tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result.get("tools", []) if t.get("name")]
     elif isinstance(result, list):
         tools = [{"name": t.get("name", ""), "description": _truncate_desc(t.get("description", ""))} for t in result if isinstance(t, dict) and t.get("name")]
-    # 存入 DB
+    # 存入 DB（transaction 保護）
     with get_db() as conn:
-        conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
-        for tool in tools:
-            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name, description) VALUES (?, ?, ?)",
-                         (server_id, tool["name"], tool["description"]))
+        if USE_MYSQL:
+            conn._conn.autocommit = False
+        try:
+            conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
+            for tool in tools:
+                conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name, description) VALUES (?, ?, ?)",
+                             (server_id, tool["name"], tool["description"]))
+            conn.commit()
+        except Exception:
+            if USE_MYSQL:
+                conn._conn.rollback()
+            raise
+        finally:
+            if USE_MYSQL:
+                conn._conn.autocommit = True
     return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"同步成功，共 {len(tools)} 個 tools"})
 
 
