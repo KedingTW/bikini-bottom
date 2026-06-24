@@ -2613,11 +2613,13 @@ async def api_mcp_servers_list(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, type, url, headers, command, args, description FROM mcp_servers ORDER BY name")
+        cur = conn.execute("""SELECT s.id, s.name, s.type, s.url, s.headers, s.command, s.args, s.description,
+            (SELECT COUNT(*) FROM mcp_server_tools t WHERE t.server_id = s.id) as tool_count
+            FROM mcp_servers s ORDER BY s.name""")
         rows = cur.fetchall()
     servers = []
     for r in rows:
-        s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "description": r[7]}
+        s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "description": r[7], "tool_count": r[8]}
         s["headers"] = json_mod.loads(r[4]) if r[4] else {}
         s["args"] = json_mod.loads(r[6]) if r[6] else []
         servers.append(s)
