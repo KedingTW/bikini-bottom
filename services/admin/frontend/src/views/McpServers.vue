@@ -60,18 +60,6 @@
             </div>
           </div>
           <button @click="dialog.headers.push({ key: '', value: '' })" type="button" class="mt-2 text-xs text-cyan-400 hover:underline">+ 新增 Header</button>
-          <div class="mt-3 flex items-center gap-2">
-            <button @click="testConnection()" type="button" :disabled="!dialog.url.trim() || testLoading" class="px-3 py-1.5 text-xs rounded bg-ocean-700 border border-white/15 text-white/70 hover:text-white disabled:opacity-40">🔗 測試連線</button>
-            <span v-if="testLoading" class="text-xs text-white/40">連線中...</span>
-            <span v-else-if="testResult === true" class="text-xs text-green-400">✅ 連線成功</span>
-            <span v-else-if="testResult === false" class="text-xs text-red-400">❌ {{ testError }}</span>
-          </div>
-          <div v-if="dialog.tools && dialog.tools.length" class="mt-3">
-            <div class="text-xs text-white/50 mb-1">偵測到 {{ dialog.tools.length }} 個 tools：</div>
-            <div class="flex flex-wrap gap-1">
-              <span v-for="t in dialog.tools" :key="t" class="text-[10px] bg-cyan-600/15 text-cyan-300 px-1.5 py-0.5 rounded">{{ t }}</span>
-            </div>
-          </div>
         </div>
 
         <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
@@ -90,11 +78,24 @@
           <input v-model="dialog.description" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="選填">
         </div>
 
+        <!-- Test result + tools display -->
+        <div v-if="testLoading" class="mb-3 text-sm text-white/40 text-center py-2">連線測試中...</div>
+        <div v-if="testResult === false" class="mb-3 text-sm text-red-400">❌ {{ testError }}</div>
+        <div v-if="testResult === true && dialog.tools && dialog.tools.length" class="mb-4">
+          <div class="text-sm text-green-400 mb-2">✅ 連線成功，偵測到 {{ dialog.tools.length }} 個 tools：</div>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="t in dialog.tools" :key="t" class="text-sm bg-cyan-600/15 text-cyan-300 px-2 py-1 rounded">{{ t }}</span>
+          </div>
+        </div>
+
         <div v-if="dialog.error" class="mb-3 text-sm text-red-400">{{ dialog.error }}</div>
         <div class="flex gap-3 justify-end">
           <button @click="dialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
-          <button @click="saveDialog()" :disabled="dialog.type === 'remote' && testResult !== true" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-            {{ dialog.mode === 'add' ? '新增' : '儲存' }}
+          <button v-if="dialog.type !== 'remote' || testResult === true" @click="saveDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
+            💾 {{ dialog.mode === 'add' ? '新增' : '儲存' }}
+          </button>
+          <button v-else @click="testConnection()" :disabled="!dialog.url.trim() || testLoading" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-40">
+            🔗 測試連線
           </button>
         </div>
       </div>
