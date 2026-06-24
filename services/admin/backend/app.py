@@ -530,7 +530,7 @@ AGENT_GROUPS = {
         "platform": "discord",
         "guild_id": "1513867618899988480",
         "agents": [
-            {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
+            {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform", "bot_id": "1514058459585445888"},
             {"name": "order-teacher", "display": "訂單小老師", "role": "考試訓練", "type": "agent", "icon": "📝", "deployment": "keding-dc-order-teacher", "bot_id": "1516345749854752819"},
             {"name": "captain", "display": "美國隊長", "role": "統合協調", "type": "agent", "icon": "🛡️", "deployment": "keding-dc-captain", "bot_id": "1516009402321211493"},
             {"name": "ironman", "display": "鋼鐵人", "role": "業務管理", "type": "agent", "icon": "🚀", "deployment": "keding-dc-ironman", "bot_id": "1516011013223354428"},
