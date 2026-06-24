@@ -70,8 +70,8 @@ spec:
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: nas
-              mountPath: /nas
+            - name: kd-dev
+              mountPath: /mnt/kd-dev
             - name: shared-steering
               mountPath: /opt/steering
               readOnly: true
@@ -87,12 +87,13 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/conch
             type: Directory
-        - name: nas
-          persistentVolumeClaim:
-            claimName: nas-pvc
+        - name: kd-dev
+          hostPath:
+            path: /mnt/kd-dev
+            type: Directory
         - name: shared-steering
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
+            path: /home/kdprogramer/Projects/bikini-bottom/shared/bikini-bottom/steering
             type: Directory
         - name: shared-skills
           hostPath:

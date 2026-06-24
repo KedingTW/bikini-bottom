@@ -97,7 +97,7 @@ get_agent_dir() {
     local agent=$(basename "$group_agent")
 
     if [ "$group" = "bikini-bottom" ]; then
-        echo "$REPO_ROOT/agents/$agent"
+        echo "$REPO_ROOT/agents/bikini-bottom/$agent"
     else
         echo "$REPO_ROOT/agents/$group/$agent"
     fi
