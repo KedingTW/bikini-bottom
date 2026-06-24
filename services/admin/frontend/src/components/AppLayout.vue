@@ -145,7 +145,7 @@ const pageTitle = computed(() => {
   const map = {
     home: '總覽', metrics: '資源監控', costs: '成本監控', alerts: '異常通知',
     messaging: '訊息推送', members: '成員管理', threads: '討論串管理', 'thread-analytics': '討論串分析',
-    'agent-config': '角色配置', mcp: 'MCP 管理', 'mcp-servers': 'MCP 伺服器', skills: '技能管理', steering: '行為指引',
+    'agent-config': '角色配置', mcp: 'MCP 管理', skills: '技能管理', steering: '行為指引',
     cronjobs: '排程任務', knowledge: '知識庫',
     system: '系統資源', logs: '日誌搜尋', deploy: '部署管理', 'api-keys': 'API 金鑰',
     users: '使用者管理',

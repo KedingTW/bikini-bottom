@@ -2572,7 +2572,175 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     })
 
 
-# ─── MCP Servers CRUD API ───
+# ─── MCP Pool API (file-based) ───
+MCP_CONFIGS_DIR = REPO_DIR / "mcp-configs"
+
+
+@app.get("/api/mcp-pool")
+async def api_mcp_pool(request: Request):
+    """取得 MCP Pool 定義（所有 server + tools）+ 可用環境 + profiles"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+
+    result = {"servers": {}, "environments": [], "profiles": {}}
+
+    servers_path = MCP_CONFIGS_DIR / "servers.json"
+    if servers_path.exists():
+        try:
+            data = json_mod.loads(servers_path.read_text())
+            result["servers"] = data.get("servers", {})
+        except json_mod.JSONDecodeError as e:
+            return JSONResponse({"error": f"servers.json 格式錯誤：{e}"}, status_code=500)
+
+    env_dir = MCP_CONFIGS_DIR / "environments"
+    if env_dir.exists():
+        for f in sorted(env_dir.iterdir()):
+            if f.suffix == ".json":
+                try:
+                    env_data = json_mod.loads(f.read_text())
+                    result["environments"].append({
+                        "name": f.stem,
+                        "baseUrl": env_data.get("baseUrl", ""),
+                        "comment": env_data.get("$comment", ""),
+                    })
+                except json_mod.JSONDecodeError:
+                    pass
+
+    prof_dir = MCP_CONFIGS_DIR / "profiles"
+    if prof_dir.exists():
+        for f in sorted(prof_dir.iterdir()):
+            if f.suffix == ".json":
+                try:
+                    prof_data = json_mod.loads(f.read_text())
+                    result["profiles"][f.stem] = prof_data.get("servers", [])
+                except json_mod.JSONDecodeError:
+                    pass
+
+    return JSONResponse(result)
+
+
+@app.get("/api/mcp-pool/agent/{agent_name}")
+async def api_mcp_pool_agent(agent_name: str, request: Request):
+    """取得某角色的 MCP 配置"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    config = _read_agent_mcp_config(agent_name)
+    if config is None:
+        return JSONResponse({"error": None, "config": None})
+    return JSONResponse({"error": None, "config": config})
+
+
+def _read_agent_mcp_config(agent_name: str) -> dict:
+    """Read agent MCP config from agent-configs.json or generate.js fallback."""
+    import json as json_mod, subprocess
+
+    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
+    if json_path.exists():
+        try:
+            data = json_mod.loads(json_path.read_text())
+            if agent_name in data:
+                return data[agent_name]
+        except Exception:
+            pass
+
+    # Fallback: use node to extract from generate.js
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    if not generate_path.exists():
+        return None
+    try:
+        script = (
+            f"const fs = require('fs');"
+            f"const content = fs.readFileSync('{generate_path}', 'utf8');"
+            f"const match = content.match(/const AGENT_MCP_CONFIGS\\s*=/);"
+            f"if (!match) {{ console.log('null'); process.exit(0); }}"
+            f"const fn = new Function('return (' + content.slice(match.index + match[0].length).split(/^}};/m)[0] + '}})');"
+            f"const configs = fn();"
+            f"console.log(JSON.stringify(configs['{agent_name}'] || null));"
+        )
+        result = subprocess.run(
+            ["node", "-e", script],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(MCP_CONFIGS_DIR)
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return json_mod.loads(result.stdout.strip())
+    except Exception:
+        pass
+    return None
+
+
+@app.post("/api/mcp-pool/agent/{agent_name}")
+async def api_mcp_pool_agent_save(agent_name: str, request: Request):
+    """儲存角色的 MCP Pool 配置並執行 generate.js"""
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    import json as json_mod, subprocess
+
+    body = await request.json()
+    new_config = {
+        "profile": body.get("profile", "full"),
+        "default": body.get("default", "local"),
+        "overrides": body.get("overrides", {}),
+    }
+    if body.get("disabled"):
+        new_config["disabled"] = body["disabled"]
+    if body.get("toolFilter"):
+        new_config["toolFilter"] = body["toolFilter"]
+
+    # Save to agent-configs.json
+    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
+    backup_path = MCP_CONFIGS_DIR / "agent-configs.json.bak"
+    if json_path.exists():
+        backup_path.write_text(json_path.read_text())
+
+    try:
+        existing = {}
+        if json_path.exists():
+            existing = json_mod.loads(json_path.read_text())
+        existing[agent_name] = new_config
+        json_path.write_text(json_mod.dumps(existing, indent=2, ensure_ascii=False) + "\n")
+    except Exception as e:
+        if backup_path.exists():
+            json_path.write_text(backup_path.read_text())
+        raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
+
+    # Execute generate.js
+    generate_path = MCP_CONFIGS_DIR / "generate.js"
+    generate_result = None
+
+    if generate_path.exists():
+        gen_backup = MCP_CONFIGS_DIR / "generate.js.bak"
+        gen_backup.write_text(generate_path.read_text())
+        try:
+            result = subprocess.run(
+                ["node", str(generate_path), agent_name],
+                capture_output=True, text=True, timeout=15,
+                cwd=str(MCP_CONFIGS_DIR.parent)
+            )
+            generate_result = {
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode
+            }
+        except FileNotFoundError:
+            generate_result = {"error": "node not found"}
+        except subprocess.TimeoutExpired:
+            generate_result = {"error": "generate.js 執行逾時"}
+        except Exception as e:
+            generate_result = {"error": str(e)}
+
+    return JSONResponse({
+        "ok": True,
+        "message": f"已儲存 {agent_name} 的 MCP 配置",
+        "generate": generate_result
+    })
+
 
 @app.get("/api/mcp-servers")
 async def api_mcp_servers_list(request: Request):
@@ -2791,13 +2959,11 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
 
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
-    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
-
 
 
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/skills", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
