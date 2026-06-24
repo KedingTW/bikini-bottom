@@ -511,16 +511,16 @@ AGENT_GROUPS = {
         "platform": "discord",
         "guild_id": os.environ.get("DISCORD_GUILD_ID", ""),
         "agents": [
-            {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
-            {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
-            {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
-            {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
-            {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
-            {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
-            {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
-            {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
-            {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
-            {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
+            {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽", "bot_id": "1492085509596516362"},
+            {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐", "bot_id": "1496023645083009024"},
+            {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋", "bot_id": "1509104920954142871"},
+            {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞", "bot_id": "1509105546060501184"},
+            {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑", "bot_id": "1503698574477627482"},
+            {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️", "bot_id": "1504275756488986774"},
+            {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡", "bot_id": "1503574146117013555"},
+            {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚", "bot_id": "1505753410765459567"},
+            {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸", "bot_id": "1511295414366769202"},
+            {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌", "bot_id": "1493800835853975562"},
         ],
     },
     "keding-dc": {
@@ -2255,6 +2255,7 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
             "name": name,
             "display": agent["display"],
             "role": agent["role"],
+            "bot_id": agent.get("bot_id", ""),
             "mcp_servers": mcp_servers,
             "mcp_enabled": mcp_enabled,
             "skills_count": len(skills_meta),
@@ -2353,6 +2354,45 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     deep_merge(doc, body)
     config_path.write_text(tomlkit.dumps(doc))
     return JSONResponse({"ok": True, "message": "已儲存"})
+
+
+@app.patch("/api/agents/{agent_name}/display")
+async def api_agent_display_update(agent_name: str, request: Request):
+    """修改角色的 display name 和 role（更新 config.toml + 記憶體）"""
+    import tomlkit
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    display = body.get("display", "").strip()
+    role = body.get("role", "").strip()
+    if not display:
+        raise HTTPException(status_code=400, detail="display 為必填")
+
+    # 更新 config.toml
+    config_path = _get_agent_dir(agent_name) / "config.toml"
+    if config_path.exists():
+        doc = tomlkit.parse(config_path.read_text())
+    else:
+        doc = tomlkit.document()
+    if "agent" not in doc:
+        doc["agent"] = tomlkit.table()
+    doc["agent"]["display"] = display
+    if role:
+        doc["agent"]["role"] = role
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(tomlkit.dumps(doc))
+
+    # 更新記憶體中的 AGENT_GROUPS / AGENTS
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                a["display"] = display
+                if role:
+                    a["role"] = role
+                break
+
+    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱"})
 
 
 @app.get("/api/agents/{agent_name}/mcp")
