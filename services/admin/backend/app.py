@@ -2737,8 +2737,14 @@ async def api_mcp_server_delete(server_id: int, request: Request):
 
 
 def _truncate_desc(desc: str, max_len: int = 50) -> str:
-    """取 description 第一行，超過 max_len 截斷加 ..."""
+    """清理 + 截斷 description：移除前綴符號和冗餘標題，取第一行。"""
+    import re
     first_line = (desc or "").split("\n")[0].strip()
+    # 移除開頭 > 符號
+    first_line = re.sub(r'^>\s*', '', first_line)
+    # 移除 "Xxx Mcp Server Tool：" 前綴
+    first_line = re.sub(r'^.*Mcp Server Tool[：:]\s*', '', first_line)
+    first_line = first_line.strip()
     return first_line[:max_len] + "..." if len(first_line) > max_len else first_line
 
 @app.post("/api/mcp-servers/test-connection")
