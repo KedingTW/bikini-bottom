@@ -20,6 +20,8 @@
             <div class="text-[11px] text-white/50 truncate">{{ s.type === 'remote' ? s.url : s.command }} · {{ s.description || '無說明' }}</div>
           </div>
           <span class="text-[10px] px-2 py-0.5 rounded bg-ocean-700 text-white/60">{{ s.type }}</span>
+          <span v-if="s.tool_count" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ s.tool_count }} tools</span>
+          <button @click.stop="syncTools(s)" :disabled="s._syncing" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-40">{{ s._syncing ? '⏳' : '🔄' }}</button>
           <button @click="openEdit(s)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">✏️</button>
           <button @click="del_server(s)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️</button>
         </div>
@@ -112,6 +114,14 @@ async function load() {
   const res = await get('/api/mcp-servers')
   servers.value = res?.servers || []
   loading.value = false
+}
+
+async function syncTools(s) {
+  s._syncing = true
+  const res = await post(`/api/mcp-servers/${s.id}/sync-tools`)
+  if (res?.ok) { s.tool_count = res.count }
+  s._syncing = false
+  load()
 }
 
 async function testConnection() {
