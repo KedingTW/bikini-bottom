@@ -123,8 +123,13 @@ async function load() {
   loading.value = false
 }
 
-function toolName(t) { return typeof t === 'string' ? t : t.name }
-function toolLabel(t) { if (typeof t === 'string') return t; return t.description || t.name }
+function toolName(t) { return typeof t === 'string' ? t : t.name || t.tool_name }
+function toolLabel(t) {
+  if (typeof t === 'string') return t
+  const name = t.name || t.tool_name || ''
+  const desc = t.description || ''
+  return desc ? `${name}：${desc}` : name
+}
 
 async function testConnection() {
   if (!dialog.value?.url.trim()) return
@@ -149,14 +154,17 @@ function openAdd() {
   }
 }
 
-function openEdit(s) {
+async function openEdit(s) {
   testResult.value = null; testError.value = ''
   dialog.value = {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
     url: s.url || '', headers: Object.entries(s.headers || {}).map(([key, value]) => ({ key, value })),
     command: s.command || '', argsText: (s.args || []).join('\n'),
-    description: s.description || '', tools: s.tools || [], error: ''
+    description: s.description || '', tools: [], error: ''
   }
+  // Load tools from API
+  const detail = await get(`/api/mcp-servers/${s.id}`)
+  if (detail?.tools) { dialog.value.tools = detail.tools }
 }
 
 function parseLines(text) { return text.split('\n').map(l => l.trim()).filter(Boolean) }
