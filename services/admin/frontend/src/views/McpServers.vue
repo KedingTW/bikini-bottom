@@ -81,10 +81,11 @@
         <!-- Test result + tools display -->
         <div v-if="testLoading" class="mb-3 text-sm text-white/40 text-center py-2">連線測試中...</div>
         <div v-if="testResult === false" class="mb-3 text-sm text-red-400">❌ {{ testError }}</div>
-        <div v-if="testResult === true && dialog.tools && dialog.tools.length" class="mb-4">
-          <div class="text-sm text-green-400 mb-2">✅ 連線成功，偵測到 {{ dialog.tools.length }} 個 tools：</div>
-          <div class="flex flex-wrap gap-2">
-            <span v-for="t in dialog.tools" :key="t" class="text-sm bg-cyan-600/15 text-cyan-300 px-2 py-1 rounded">{{ t }}</span>
+        <div v-if="dialog.tools && dialog.tools.length" class="mb-4">
+          <div class="text-sm text-green-400 mb-2" v-if="testResult === true">✅ 連線成功，偵測到 {{ dialog.tools.length }} 個 tools：</div>
+          <div class="text-sm text-white/60 mb-2" v-else>已載入 {{ dialog.tools.length }} 個 tools：</div>
+          <div class="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+            <span v-for="t in dialog.tools" :key="toolName(t)" class="text-sm bg-cyan-600/15 text-cyan-300 px-2 py-1 rounded">{{ toolLabel(t) }}</span>
           </div>
         </div>
 
@@ -121,6 +122,9 @@ async function load() {
   servers.value = res?.servers || []
   loading.value = false
 }
+
+function toolName(t) { return typeof t === 'string' ? t : t.name }
+function toolLabel(t) { if (typeof t === 'string') return t; return t.description || t.name }
 
 async function testConnection() {
   if (!dialog.value?.url.trim()) return
