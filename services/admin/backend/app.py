@@ -2701,6 +2701,28 @@ async def api_mcp_server_delete(server_id: int, request: Request):
     return JSONResponse({"ok": True, "message": "已刪除"})
 
 
+@app.post("/api/mcp-servers/test-connection")
+async def api_mcp_test_connection(request: Request):
+    """測試 MCP Server 連線（不存 DB）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    url = body.get("url", "").strip()
+    headers = body.get("headers", {})
+    if not url:
+        raise HTTPException(status_code=400, detail="url 為必填")
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, headers=headers)
+            return JSONResponse({"ok": True, "status": r.status_code, "message": f"連線成功（HTTP {r.status_code}）"})
+    except httpx.TimeoutException:
+        return JSONResponse({"ok": False, "message": "連線逾時（10s）"})
+    except Exception as e:
+        return JSONResponse({"ok": False, "message": f"連線失敗：{e}"})
+
+
 @app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
 async def api_mcp_pool_for_agent(agent_name: str, request: Request):
     """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
