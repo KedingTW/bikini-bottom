@@ -201,6 +201,7 @@ def _init_db():
                 name VARCHAR(64) NOT NULL UNIQUE,
                 type VARCHAR(16) NOT NULL DEFAULT 'remote',
                 url TEXT,
+                headers JSON,
                 command VARCHAR(255),
                 args JSON,
                 description VARCHAR(255) DEFAULT '',
@@ -241,14 +242,14 @@ def _init_db():
         # Migration: ensure mcp_servers columns exist + drop deprecated ones
         for col_def in [
             "type VARCHAR(16) NOT NULL DEFAULT 'remote'",
-            "url TEXT", "command VARCHAR(255)", "args JSON",
+            "url TEXT", "headers JSON", "command VARCHAR(255)", "args JSON",
         ]:
             col_name = col_def.split()[0]
             try:
                 cur.execute(f"ALTER TABLE mcp_servers ADD COLUMN {col_def}")
             except Exception:
                 pass
-        for old_col in ["headers", "env", "auto_approve", "disabled_tools", "disabled", "token"]:
+        for old_col in ["env", "auto_approve", "disabled_tools", "disabled", "token"]:
             try:
                 cur.execute(f"ALTER TABLE mcp_servers DROP COLUMN {old_col}")
             except Exception:
@@ -2606,12 +2607,13 @@ async def api_mcp_servers_list(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, type, url, command, args, description FROM mcp_servers ORDER BY name")
+        cur = conn.execute("SELECT id, name, type, url, headers, command, args, description FROM mcp_servers ORDER BY name")
         rows = cur.fetchall()
     servers = []
     for r in rows:
-        s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[4], "description": r[6]}
-        s["args"] = json_mod.loads(r[5]) if r[5] else []
+        s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "description": r[7]}
+        s["headers"] = json_mod.loads(r[4]) if r[4] else {}
+        s["args"] = json_mod.loads(r[6]) if r[6] else []
         servers.append(s)
     return JSONResponse({"servers": servers})
 
@@ -2624,12 +2626,13 @@ async def api_mcp_server_detail(server_id: int, request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, type, url, command, args, description FROM mcp_servers WHERE id = ?", (server_id,))
+        cur = conn.execute("SELECT id, name, type, url, headers, command, args, description FROM mcp_servers WHERE id = ?", (server_id,))
         r = cur.fetchone()
         if not r:
             raise HTTPException(status_code=404, detail="Server not found")
-    s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[4], "description": r[6]}
-    s["args"] = json_mod.loads(r[5]) if r[5] else []
+    s = {"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[5], "description": r[7]}
+    s["headers"] = json_mod.loads(r[4]) if r[4] else {}
+    s["args"] = json_mod.loads(r[6]) if r[6] else []
     return JSONResponse(s)
 
 
@@ -2651,9 +2654,10 @@ async def api_mcp_server_create(request: Request):
         raise HTTPException(status_code=400, detail="Stdio server 的 command 為必填")
     with get_db() as conn:
         try:
-            conn.execute("""INSERT INTO mcp_servers (name, type, url, command, args, description)
-                VALUES (?, ?, ?, ?, ?, ?)""",
+            conn.execute("""INSERT INTO mcp_servers (name, type, url, headers, command, args, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (name, stype, body.get("url", "").strip() or None,
+                 json_mod.dumps(body.get("headers", {})),
                  body.get("command", "").strip() or None,
                  json_mod.dumps(body.get("args", [])),
                  body.get("description", "").strip()))
@@ -2676,9 +2680,10 @@ async def api_mcp_server_update(server_id: int, request: Request):
         cur = conn.execute("SELECT id FROM mcp_servers WHERE id = ?", (server_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Server not found")
-        conn.execute("""UPDATE mcp_servers SET name=?, type=?, url=?, command=?, args=?, description=? WHERE id=?""",
+        conn.execute("""UPDATE mcp_servers SET name=?, type=?, url=?, headers=?, command=?, args=?, description=? WHERE id=?""",
             (body.get("name", "").strip(), body.get("type", "remote"),
              body.get("url", "").strip() or None,
+             json_mod.dumps(body.get("headers", {})),
              body.get("command", "").strip() or None,
              json_mod.dumps(body.get("args", [])),
              body.get("description", "").strip(), server_id))
@@ -2702,14 +2707,15 @@ async def api_mcp_pool_for_agent(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, type, url, command, description FROM mcp_servers ORDER BY name")
+        cur = conn.execute("SELECT id, name, type, url, headers, command, args, description FROM mcp_servers ORDER BY name")
         servers = []
         for r in cur.fetchall():
             sid = r[0]
             cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
             tools = [t[0] for t in cur2.fetchall()]
-            servers.append({"id": sid, "name": r[1], "type": r[2], "url": r[3], "command": r[4], "description": r[5], "tools": tools})
+            servers.append({"id": sid, "name": r[1], "type": r[2], "url": r[3], "headers": json_mod.loads(r[4]) if r[4] else {}, "command": r[5], "args": json_mod.loads(r[6]) if r[6] else [], "description": r[7], "tools": tools})
         cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
         agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
         cur4 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
@@ -2761,10 +2767,10 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
     # 生成 mcp.json（用新連線讀取剛寫入的資料）
     try:
         with get_db() as conn:
-            cur = conn.execute("SELECT id, name, type, url, command, args FROM mcp_servers")
+            cur = conn.execute("SELECT id, name, type, url, headers, command, args FROM mcp_servers")
             server_map = {}
             for r in cur.fetchall():
-                server_map[r[0]] = {"name": r[1], "type": r[2], "url": r[3], "command": r[4], "args": r[5]}
+                server_map[r[0]] = {"name": r[1], "type": r[2], "url": r[3], "headers": r[4], "command": r[5], "args": r[6]}
             cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
             cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
@@ -2782,6 +2788,9 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
                 continue
             if srv["type"] == "remote":
                 entry = {"url": srv["url"] or ""}
+                headers = json_mod2.loads(srv["headers"]) if srv["headers"] else {}
+                if headers:
+                    entry["headers"] = headers
             else:
                 entry = {"command": srv["command"] or ""}
                 args = json_mod2.loads(srv["args"]) if srv["args"] else []
