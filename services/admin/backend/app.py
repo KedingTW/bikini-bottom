@@ -531,10 +531,10 @@ AGENT_GROUPS = {
         "guild_id": "1513867618899988480",
         "agents": [
             {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
-            {"name": "order-teacher", "display": "訂單小老師", "role": "考試訓練", "type": "agent", "icon": "📝", "deployment": "keding-dc-order-teacher"},
-            {"name": "captain", "display": "美國隊長", "role": "統合協調", "type": "agent", "icon": "🛡️", "deployment": "keding-dc-captain"},
-            {"name": "ironman", "display": "鋼鐵人", "role": "業務管理", "type": "agent", "icon": "🚀", "deployment": "keding-dc-ironman"},
-            {"name": "strange", "display": "奇異博士", "role": "生產管理", "type": "agent", "icon": "🔮", "deployment": "keding-dc-strange"},
+            {"name": "order-teacher", "display": "訂單小老師", "role": "考試訓練", "type": "agent", "icon": "📝", "deployment": "keding-dc-order-teacher", "bot_id": "1516345749854752819"},
+            {"name": "captain", "display": "美國隊長", "role": "統合協調", "type": "agent", "icon": "🛡️", "deployment": "keding-dc-captain", "bot_id": "1516009402321211493"},
+            {"name": "ironman", "display": "鋼鐵人", "role": "業務管理", "type": "agent", "icon": "🚀", "deployment": "keding-dc-ironman", "bot_id": "1516011013223354428"},
+            {"name": "strange", "display": "奇異博士", "role": "生產管理", "type": "agent", "icon": "🔮", "deployment": "keding-dc-strange", "bot_id": "1516011372947701911"},
         ],
     },
     "keding-wecom": {
