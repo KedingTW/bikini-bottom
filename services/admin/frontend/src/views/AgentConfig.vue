@@ -72,33 +72,6 @@
                 </Field>
               </div>
             </fieldset>
-            <!-- Agent -->
-            <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式</legend>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="啟動指令" tip="command — Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono" placeholder="kiro-cli"></Field>
-                <Field label="工作目錄" tip="working_dir — Agent 的工作路徑">
-                  <div class="flex gap-2">
-                    <input v-model="cfg.agent.working_dir" class="field-input font-mono flex-1">
-                    <button @click="showWorkDir = true" type="button" class="px-2 py-1 text-xs rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white shrink-0">📂</button>
-                  </div>
-                </Field>
-              </div>
-              <div class="mt-3 space-y-3">
-                <Field label="啟動參數" tip="args — 傳給 command 的參數列表"><TagInput v-model="cfg.agent.args" /></Field>
-                <Field label="繼承環境變數" tip="inherit_env — 從容器傳入 Agent 的環境變數名稱"><TagInput v-model="cfg.agent.inherit_env" /></Field>
-              </div>
-            </fieldset>
-            <!-- Pool -->
-            <fieldset class="border border-white/10 rounded-lg p-4">
-              <legend class="text-sm text-cyan-400 px-1 font-medium">連線池</legend>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="工作階段數" tip="max_sessions — 建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
-                  <span v-if="rangeWarn(cfg.pool.max_sessions, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span></Field>
-                <Field label="存活時數" tip="session_ttl_hours — 建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input">
-                  <span v-if="rangeWarn(cfg.pool.session_ttl_hours, 1, 720)" class="text-xs text-red-400">超出建議範圍（1–720）</span></Field>
-              </div>
-            </fieldset>
             <!-- Reactions -->
             <fieldset class="border border-white/10 rounded-lg p-4">
               <legend class="text-sm text-cyan-400 px-1 font-medium">表情回饋</legend>
@@ -161,6 +134,40 @@
                 <Field label="排程路徑" tip="usercron_path — 固定路徑，不可修改"><input value="cronjob.toml" disabled class="field-input font-mono opacity-50"></Field>
               </div>
             </fieldset>
+            <!-- 進階配置（可收合） -->
+            <div class="border border-white/10 rounded-lg overflow-hidden">
+              <button @click="advancedOpen = !advancedOpen" type="button" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5">
+                <span>{{ advancedOpen ? '▼' : '▶' }}</span>
+                <span>進階配置</span>
+              </button>
+              <div v-if="advancedOpen" class="px-4 pb-4 space-y-4 border-t border-white/5">
+                <fieldset class="border border-white/10 rounded-lg p-4">
+                  <legend class="text-sm text-cyan-400 px-1 font-medium">代理程式</legend>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="啟動指令" tip="command — Agent 的主要啟動程式"><input v-model="cfg.agent.command" class="field-input font-mono" placeholder="kiro-cli"></Field>
+                    <Field label="工作目錄" tip="working_dir — Agent 的工作路徑">
+                      <div class="flex gap-2">
+                        <input v-model="cfg.agent.working_dir" class="field-input font-mono flex-1">
+                        <button @click="showWorkDir = true" type="button" class="px-2 py-1 text-xs rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white shrink-0">📂</button>
+                      </div>
+                    </Field>
+                  </div>
+                  <div class="mt-3 space-y-3">
+                    <Field label="啟動參數" tip="args — 傳給 command 的參數列表"><TagInput v-model="cfg.agent.args" /></Field>
+                    <Field label="繼承環境變數" tip="inherit_env — 從容器傳入 Agent 的環境變數名稱"><TagInput v-model="cfg.agent.inherit_env" /></Field>
+                  </div>
+                </fieldset>
+                <fieldset class="border border-white/10 rounded-lg p-4">
+                  <legend class="text-sm text-cyan-400 px-1 font-medium">連線池</legend>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <Field label="工作階段數" tip="max_sessions — 建議範圍：1–100，預設 10"><input v-model.number="cfg.pool.max_sessions" type="number" min="1" max="100" class="field-input">
+                      <span v-if="rangeWarn(cfg.pool.max_sessions, 1, 100)" class="text-xs text-red-400">超出建議範圍（1–100）</span></Field>
+                    <Field label="存活時數" tip="session_ttl_hours — 建議範圍：1–720，預設 24"><input v-model.number="cfg.pool.session_ttl_hours" type="number" min="1" max="720" class="field-input">
+                      <span v-if="rangeWarn(cfg.pool.session_ttl_hours, 1, 720)" class="text-xs text-red-400">超出建議範圍（1–720）</span></Field>
+                  </div>
+                </fieldset>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -399,6 +406,7 @@ onBeforeRouteLeave(() => {
   if (hasDirty && !confirm('有未儲存的變更，確定要離開嗎？')) return false
 })
 const cronLimit = ref(20)
+const advancedOpen = ref(false)
 const cronDialog = ref(null)
 const showWorkDir = ref(false)
 
