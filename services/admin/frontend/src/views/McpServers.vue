@@ -50,8 +50,15 @@
         </div>
 
         <div v-if="dialog.type === 'remote'" class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">Headers（JSON）</label>
-          <textarea v-model="dialog.headersText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"Authorization": "Bearer token..."}'></textarea>
+          <label class="block text-sm text-white/70 mb-1">Headers</label>
+          <div class="space-y-2">
+            <div v-for="(h, i) in dialog.headers" :key="i" class="flex gap-2 items-center">
+              <input v-model="h.key" class="w-1/3 px-2 py-1.5 rounded bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="Key">
+              <input v-model="h.value" class="flex-1 px-2 py-1.5 rounded bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="Value">
+              <button @click="dialog.headers.splice(i, 1)" type="button" class="text-red-400/60 hover:text-red-400 shrink-0">✕</button>
+            </div>
+          </div>
+          <button @click="dialog.headers.push({ key: '', value: '' })" type="button" class="mt-2 text-xs text-cyan-400 hover:underline">+ 新增 Header</button>
         </div>
 
         <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
@@ -100,7 +107,7 @@ async function load() {
 
 function openAdd() {
   dialog.value = {
-    mode: 'add', name: '', type: 'remote', url: '', headersText: '', command: '', argsText: '',
+    mode: 'add', name: '', type: 'remote', url: '', headers: [{ key: '', value: '' }], command: '', argsText: '',
     description: '', error: ''
   }
 }
@@ -108,7 +115,7 @@ function openAdd() {
 function openEdit(s) {
   dialog.value = {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
-    url: s.url || '', headersText: Object.keys(s.headers || {}).length ? JSON.stringify(s.headers, null, 2) : '',
+    url: s.url || '', headers: Object.entries(s.headers || {}).map(([key, value]) => ({ key, value })),
     command: s.command || '', argsText: (s.args || []).join('\n'),
     description: s.description || '', error: ''
   }
@@ -123,11 +130,10 @@ async function saveDialog() {
   if (d.type === 'remote' && !d.url.trim()) { d.error = 'URL 為必填'; return }
   if (d.type === 'stdio' && !d.command.trim()) { d.error = 'Command 為必填'; return }
 
-  const headers = parseJson(d.headersText, {})
-  if (d.headersText.trim() && headers === null) { d.error = 'Headers JSON 格式錯誤'; return }
+  const headers = Object.fromEntries((d.headers || []).filter(h => h.key.trim()).map(h => [h.key.trim(), h.value]))
 
   const payload = {
-    name: d.name.trim(), type: d.type, url: d.url.trim(), headers: headers || {},
+    name: d.name.trim(), type: d.type, url: d.url.trim(), headers: headers,
     command: d.command.trim(), args: parseLines(d.argsText),
     description: d.description.trim()
   }
