@@ -124,7 +124,7 @@
               </div>
               <!-- Reactions Mapping -->
               <div class="mt-4">
-                <div class="text-sm text-white/60 mb-2">表情指令對照（reactions.mapping）</div>
+                <div class="text-sm text-white/60 mb-2">表情指令對照</div>
                 <div class="space-y-2">
                   <div v-for="item in mappingList" :key="item.emoji" class="flex items-center gap-2">
                     <div class="w-[60px] shrink-0"><EmojiPicker :model-value="item.emoji" @update:model-value="renameMapping(item.emoji, $event, item.cmd)" /></div>
@@ -389,6 +389,10 @@ async function saveDisplayName() {
 }
 
 const dirty = reactive({ basic: false, mcp: false, skill: false, cron: false, kb: false })
+
+window.addEventListener('beforeunload', (e) => {
+  if (Object.values(dirty).some(v => v)) { e.preventDefault(); e.returnValue = '' }
+})
 
 onBeforeRouteLeave(() => {
   const hasDirty = Object.values(dirty).some(v => v)
