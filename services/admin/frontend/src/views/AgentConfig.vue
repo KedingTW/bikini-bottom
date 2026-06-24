@@ -616,7 +616,7 @@ onMounted(() => nextTick(() => { ready.value = true }))
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
 const botMap = { '1493800835853975562': '小蝸', '1496023645083009024': '派大星', '1503574146117013555': '泡芙老師' }
-const emojiLabels = { queued: '排隊中', thinking: '思考中', tool: '使用工具', coding: '撰寫中', web: '搜尋中', done: '完成', error: '錯誤' }
+const emojiLabels = { queued: '排隊中', thinking: '思考中', tool: '使用工具', tool_use: '使用工具', coding: '撰寫中', responding: '回覆中', web: '搜尋中', done: '完成', error: '錯誤', cancelled: '已取消' }
 
 // Dropdown options
 // Dropdown options (channels loaded from API)
@@ -677,7 +677,7 @@ async function loadBots() {
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
     botOptions.value = res.members
-      .filter(m => m.bot && (!selectedAgent.value || (String(m.id) !== String(selectedAgent.value.bot_id) && m.name !== selectedAgent.value.display)))
+      .filter(m => m.bot && (!selectedAgent.value || (m.name.toLowerCase() !== selectedAgent.value.name && m.name !== selectedAgent.value.display)))
       .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
     userOptions.value = res.members
       .filter(m => !m.bot)

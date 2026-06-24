@@ -2456,10 +2456,31 @@ async def api_skills_available(request: Request):
                 desc = ""
                 if skill_md.exists():
                     try:
-                        text = skill_md.read_text()[:200]
-                        desc = text.split("\n")[0].strip("# ").strip()
+                        text = skill_md.read_text()[:500]
+                        lines = text.split("\n")
+                        # Skip YAML frontmatter (---...---)
+                        i = 0
+                        if lines[0].strip() == "---":
+                            i = 1
+                            while i < len(lines) and lines[i].strip() != "---":
+                                # Try to find description in frontmatter
+                                if lines[i].strip().startswith("description:"):
+                                    desc = lines[i].split(":", 1)[1].strip().strip('"').strip("'")[:80]
+                                    break
+                                i += 1
+                            i += 1  # skip closing ---
+                        # If no desc from frontmatter, find first heading or non-empty line
+                        if not desc:
+                            while i < len(lines):
+                                line = lines[i].strip()
+                                if line and line != "---":
+                                    desc = line.strip("# ").strip()[:80]
+                                    break
+                                i += 1
+                        if not desc:
+                            desc = d.name
                     except Exception:
-                        pass
+                        desc = d.name
                 skills.append({"name": d.name, "description": desc})
     return JSONResponse({"skills": skills})
 
