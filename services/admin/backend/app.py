@@ -2210,20 +2210,6 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
     if not grp:
         raise HTTPException(status_code=400, detail=f"未知分組：{group}")
 
-    # 動態從 Discord 取 bot_id（比對 display name）
-    bot_id_map = {}
-    gid = grp.get("guild_id", "")
-    if gid:
-        try:
-            from discord_api import list_members
-            members = await list_members(limit=200, guild_id=gid)
-            for m in members:
-                if m.get("bot"):
-                    bot_id_map[m.get("name", "")] = m["id"]
-                    bot_id_map[m.get("display_name", "")] = m["id"]
-        except Exception:
-            pass  # fallback to AGENT_GROUPS bot_id
-
     agents_dir = AGENTS_DIR
     if grp["agents_subdir"]:
         agents_dir = AGENTS_DIR / grp["agents_subdir"]
@@ -2270,7 +2256,7 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
             "name": name,
             "display": agent["display"],
             "role": agent["role"],
-            "bot_id": bot_id_map.get(agent["display"]) or agent.get("bot_id", ""),
+            "bot_id": agent.get("bot_id", ""),
             "mcp_servers": mcp_servers,
             "mcp_enabled": mcp_enabled,
             "skills_count": len(skills_meta),
@@ -2378,6 +2364,10 @@ async def api_agent_display_update(agent_name: str, request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理員權限")
     body = await request.json()
     display = body.get("display", "").strip()
     role = body.get("role", "").strip()
