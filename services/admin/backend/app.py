@@ -3037,6 +3037,11 @@ for _route in SPA_ROUTES:
     async def _spa_page(request: Request, _r=_route):
         return HTMLResponse((DIST_DIR / "index.html").read_text())
 
+# SPA sub-routes (e.g. /agent-config/:id)
+@app.get("/agent-config/{path:path}", response_class=HTMLResponse)
+async def _spa_agent_config_sub(request: Request, path: str):
+    return HTMLResponse((DIST_DIR / "index.html").read_text())
+
 
 # ─── Mount Vue SPA dist at root (MUST be LAST, after all routes) ───
 if DIST_DIR.exists():
