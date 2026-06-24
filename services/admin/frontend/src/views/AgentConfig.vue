@@ -645,7 +645,7 @@ async function loadKb() {
 
 // Deep watchers for dirty tracking — defined after data declarations below
 const ready = ref(false)
-onMounted(() => nextTick(() => { ready.value = true }))
+// ready is set after config loads (line 411/608), not on mount
 
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
