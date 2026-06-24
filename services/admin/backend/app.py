@@ -2723,6 +2723,48 @@ async def api_mcp_test_connection(request: Request):
         return JSONResponse({"ok": False, "message": f"連線失敗：{e}"})
 
 
+@app.post("/api/mcp-servers/{server_id}/sync-tools")
+async def api_mcp_sync_tools(server_id: int, request: Request):
+    """從 MCP Server 同步 tools list（JSON-RPC tools/list）"""
+    import httpx
+    import json as json_mod
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT url, headers FROM mcp_servers WHERE id = ?", (server_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Server not found")
+    url = row[0]
+    headers = json_mod.loads(row[1]) if row[1] else {}
+    if not url:
+        raise HTTPException(status_code=400, detail="Server 沒有設定 URL")
+    # JSON-RPC call: tools/list
+    headers["Content-Type"] = "application/json"
+    rpc_body = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(url, headers=headers, json=rpc_body)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        return JSONResponse({"ok": False, "message": f"連線失敗：{e}", "tools": []})
+    # 解析 tools
+    tools = []
+    result = data.get("result", data)
+    if isinstance(result, dict):
+        tools = [t.get("name", "") for t in result.get("tools", []) if t.get("name")]
+    elif isinstance(result, list):
+        tools = [t.get("name", "") for t in result if isinstance(t, dict) and t.get("name")]
+    # 存入 DB
+    with get_db() as conn:
+        conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
+        for tool_name in tools:
+            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
+    return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"同步成功，共 {len(tools)} 個 tools"})
+
+
 @app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
 async def api_mcp_pool_for_agent(agent_name: str, request: Request):
     """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
