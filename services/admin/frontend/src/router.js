@@ -8,7 +8,6 @@ import Members from './views/Members.vue'
 import Discord from './views/Discord.vue'
 import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import AgentConfig from './views/AgentConfig.vue'
-import McpManage from './views/McpManage.vue'
 import McpServers from './views/McpServers.vue'
 import SkillManage from './views/SkillManage.vue'
 import SteeringManage from './views/SteeringManage.vue'
@@ -31,7 +30,6 @@ const routes = [
   { path: '/messaging', name: 'messaging', component: Messaging },
   // AI 角色管理
   { path: '/agent-config', name: 'agent-config', component: AgentConfig },
-  { path: '/mcp', name: 'mcp', component: McpManage },
   { path: '/mcp-servers', name: 'mcp-servers', component: McpServers },
   { path: '/skills', name: 'skills', component: SkillManage },
   { path: '/steering', name: 'steering', component: SteeringManage },

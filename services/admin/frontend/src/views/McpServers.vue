@@ -45,51 +45,25 @@
           </select>
         </div>
 
-        <template v-if="dialog.type === 'remote'">
-          <div class="mb-3">
-            <label class="block text-sm text-white/70 mb-1">URL <span class="text-red-400">*</span></label>
-            <input v-model="dialog.url" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="https://mcp.example.com/mcp/hrs">
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm text-white/70 mb-1">Headers（JSON）</label>
-            <textarea v-model="dialog.headersText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"Authorization": "Bearer xxx"}'></textarea>
-          </div>
-        </template>
+        <div v-if="dialog.type === 'remote'" class="mb-3">
+          <label class="block text-sm text-white/70 mb-1">URL <span class="text-red-400">*</span></label>
+          <input v-model="dialog.url" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="https://mcp.example.com/mcp/hrs">
+        </div>
 
-        <template v-if="dialog.type === 'stdio'">
-          <div class="mb-3">
+        <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
+          <div>
             <label class="block text-sm text-white/70 mb-1">Command <span class="text-red-400">*</span></label>
             <input v-model="dialog.command" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="npx">
           </div>
-          <div class="mb-3">
+          <div>
             <label class="block text-sm text-white/70 mb-1">Args（每行一個）</label>
             <textarea v-model="dialog.argsText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="-y&#10;@modelcontextprotocol/server-example"></textarea>
           </div>
-        </template>
-
-        <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">環境變數（JSON）</label>
-          <textarea v-model="dialog.envText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"API_KEY": "${MY_KEY}"}'></textarea>
-        </div>
-
-        <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">Auto Approve Tools（每行一個，* = 全部）</label>
-          <textarea v-model="dialog.autoApproveText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="GetUser&#10;GetDepartment"></textarea>
-        </div>
-
-        <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">Disabled Tools（每行一個）</label>
-          <textarea v-model="dialog.disabledToolsText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="DangerousTool"></textarea>
         </div>
 
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">說明</label>
           <input v-model="dialog.description" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="選填">
-        </div>
-
-        <div class="mb-4 flex items-center gap-2">
-          <input type="checkbox" v-model="dialog.disabled" class="w-4 h-4 rounded accent-cyan-500" id="srv-disabled">
-          <label for="srv-disabled" class="text-sm text-white/70">停用此 Server</label>
         </div>
 
         <div v-if="dialog.error" class="mb-3 text-sm text-red-400">{{ dialog.error }}</div>
