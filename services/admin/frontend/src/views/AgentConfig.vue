@@ -346,7 +346,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useAgentList } from '../composables/useAgentList.js'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 import AgentDetailLayout from '../components/AgentDetailLayout.vue'
 import Field from '../components/Field.vue'
@@ -356,6 +356,8 @@ import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
 const { get, post } = useApi()
+const route = useRoute()
+const router = useRouter()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
 const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
@@ -376,6 +378,9 @@ function onSelect(a) {
   ready.value = false
   selectAgent(a)
   Object.keys(dirty).forEach(k => dirty[k] = false)
+  // Update URL with bot_id
+  if (a.bot_id) router.replace({ params: { id: a.bot_id } })
+  else if (a.name) router.replace({ params: { id: a.name } })
   setTimeout(() => { ready.value = true }, 500)
 }
 
@@ -389,6 +394,8 @@ watch(selectedAgent, (a) => {
     loadSkills()
     loadMcp()
     loadKb()
+    // Reset dirty after all loads (nextTick ensures load-triggered changes don't set dirty)
+    nextTick(() => { Object.keys(dirty).forEach(k => dirty[k] = false) })
   }
 })
 
@@ -696,6 +703,16 @@ const userOptions = ref([])
 loadBots()
 watch(currentGroup, () => nextTick(loadBots))
 watch(selectedAgent, () => nextTick(loadBots))
+
+// Restore selected agent from URL param on mount
+watch(agents, (list) => {
+  if (!list.length || selectedAgent.value) return
+  const idFromUrl = route.params.id
+  if (idFromUrl) {
+    const found = list.find(a => a.bot_id === idFromUrl || a.name === idFromUrl)
+    if (found) { selectAgent(found); return }
+  }
+}, { immediate: true })
 
 // Mock work directory files
 const mockFiles = [
