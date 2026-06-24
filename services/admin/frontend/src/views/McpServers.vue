@@ -3,7 +3,7 @@
     <div class="flex items-center gap-3 mb-5 flex-wrap">
       <h2 class="text-lg font-semibold">MCP Servers</h2>
       <span class="text-xs text-white/50">{{ servers.length }} 個 server</span>
-      <button @click="openAdd()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">+ 新增 Server</button>
+      <button @click="openAdd()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">+ 新增 MCP Server</button>
     </div>
 
     <div v-if="loading" class="text-center py-10 text-white/50">載入中...</div>
@@ -19,10 +19,10 @@
             <div class="font-medium text-sm text-cyan-300">{{ s.name }}</div>
             <div class="text-[11px] text-white/50 truncate">{{ s.type === 'remote' ? s.url : s.command }} · {{ s.description || '無說明' }}</div>
           </div>
-          <span class="text-[10px] px-2 py-0.5 rounded bg-ocean-700 text-white/60">{{ s.type }}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-ocean-700 text-white/60">{{ s.type === 'remote' ? '遠端' : '本地' }}</span>
           <span v-if="s.tool_count" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ s.tool_count }} tools</span>
-          <button @click="openEdit(s)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">✏️</button>
-          <button @click="del_server(s)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️</button>
+          <button @click="openEdit(s)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">✏️ 編輯</button>
+          <button @click="del_server(s)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
         </div>
       </div>
     </div>
