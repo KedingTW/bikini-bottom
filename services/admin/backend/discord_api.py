@@ -113,11 +113,12 @@ async def send_message(channel_id: str, content: str):
         return r.json()
 
 
-async def set_nickname(user_id: str, nick: str):
+async def set_nickname(user_id: str, nick: str, guild_id=None):
     """Set member nickname in guild."""
+    gid = guild_id or GUILD_ID
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.patch(
-            f"{BASE}/guilds/{GUILD_ID}/members/{user_id}",
+            f"{BASE}/guilds/{gid}/members/{user_id}",
             headers=_headers(),
             json={"nick": nick},
         )

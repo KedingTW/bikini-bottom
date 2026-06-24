@@ -2421,7 +2421,7 @@ async def api_agent_display_update(agent_name: str, request: Request):
     # 打 Discord API 改 nickname
     try:
         from discord_api import set_nickname
-        await set_nickname(bot_id, display)
+        await set_nickname(bot_id, display, guild_id=guild_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Discord API 失敗：{e}")
 
