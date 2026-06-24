@@ -213,6 +213,7 @@ def _init_db():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 server_id INT NOT NULL,
                 tool_name VARCHAR(128) NOT NULL,
+                description VARCHAR(255) DEFAULT '',
                 UNIQUE KEY uk_server_tool (server_id, tool_name),
                 FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
@@ -254,6 +255,11 @@ def _init_db():
                 cur.execute(f"ALTER TABLE mcp_servers DROP COLUMN {old_col}")
             except Exception:
                 pass
+        # Migration: add description to mcp_server_tools
+        try:
+            cur.execute("ALTER TABLE mcp_server_tools ADD COLUMN description VARCHAR(255) DEFAULT ''")
+        except Exception:
+            pass
         cur.close()
         conn.close()
     else:
@@ -2667,8 +2673,12 @@ async def api_mcp_server_create(request: Request):
         new_id = cur.fetchone()[0]
         # 儲存 tools
         tools = body.get("tools", [])
-        for tool_name in tools:
-            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool_name))
+        for tool in tools:
+            if isinstance(tool, dict):
+                conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name, description) VALUES (?, ?, ?)",
+                             (new_id, tool.get("name", ""), tool.get("description", "")))
+            else:
+                conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (new_id, tool))
     return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
 
 
@@ -2694,8 +2704,12 @@ async def api_mcp_server_update(server_id: int, request: Request):
         # 更新 tools（如果有傳）
         if "tools" in body:
             conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
-            for tool_name in body["tools"]:
-                conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
+            for tool in body["tools"]:
+                if isinstance(tool, dict):
+                    conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name, description) VALUES (?, ?, ?)",
+                                 (server_id, tool.get("name", ""), tool.get("description", "")))
+                else:
+                    conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool))
     return JSONResponse({"ok": True, "message": "已更新"})
 
 
@@ -2733,9 +2747,9 @@ async def api_mcp_test_connection(request: Request):
         tools = []
         result = data.get("result", data)
         if isinstance(result, dict):
-            tools = [t.get("name", "") for t in result.get("tools", []) if t.get("name")]
+            tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result.get("tools", []) if t.get("name")]
         elif isinstance(result, list):
-            tools = [t.get("name", "") for t in result if isinstance(t, dict) and t.get("name")]
+            tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result if isinstance(t, dict) and t.get("name")]
         return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"連線成功，{len(tools)} 個 tools"})
     except Exception as e:
         return JSONResponse({"ok": False, "tools": [], "message": f"連線失敗：{e}"})
@@ -2772,14 +2786,15 @@ async def api_mcp_sync_tools(server_id: int, request: Request):
     tools = []
     result = data.get("result", data)
     if isinstance(result, dict):
-        tools = [t.get("name", "") for t in result.get("tools", []) if t.get("name")]
+        tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result.get("tools", []) if t.get("name")]
     elif isinstance(result, list):
-        tools = [t.get("name", "") for t in result if isinstance(t, dict) and t.get("name")]
+        tools = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in result if isinstance(t, dict) and t.get("name")]
     # 存入 DB
     with get_db() as conn:
         conn.execute("DELETE FROM mcp_server_tools WHERE server_id = ?", (server_id,))
-        for tool_name in tools:
-            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name) VALUES (?, ?)", (server_id, tool_name))
+        for tool in tools:
+            conn.execute("INSERT OR IGNORE INTO mcp_server_tools (server_id, tool_name, description) VALUES (?, ?, ?)",
+                         (server_id, tool["name"], tool["description"]))
     return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"同步成功，共 {len(tools)} 個 tools"})
 
 
@@ -2795,8 +2810,8 @@ async def api_mcp_pool_for_agent(agent_name: str, request: Request):
         servers = []
         for r in cur.fetchall():
             sid = r[0]
-            cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
-            tools = [t[0] for t in cur2.fetchall()]
+            cur2 = conn.execute("SELECT tool_name, description FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
+            tools = [{"name": t[0], "description": t[1] or ""} for t in cur2.fetchall()]
             servers.append({"id": sid, "name": r[1], "type": r[2], "url": r[3], "headers": json_mod.loads(r[4]) if r[4] else {}, "command": r[5], "args": json_mod.loads(r[6]) if r[6] else [], "description": r[7], "tools": tools})
         cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
         agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
