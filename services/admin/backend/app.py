@@ -2454,7 +2454,24 @@ async def api_skills_available(request: Request):
             if d.is_dir():
                 skill_md = d / "SKILL.md"
                 desc = ""
-                if skill_md.exists():
+                # 中文名稱映射
+                SKILL_NAMES = {
+                    "doc-coauthoring": "文件協作",
+                    "docx": "Word 文件",
+                    "pdf": "PDF 處理",
+                    "pptx": "簡報製作",
+                    "xlsx": "Excel 試算表",
+                    "kd-company-knowledge": "公司知識庫",
+                    "kd-complaint-handler": "客訴處理",
+                    "kd-crm-operations": "CRM 操作",
+                    "kd-glossary": "術語對照",
+                    "kd-meeting-updates": "會議更新",
+                    "kd-pricing-assistant": "報價助手",
+                    "kd-product-coding": "產品編碼",
+                    "kd-product-knowledge": "產品知識",
+                }
+                desc = SKILL_NAMES.get(d.name, "")
+                if not desc and skill_md.exists():
                     try:
                         text = skill_md.read_text()[:500]
                         lines = text.split("\n")

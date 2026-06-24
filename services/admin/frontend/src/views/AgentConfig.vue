@@ -676,8 +676,9 @@ async function loadBots() {
   console.log('[AgentConfig] loadBots group=', group)
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
+    const selfNames = selectedAgent.value ? [selectedAgent.value.name, selectedAgent.value.display, selectedAgent.value.name.toLowerCase()].filter(Boolean) : []
     botOptions.value = res.members
-      .filter(m => m.bot && (!selectedAgent.value || (m.name.toLowerCase() !== selectedAgent.value.name && m.name !== selectedAgent.value.display)))
+      .filter(m => m.bot && !selfNames.some(n => m.name === n || m.name.toLowerCase() === n.toLowerCase()))
       .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
     userOptions.value = res.members
       .filter(m => !m.bot)

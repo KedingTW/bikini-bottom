@@ -48,7 +48,7 @@ const open = ref(false)
 const available = computed(() => props.options.filter(o => !props.modelValue.some(v => String(v) === String(o.id))))
 
 function isLocked(id) { return props.lockedIds.some(l => String(l) === String(id)) }
-function getLabel(id) { const opt = props.options.find(o => String(o.id) === String(id)); return opt ? opt.label : id }
+function getLabel(id) { const opt = props.options.find(o => String(o.id) === String(id)); return opt ? opt.label : (props.options.length === 0 ? '載入中...' : id) }
 function getAvatar(id) { const opt = props.options.find(o => String(o.id) === String(id)); return opt?.avatar || '' }
 function getColor(id) { const opt = props.options.find(o => String(o.id) === String(id)); return opt?.color || '' }
 
