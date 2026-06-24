@@ -61,8 +61,8 @@
                   <IdSelect v-model="cfg.discord.allowed_role_ids" :options="roleOptions" :locked-ids="lockedRoleIds" placeholder="身分組" />
                 </Field>
                 <!-- 信任角色 -->
-                <Field v-show="botOptions.length" label="信任的角色" tip="trusted_bot_ids — 這些角色的訊息會被當作可信來源處理">
-                  <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="botOptions" placeholder="角色" />
+                <Field v-show="filteredBotOptions.length" label="信任的角色" tip="trusted_bot_ids — 這些角色的訊息會被當作可信來源處理">
+                  <IdSelect v-model="cfg.discord.trusted_bot_ids" :options="filteredBotOptions" placeholder="角色" />
                 </Field>
               </div>
             </fieldset>
@@ -671,14 +671,18 @@ watch([selectedAgent, roleOptions], () => {
   }
 })
 const botOptions = ref([])
+const filteredBotOptions = computed(() => {
+  if (!selectedAgent.value) return botOptions.value
+  const selfNames = [selectedAgent.value.name, selectedAgent.value.display].filter(Boolean).map(n => n.toLowerCase())
+  return botOptions.value.filter(o => !selfNames.includes(o.label.toLowerCase()))
+})
 async function loadBots() {
   const group = currentGroup.value
   console.log('[AgentConfig] loadBots group=', group)
   const res = await get(`/api/discord/members?group=${group}`)
   if (res?.members) {
-    const selfNames = selectedAgent.value ? [selectedAgent.value.name, selectedAgent.value.display, selectedAgent.value.name.toLowerCase()].filter(Boolean) : []
     botOptions.value = res.members
-      .filter(m => m.bot && !selfNames.some(n => m.name === n || m.name.toLowerCase() === n.toLowerCase()))
+      .filter(m => m.bot)
       .map(m => ({ id: String(m.id), label: m.name, avatar: m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : '' }))
     userOptions.value = res.members
       .filter(m => !m.bot)
