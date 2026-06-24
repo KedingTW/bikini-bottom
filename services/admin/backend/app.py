@@ -213,18 +213,48 @@ def _init_db():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_server_tools (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_server_tool (server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS mcp_agent_config (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 agent_name VARCHAR(64) NOT NULL,
                 server_id INT NOT NULL,
+                env VARCHAR(16) NOT NULL DEFAULT 'local',
                 enabled TINYINT DEFAULT 1,
-                auto_approve_override JSON,
-                disabled_tools_override JSON,
                 UNIQUE KEY uk_agent_server (agent_name, server_id),
                 FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_agent_tool_filter (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                server_id INT NOT NULL,
+                tool_name VARCHAR(128) NOT NULL,
+                UNIQUE KEY uk_agent_tool (agent_name, server_id, tool_name),
+                FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+            )
+        """)
 
+        # Migration: ensure new mcp_servers columns exist
+        for col_def in [
+            "type VARCHAR(16) NOT NULL DEFAULT 'remote'",
+            "url TEXT", "headers JSON", "command VARCHAR(255)",
+            "args JSON", "env JSON", "auto_approve JSON",
+            "disabled_tools JSON", "disabled TINYINT DEFAULT 0",
+        ]:
+            col_name = col_def.split()[0]
+            try:
+                cur.execute(f"ALTER TABLE mcp_servers ADD COLUMN {col_def}")
+            except Exception:
+                pass
         cur.close()
         conn.close()
     else:
@@ -2568,175 +2598,7 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
     })
 
 
-# ─── MCP Pool API (file-based) ───
-MCP_CONFIGS_DIR = REPO_DIR / "mcp-configs"
-
-
-@app.get("/api/mcp-pool")
-async def api_mcp_pool(request: Request):
-    """取得 MCP Pool 定義（所有 server + tools）+ 可用環境 + profiles"""
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    import json as json_mod
-
-    result = {"servers": {}, "environments": [], "profiles": {}}
-
-    servers_path = MCP_CONFIGS_DIR / "servers.json"
-    if servers_path.exists():
-        try:
-            data = json_mod.loads(servers_path.read_text())
-            result["servers"] = data.get("servers", {})
-        except json_mod.JSONDecodeError as e:
-            return JSONResponse({"error": f"servers.json 格式錯誤：{e}"}, status_code=500)
-
-    env_dir = MCP_CONFIGS_DIR / "environments"
-    if env_dir.exists():
-        for f in sorted(env_dir.iterdir()):
-            if f.suffix == ".json":
-                try:
-                    env_data = json_mod.loads(f.read_text())
-                    result["environments"].append({
-                        "name": f.stem,
-                        "baseUrl": env_data.get("baseUrl", ""),
-                        "comment": env_data.get("$comment", ""),
-                    })
-                except json_mod.JSONDecodeError:
-                    pass
-
-    prof_dir = MCP_CONFIGS_DIR / "profiles"
-    if prof_dir.exists():
-        for f in sorted(prof_dir.iterdir()):
-            if f.suffix == ".json":
-                try:
-                    prof_data = json_mod.loads(f.read_text())
-                    result["profiles"][f.stem] = prof_data.get("servers", [])
-                except json_mod.JSONDecodeError:
-                    pass
-
-    return JSONResponse(result)
-
-
-@app.get("/api/mcp-pool/agent/{agent_name}")
-async def api_mcp_pool_agent(agent_name: str, request: Request):
-    """取得某角色的 MCP 配置"""
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    config = _read_agent_mcp_config(agent_name)
-    if config is None:
-        return JSONResponse({"error": None, "config": None})
-    return JSONResponse({"error": None, "config": config})
-
-
-def _read_agent_mcp_config(agent_name: str) -> dict:
-    """Read agent MCP config from agent-configs.json or generate.js fallback."""
-    import json as json_mod, subprocess
-
-    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
-    if json_path.exists():
-        try:
-            data = json_mod.loads(json_path.read_text())
-            if agent_name in data:
-                return data[agent_name]
-        except Exception:
-            pass
-
-    # Fallback: use node to extract from generate.js
-    generate_path = MCP_CONFIGS_DIR / "generate.js"
-    if not generate_path.exists():
-        return None
-    try:
-        script = (
-            f"const fs = require('fs');"
-            f"const content = fs.readFileSync('{generate_path}', 'utf8');"
-            f"const match = content.match(/const AGENT_MCP_CONFIGS\\s*=/);"
-            f"if (!match) {{ console.log('null'); process.exit(0); }}"
-            f"const fn = new Function('return (' + content.slice(match.index + match[0].length).split(/^}};/m)[0] + '}})');"
-            f"const configs = fn();"
-            f"console.log(JSON.stringify(configs['{agent_name}'] || null));"
-        )
-        result = subprocess.run(
-            ["node", "-e", script],
-            capture_output=True, text=True, timeout=10,
-            cwd=str(MCP_CONFIGS_DIR)
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return json_mod.loads(result.stdout.strip())
-    except Exception:
-        pass
-    return None
-
-
-@app.post("/api/mcp-pool/agent/{agent_name}")
-async def api_mcp_pool_agent_save(agent_name: str, request: Request):
-    """儲存角色的 MCP Pool 配置並執行 generate.js"""
-    user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-
-    import json as json_mod, subprocess
-
-    body = await request.json()
-    new_config = {
-        "profile": body.get("profile", "full"),
-        "default": body.get("default", "local"),
-        "overrides": body.get("overrides", {}),
-    }
-    if body.get("disabled"):
-        new_config["disabled"] = body["disabled"]
-    if body.get("toolFilter"):
-        new_config["toolFilter"] = body["toolFilter"]
-
-    # Save to agent-configs.json
-    json_path = MCP_CONFIGS_DIR / "agent-configs.json"
-    backup_path = MCP_CONFIGS_DIR / "agent-configs.json.bak"
-    if json_path.exists():
-        backup_path.write_text(json_path.read_text())
-
-    try:
-        existing = {}
-        if json_path.exists():
-            existing = json_mod.loads(json_path.read_text())
-        existing[agent_name] = new_config
-        json_path.write_text(json_mod.dumps(existing, indent=2, ensure_ascii=False) + "\n")
-    except Exception as e:
-        if backup_path.exists():
-            json_path.write_text(backup_path.read_text())
-        raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
-
-    # Execute generate.js
-    generate_path = MCP_CONFIGS_DIR / "generate.js"
-    generate_result = None
-
-    if generate_path.exists():
-        gen_backup = MCP_CONFIGS_DIR / "generate.js.bak"
-        gen_backup.write_text(generate_path.read_text())
-        try:
-            result = subprocess.run(
-                ["node", str(generate_path), agent_name],
-                capture_output=True, text=True, timeout=15,
-                cwd=str(MCP_CONFIGS_DIR.parent)
-            )
-            generate_result = {
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "returncode": result.returncode
-            }
-        except FileNotFoundError:
-            generate_result = {"error": "node not found"}
-        except subprocess.TimeoutExpired:
-            generate_result = {"error": "generate.js 執行逾時"}
-        except Exception as e:
-            generate_result = {"error": str(e)}
-
-    return JSONResponse({
-        "ok": True,
-        "message": f"已儲存 {agent_name} 的 MCP 配置",
-        "generate": generate_result
-    })
-
+# ─── MCP Servers CRUD API ───
 
 @app.get("/api/mcp-servers")
 async def api_mcp_servers_list(request: Request):
@@ -2857,50 +2719,59 @@ async def api_mcp_server_delete(server_id: int, request: Request):
 
 @app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
 async def api_mcp_pool_for_agent(agent_name: str, request: Request):
-    """取得所有 servers + 該角色的啟用狀態"""
+    """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    import json as json_mod
     with get_db() as conn:
-        cur = conn.execute("SELECT id, name, type, url, command, auto_approve, disabled, description FROM mcp_servers WHERE disabled = 0 ORDER BY name")
+        cur = conn.execute("SELECT id, name, path, description FROM mcp_servers ORDER BY name")
         servers = []
         for r in cur.fetchall():
-            servers.append({"id": r[0], "name": r[1], "type": r[2], "url": r[3], "command": r[4],
-                            "auto_approve": json_mod.loads(r[5]) if r[5] else [], "description": r[7]})
-        cur2 = conn.execute("SELECT server_id, enabled, auto_approve_override, disabled_tools_override FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
-        agent_config = {}
-        for r in cur2.fetchall():
-            agent_config[r[0]] = {"enabled": bool(r[1]),
-                                  "auto_approve_override": json_mod.loads(r[2]) if r[2] else None,
-                                  "disabled_tools_override": json_mod.loads(r[3]) if r[3] else None}
-    return JSONResponse({"servers": servers, "agent_config": agent_config})
+            sid = r[0]
+            cur2 = conn.execute("SELECT tool_name FROM mcp_server_tools WHERE server_id = ? ORDER BY tool_name", (sid,))
+            tools = [t[0] for t in cur2.fetchall()]
+            servers.append({"id": sid, "name": r[1], "path": r[2], "description": r[3], "tools": tools})
+        cur3 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+        agent_config = {r[0]: {"env": r[1], "enabled": bool(r[2])} for r in cur3.fetchall()}
+        cur4 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+        tool_filter = {}
+        for r in cur4.fetchall():
+            tool_filter.setdefault(r[0], []).append(r[1])
+    return JSONResponse({"servers": servers, "agent_config": agent_config, "tool_filter": tool_filter})
 
 
 @app.post("/api/mcp-servers/save-agent-config/{agent_name}")
 async def api_mcp_save_agent_config(agent_name: str, request: Request):
-    """儲存角色的 MCP 配置 + 生成 mcp.json"""
+    """儲存角色的 MCP 配置到 MySQL + 生成 mcp.json"""
     import json as json_mod
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     body = await request.json()
-    config = body.get("config", {})  # {server_id: {enabled, auto_approve_override, disabled_tools_override}}
+    config = body.get("config", {})
+    tool_filter = body.get("toolFilter", {})
+    logging.info(f"[MCP Save] agent={agent_name}, config_keys={list(config.keys())}, toolFilter_keys={list(tool_filter.keys())}")
 
+    # 寫 DB
     with get_db() as conn:
         if USE_MYSQL:
             conn._conn.autocommit = False
         try:
             conn.execute("DELETE FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            conn.execute("DELETE FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
             for sid_str, cfg in config.items():
                 sid = int(sid_str)
-                conn.execute("""INSERT INTO mcp_agent_config (agent_name, server_id, enabled, auto_approve_override, disabled_tools_override)
-                    VALUES (?, ?, ?, ?, ?)""",
-                    (agent_name, sid, 1 if cfg.get("enabled") else 0,
-                     json_mod.dumps(cfg["auto_approve_override"]) if cfg.get("auto_approve_override") else None,
-                     json_mod.dumps(cfg["disabled_tools_override"]) if cfg.get("disabled_tools_override") else None))
+                conn.execute("INSERT INTO mcp_agent_config (agent_name, server_id, env, enabled) VALUES (?, ?, ?, ?)",
+                             (agent_name, sid, cfg.get("env", "local"), 1 if cfg.get("enabled", True) else 0))
+            for sid_str, tools in tool_filter.items():
+                sid = int(sid_str)
+                for tool in tools:
+                    conn.execute("INSERT INTO mcp_agent_tool_filter (agent_name, server_id, tool_name) VALUES (?, ?, ?)",
+                                 (agent_name, sid, tool))
             conn.commit()
+            logging.info(f"[MCP Save] DB commit 成功, inserted {len(config)} servers")
         except Exception as e:
+            logging.error(f"[MCP Save] DB 寫入失敗：{e}")
             if USE_MYSQL:
                 conn._conn.rollback()
             raise HTTPException(status_code=500, detail=f"儲存失敗：{e}")
@@ -2908,55 +2779,41 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
             if USE_MYSQL:
                 conn._conn.autocommit = True
 
-    # 生成 mcp.json
+    # 生成 mcp.json（用新連線讀取剛寫入的資料）
     try:
         with get_db() as conn:
-            cur = conn.execute("SELECT id, name, type, url, headers, command, args, env, auto_approve, disabled_tools FROM mcp_servers")
-            server_map = {}
-            for r in cur.fetchall():
-                server_map[r[0]] = {"name": r[1], "type": r[2], "url": r[3],
-                    "headers": json_mod.loads(r[4]) if r[4] else {},
-                    "command": r[5], "args": json_mod.loads(r[6]) if r[6] else [],
-                    "env": json_mod.loads(r[7]) if r[7] else {},
-                    "auto_approve": json_mod.loads(r[8]) if r[8] else [],
-                    "disabled_tools": json_mod.loads(r[9]) if r[9] else []}
-            cur2 = conn.execute("SELECT server_id, enabled, auto_approve_override, disabled_tools_override FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
+            cur = conn.execute("SELECT id, name, path, token FROM mcp_servers")
+            server_map = {r[0]: {"name": r[1], "path": r[2], "token": r[3]} for r in cur.fetchall()}
+            cur2 = conn.execute("SELECT server_id, env, enabled FROM mcp_agent_config WHERE agent_name = ?", (agent_name,))
             agent_cfg = cur2.fetchall()
+            cur3 = conn.execute("SELECT server_id, tool_name FROM mcp_agent_tool_filter WHERE agent_name = ?", (agent_name,))
+            tool_filters = {}
+            for r in cur3.fetchall():
+                tool_filters.setdefault(r[0], []).append(r[1])
 
+        mcp_base_url = os.environ.get("MCP_BASE_URL", "http://mcp.twkd.com:1601")
         mcp_json = {"mcpServers": {}}
-        for server_id, enabled, aa_override, dt_override in agent_cfg:
+        for server_id, env, enabled in agent_cfg:
             if not enabled:
                 continue
             srv = server_map.get(server_id)
             if not srv:
                 continue
-            entry = {}
-            if srv["type"] == "remote":
-                entry["url"] = srv["url"]
-                if srv["headers"]:
-                    entry["headers"] = srv["headers"]
-            else:
-                entry["command"] = srv["command"]
-                entry["args"] = srv["args"]
-            if srv["env"]:
-                entry["env"] = srv["env"]
-            # autoApprove: use override if set, else server default
-            aa = json_mod.loads(aa_override) if aa_override else srv["auto_approve"]
-            if aa:
-                entry["autoApprove"] = aa
-            # disabledTools: use override if set, else server default
-            dt = json_mod.loads(dt_override) if dt_override else srv["disabled_tools"]
-            if dt:
-                entry["disabledTools"] = dt
+            entry = {"url": f"{mcp_base_url}{srv['path']}"}
+            if srv.get("token"):
+                entry["headers"] = {"Authorization": f"Bearer {srv['token']}"}
+            if server_id in tool_filters:
+                entry["allowedTools"] = tool_filters[server_id]
             mcp_json["mcpServers"][srv["name"]] = entry
 
         mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
         mcp_path.parent.mkdir(parents=True, exist_ok=True)
         mcp_path.write_text(json_mod.dumps(mcp_json, indent=2, ensure_ascii=False))
-        logging.info(f"[MCP Save] mcp.json written: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
+        logging.info(f"[MCP Save] mcp.json 生成成功: {mcp_path}, servers={list(mcp_json['mcpServers'].keys())}")
     except Exception as e:
         logging.error(f"[MCP Save] 生成 mcp.json 失敗：{e}")
-        return JSONResponse({"ok": True, "message": f"已儲存但生成 mcp.json 失敗：{e}"})
+
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 
     return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的 MCP 配置"})
 

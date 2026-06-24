@@ -32,70 +32,61 @@
       <div class="bg-ocean-700 rounded-xl w-full max-w-lg p-6 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4">{{ dialog.mode === 'add' ? '新增' : '編輯' }} MCP Server</h3>
 
-        <!-- Name -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">名稱 <span class="text-red-400">*</span></label>
-          <input v-model="dialog.name" class="w-full field-input" placeholder="e.g. hrs-mcp">
+          <input v-model="dialog.name" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="e.g. hrs-mcp">
         </div>
 
-        <!-- Type -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">連線方式</label>
-          <select v-model="dialog.type" class="w-full field-input">
+          <select v-model="dialog.type" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none">
             <option value="remote">Remote（Streamable HTTP / SSE）</option>
             <option value="stdio">Stdio（本地指令）</option>
           </select>
         </div>
 
-        <!-- Remote fields -->
         <template v-if="dialog.type === 'remote'">
           <div class="mb-3">
             <label class="block text-sm text-white/70 mb-1">URL <span class="text-red-400">*</span></label>
-            <input v-model="dialog.url" class="w-full field-input font-mono" placeholder="https://mcp.example.com/mcp/hrs">
+            <input v-model="dialog.url" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="https://mcp.example.com/mcp/hrs">
           </div>
           <div class="mb-3">
             <label class="block text-sm text-white/70 mb-1">Headers（JSON）</label>
-            <textarea v-model="dialog.headersText" rows="3" class="w-full field-input font-mono text-xs" placeholder='{"Authorization": "Bearer xxx"}'></textarea>
+            <textarea v-model="dialog.headersText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"Authorization": "Bearer xxx"}'></textarea>
           </div>
         </template>
 
-        <!-- Stdio fields -->
         <template v-if="dialog.type === 'stdio'">
           <div class="mb-3">
             <label class="block text-sm text-white/70 mb-1">Command <span class="text-red-400">*</span></label>
-            <input v-model="dialog.command" class="w-full field-input font-mono" placeholder="npx">
+            <input v-model="dialog.command" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="npx">
           </div>
           <div class="mb-3">
             <label class="block text-sm text-white/70 mb-1">Args（每行一個）</label>
-            <textarea v-model="dialog.argsText" rows="3" class="w-full field-input font-mono text-xs" placeholder="-y&#10;@modelcontextprotocol/server-example"></textarea>
+            <textarea v-model="dialog.argsText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="-y&#10;@modelcontextprotocol/server-example"></textarea>
           </div>
         </template>
 
-        <!-- Env -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">環境變數（JSON）</label>
-          <textarea v-model="dialog.envText" rows="2" class="w-full field-input font-mono text-xs" placeholder='{"API_KEY": "${MY_KEY}"}'></textarea>
+          <textarea v-model="dialog.envText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"API_KEY": "${MY_KEY}"}'></textarea>
         </div>
 
-        <!-- autoApprove -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">Auto Approve Tools（每行一個，* = 全部）</label>
-          <textarea v-model="dialog.autoApproveText" rows="3" class="w-full field-input font-mono text-xs" placeholder="GetUser&#10;GetDepartment&#10;*"></textarea>
+          <textarea v-model="dialog.autoApproveText" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="GetUser&#10;GetDepartment"></textarea>
         </div>
 
-        <!-- disabledTools -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">Disabled Tools（每行一個）</label>
-          <textarea v-model="dialog.disabledToolsText" rows="2" class="w-full field-input font-mono text-xs" placeholder="DangerousTool"></textarea>
+          <textarea v-model="dialog.disabledToolsText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="DangerousTool"></textarea>
         </div>
 
-        <!-- Description -->
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">說明</label>
-          <input v-model="dialog.description" class="w-full field-input" placeholder="選填">
+          <input v-model="dialog.description" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="選填">
         </div>
 
-        <!-- Disabled toggle -->
         <div class="mb-4 flex items-center gap-2">
           <input type="checkbox" v-model="dialog.disabled" class="w-4 h-4 rounded accent-cyan-500" id="srv-disabled">
           <label for="srv-disabled" class="text-sm text-white/70">停用此 Server</label>
@@ -185,9 +176,3 @@ async function del_server(s) {
 
 onMounted(load)
 </script>
-
-<style scoped>
-.field-input {
-  @apply px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60;
-}
-</style>
