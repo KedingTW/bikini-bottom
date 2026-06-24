@@ -408,21 +408,17 @@ function onSelect(a) {
   // Update URL with bot_id
   if (a.bot_id) router.replace({ params: { id: a.bot_id } })
   else if (a.name) router.replace({ params: { id: a.name } })
-  setTimeout(() => { ready.value = true }, 500)
 }
 
 // Always load config when selectedAgent changes (covers auto-select on mount too)
-watch(selectedAgent, (a) => {
+watch(selectedAgent, async (a) => {
   if (a) {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
-    loadConfig(a.name)
-    loadCrons()
-    loadSkills()
-    loadMcp()
-    loadKb()
-    // Reset dirty after all loads (nextTick ensures load-triggered changes don't set dirty)
-    nextTick(() => { Object.keys(dirty).forEach(k => dirty[k] = false) })
+    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb()])
+    await nextTick()
+    Object.keys(dirty).forEach(k => dirty[k] = false)
+    ready.value = true
   }
 })
 
@@ -605,7 +601,7 @@ async function loadConfig(agentName) {
       if ('usercron_path' in p.cron) cfg.cron.usercron_path = p.cron.usercron_path
     }
   }
-  nextTick(() => { ready.value = true })
+  // ready is set in onSelect/watch after ALL data loads, not here
 }
 function getChannelName(id) { const ch = channelOptions.value.find(c => c.id === id); return ch ? ch.label : id }
 function markDirty(key) { dirty[key] = true }
@@ -645,7 +641,7 @@ async function loadKb() {
 
 // Deep watchers for dirty tracking — defined after data declarations below
 const ready = ref(false)
-onMounted(() => nextTick(() => { ready.value = true }))
+// ready is set after config loads (line 411/608), not on mount
 
 // ID → Name mapping (mock)
 const channelMap = { '1492090122257170526': '🍔 蟹堡王', '1503940169252999198': '🏖️ 廣場', '1503704375074361424': '🧪 實驗室' }
