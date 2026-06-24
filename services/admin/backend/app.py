@@ -2355,6 +2355,45 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     return JSONResponse({"ok": True, "message": "已儲存"})
 
 
+@app.patch("/api/agents/{agent_name}/display")
+async def api_agent_display_update(agent_name: str, request: Request):
+    """修改角色的 display name 和 role（更新 config.toml + 記憶體）"""
+    import tomlkit
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    display = body.get("display", "").strip()
+    role = body.get("role", "").strip()
+    if not display:
+        raise HTTPException(status_code=400, detail="display 為必填")
+
+    # 更新 config.toml
+    config_path = _get_agent_dir(agent_name) / "config.toml"
+    if config_path.exists():
+        doc = tomlkit.parse(config_path.read_text())
+    else:
+        doc = tomlkit.document()
+    if "agent" not in doc:
+        doc["agent"] = tomlkit.table()
+    doc["agent"]["display"] = display
+    if role:
+        doc["agent"]["role"] = role
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(tomlkit.dumps(doc))
+
+    # 更新記憶體中的 AGENT_GROUPS / AGENTS
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                a["display"] = display
+                if role:
+                    a["role"] = role
+                break
+
+    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱"})
+
+
 @app.get("/api/agents/{agent_name}/mcp")
 async def api_agent_mcp(agent_name: str, request: Request):
     """取得角色的 MCP 配置"""
