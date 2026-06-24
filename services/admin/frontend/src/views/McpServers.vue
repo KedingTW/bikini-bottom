@@ -16,11 +16,10 @@
         <div class="flex items-center gap-3">
           <span class="text-lg">{{ s.type === 'remote' ? '🌐' : '💻' }}</span>
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-sm" :class="s.disabled ? 'text-white/40 line-through' : 'text-cyan-300'">{{ s.name }}</div>
+            <div class="font-medium text-sm text-cyan-300">{{ s.name }}</div>
             <div class="text-[11px] text-white/50 truncate">{{ s.type === 'remote' ? s.url : s.command }} · {{ s.description || '無說明' }}</div>
           </div>
           <span class="text-[10px] px-2 py-0.5 rounded bg-ocean-700 text-white/60">{{ s.type }}</span>
-          <span v-if="s.auto_approve.length" class="text-[10px] px-2 py-0.5 rounded bg-green-600/20 text-green-300">{{ s.auto_approve.length }} auto</span>
           <button @click="openEdit(s)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">✏️</button>
           <button @click="del_server(s)" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️</button>
         </div>
@@ -48,6 +47,11 @@
         <div v-if="dialog.type === 'remote'" class="mb-3">
           <label class="block text-sm text-white/70 mb-1">URL <span class="text-red-400">*</span></label>
           <input v-model="dialog.url" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm font-mono focus:outline-none focus:border-cyan-400/60" placeholder="https://mcp.example.com/mcp/hrs">
+        </div>
+
+        <div v-if="dialog.type === 'remote'" class="mb-3">
+          <label class="block text-sm text-white/70 mb-1">Headers（JSON）</label>
+          <textarea v-model="dialog.headersText" rows="2" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder='{"Authorization": "Bearer token..."}'></textarea>
         </div>
 
         <div v-if="dialog.type === 'stdio'" class="space-y-3 mb-3">
@@ -97,7 +101,7 @@ async function load() {
 function openAdd() {
   dialog.value = {
     mode: 'add', name: '', type: 'remote', url: '', headersText: '', command: '', argsText: '',
-    envText: '', autoApproveText: '', disabledToolsText: '', description: '', disabled: false, error: ''
+    description: '', error: ''
   }
 }
 
@@ -106,10 +110,7 @@ function openEdit(s) {
     mode: 'edit', id: s.id, name: s.name, type: s.type,
     url: s.url || '', headersText: Object.keys(s.headers || {}).length ? JSON.stringify(s.headers, null, 2) : '',
     command: s.command || '', argsText: (s.args || []).join('\n'),
-    envText: Object.keys(s.env || {}).length ? JSON.stringify(s.env, null, 2) : '',
-    autoApproveText: (s.auto_approve || []).join('\n'),
-    disabledToolsText: (s.disabled_tools || []).join('\n'),
-    description: s.description || '', disabled: s.disabled, error: ''
+    description: s.description || '', error: ''
   }
 }
 
@@ -124,14 +125,11 @@ async function saveDialog() {
 
   const headers = parseJson(d.headersText, {})
   if (d.headersText.trim() && headers === null) { d.error = 'Headers JSON 格式錯誤'; return }
-  const env = parseJson(d.envText, {})
-  if (d.envText.trim() && env === null) { d.error = '環境變數 JSON 格式錯誤'; return }
 
   const payload = {
     name: d.name.trim(), type: d.type, url: d.url.trim(), headers: headers || {},
-    command: d.command.trim(), args: parseLines(d.argsText), env: env || {},
-    auto_approve: parseLines(d.autoApproveText), disabled_tools: parseLines(d.disabledToolsText),
-    description: d.description.trim(), disabled: d.disabled
+    command: d.command.trim(), args: parseLines(d.argsText),
+    description: d.description.trim()
   }
 
   let res
