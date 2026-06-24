@@ -565,6 +565,32 @@ for g in AGENT_GROUPS.values():
     AGENTS.extend(g["agents"])
 
 
+# ─── Discord Members Cache（bot_id → display/avatar）────────
+_discord_members_cache = {}  # guild_id → {"ts": timestamp, "data": {bot_id: {name, avatar_url}}}
+_DISCORD_CACHE_TTL = 300  # 5 分鐘
+
+
+async def _get_discord_bot_info(guild_id: str) -> dict:
+    """取得 guild 內所有 bot 的 display name 和 avatar（有 cache）。"""
+    import time
+    now = time.time()
+    cached = _discord_members_cache.get(guild_id)
+    if cached and (now - cached["ts"]) < _DISCORD_CACHE_TTL:
+        return cached["data"]
+    try:
+        from discord_api import list_members
+        members = await list_members(limit=200, guild_id=guild_id)
+        bot_info = {}
+        for m in members:
+            if m.get("bot"):
+                avatar_url = f"https://cdn.discordapp.com/avatars/{m['id']}/{m['avatar']}.png?size=64" if m.get("avatar") else ""
+                bot_info[m["id"]] = {"name": m.get("display_name") or m.get("name", ""), "avatar_url": avatar_url}
+        _discord_members_cache[guild_id] = {"ts": now, "data": bot_info}
+        return bot_info
+    except Exception:
+        return cached["data"] if cached else {}
+
+
 def _get_deploy_name(agent_name: str) -> str:
     """Resolve agent name to K8s deployment name."""
     for a in AGENTS:
@@ -2210,6 +2236,10 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
     if not grp:
         raise HTTPException(status_code=400, detail=f"未知分組：{group}")
 
+    # 從 cache 取 Discord bot 資訊
+    gid = grp.get("guild_id", "")
+    bot_info = await _get_discord_bot_info(gid) if gid else {}
+
     agents_dir = AGENTS_DIR
     if grp["agents_subdir"]:
         agents_dir = AGENTS_DIR / grp["agents_subdir"]
@@ -2252,11 +2282,15 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
         kb_path = agent_path / ".local" / "share" / "kiro-cli" / "knowledge_bases"
         kb_count = len(_read_kb_contexts(kb_path)) if kb_path.exists() else 0
 
+        # Discord 動態資訊（有 cache，fallback 到靜態值）
+        bid = agent.get("bot_id", "")
+        dc_info = bot_info.get(bid, {})
         result.append({
             "name": name,
-            "display": agent["display"],
+            "display": dc_info.get("name") or agent["display"],
             "role": agent["role"],
-            "bot_id": agent.get("bot_id", ""),
+            "bot_id": bid,
+            "avatar_url": dc_info.get("avatar_url", ""),
             "mcp_servers": mcp_servers,
             "mcp_enabled": mcp_enabled,
             "skills_count": len(skills_meta),
