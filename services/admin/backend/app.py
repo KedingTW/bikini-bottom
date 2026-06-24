@@ -522,6 +522,18 @@ AGENT_GROUPS = {
     },
 }
 
+# Load extra groups from local file (test env only, not in git)
+_EXTRA_GROUPS_FILE = os.environ.get("EXTRA_GROUPS_FILE", str(AGENTS_DIR / "extra-groups.json"))
+if os.path.exists(_EXTRA_GROUPS_FILE):
+    try:
+        import json as _json
+        _extra = _json.loads(open(_EXTRA_GROUPS_FILE).read())
+        for k, v in _extra.items():
+            AGENT_GROUPS[k] = v
+        logging.info(f"[Extra Groups] Loaded {len(_extra)} group(s) from {_EXTRA_GROUPS_FILE}")
+    except Exception as _e:
+        logging.warning(f"[Extra Groups] Failed to load {_EXTRA_GROUPS_FILE}: {_e}")
+
 # Flat list for backward compatibility (all agents across groups)
 AGENTS = []
 for g in AGENT_GROUPS.values():
