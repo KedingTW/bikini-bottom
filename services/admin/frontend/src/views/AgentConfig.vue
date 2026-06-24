@@ -190,7 +190,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
                   <label v-for="t in s.tools" :key="t.name" class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer text-sm">
                     <input type="checkbox" v-model="t.enabled" @change="updateMcpCount(s)" class="w-3.5 h-3.5 accent-cyan-500">
-                    <span :class="t.enabled ? 'text-white/90' : 'text-white/40'">{{ t.name }}</span>
+                    <span :class="t.enabled ? 'text-white/90' : 'text-white/40'">{{ t.description ? `${t.name} – ${t.description}` : t.name }}</span>
                   </label>
                 </div>
               </div>
@@ -430,8 +430,9 @@ async function loadMcp() {
       const isEnabled = cfg?.enabled ?? false
       const filterTools = agentFilter[s.id] || []
       const tools = s.tools.map(t => ({
-        name: t,
-        enabled: isEnabled && (filterTools.length === 0 || filterTools.includes(t))
+        name: typeof t === 'string' ? t : t.name || t.tool_name,
+        description: typeof t === 'string' ? '' : (t.description || ''),
+        enabled: isEnabled && (filterTools.length === 0 || filterTools.includes(typeof t === 'string' ? t : t.name || t.tool_name))
       }))
       const enabledTools = tools.filter(t => t.enabled).length
       return {

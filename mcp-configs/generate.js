@@ -50,7 +50,20 @@ for (const file of fs.readdirSync(path.join(CONFIGS_DIR, 'profiles'))) {
 //   beta  = http://192.168.1.105:1601   （測試）
 //   local = http://host.docker.internal:80（本地 docker）
 //
-const AGENT_MCP_CONFIGS = {
+const AGENT_MCP_CONFIGS = (() => {
+  // Prefer agent-configs.json (managed by admin UI) if it exists
+  const jsonPath = path.join(CONFIGS_DIR, 'agent-configs.json');
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      if (Object.keys(data).length > 0) return data;
+    } catch (e) {
+      console.warn('⚠️  agent-configs.json parse error, falling back to inline config');
+    }
+  }
+
+  // Fallback: inline config (legacy)
+  return {
   bob: {
     profile: 'full',
     default: 'local',
@@ -96,6 +109,7 @@ const AGENT_MCP_CONFIGS = {
     overrides: {}
   }
 };
+})();
 
 // ─── 生成邏輯 ───
 
@@ -111,9 +125,14 @@ function generateMcpJson(agentName) {
     throw new Error(`Unknown profile: ${agentConfig.profile}`);
   }
 
+  const disabled = agentConfig.disabled || [];
+  const toolFilter = agentConfig.toolFilter || {};
   const mcpServers = {};
 
   for (const serverName of profile.servers) {
+    // Skip disabled servers
+    if (disabled.includes(serverName)) continue;
+
     const serverDef = servers.servers[serverName];
     if (!serverDef) {
       console.warn(`  ⚠️  Server "${serverName}" in profile but not in servers.json, skipping`);
@@ -129,12 +148,20 @@ function generateMcpJson(agentName) {
 
     const url = env.baseUrl + serverDef.path;
 
-    mcpServers[serverName] = {
+    const entry = {
       url,
       headers: {
         Authorization: `Bearer ${env.token}`
       }
     };
+
+    // autoApprove: use toolFilter if specified, otherwise use all from server def
+    const approvedTools = toolFilter[serverName] || serverDef.autoApprove || [];
+    if (approvedTools.length > 0) {
+      entry.autoApprove = approvedTools;
+    }
+
+    mcpServers[serverName] = entry;
   }
 
   return { mcpServers };
@@ -181,14 +208,16 @@ for (const agentName of agentNames) {
     continue;
   }
 
-  console.log(`   Profile: ${config.profile} | Default env: ${config.default}`);
+  console.log(`   Profile: ${config.profile} | Default env: ${config.default}${config.disabled?.length ? ' | Disabled: ' + config.disabled.join(', ') : ''}`);
 
   const result = generateMcpJson(agentName);
   if (!result) continue;
 
   // 顯示每個 server 的環境歸屬
+  const disabled = config.disabled || [];
   const envSummary = {};
   for (const serverName of profiles[config.profile].servers) {
+    if (disabled.includes(serverName)) continue;
     const envName = config.overrides[serverName] || config.default;
     if (!envSummary[envName]) envSummary[envName] = [];
     envSummary[envName].push(serverName);
