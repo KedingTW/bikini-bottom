@@ -990,15 +990,27 @@ async def api_status(request: Request):
             return JSONResponse({"error": str(e), "agents": []})
 
         result = []
+        # 從 Discord cache 取動態名稱
+        all_bot_info = {}
+        for grp in AGENT_GROUPS.values():
+            gid = grp.get("guild_id", "")
+            if gid:
+                info = await _get_discord_bot_info(gid)
+                all_bot_info.update(info)
+
         for agent in AGENTS:
             deploy_name = agent.get("deployment", agent["name"])
             pod_info = _find_pod_for_agent(deploy_name, pods.items)
+            bid = agent.get("bot_id", "")
+            dc_info = all_bot_info.get(bid, {})
             result.append({
                 "name": agent["name"],
                 "deployment": deploy_name,
-                "display": agent["display"],
+                "display": dc_info.get("name") or agent["display"],
                 "role": agent["role"],
                 "type": agent["type"],
+                "bot_id": bid,
+                "avatar_url": dc_info.get("avatar_url", ""),
                 **pod_info,
             })
         return JSONResponse({"error": None, "agents": result})
