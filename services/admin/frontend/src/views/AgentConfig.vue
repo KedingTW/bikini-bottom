@@ -7,7 +7,7 @@
 
     <div v-if="selectedAgent">
       <div class="flex items-center gap-2 mb-4">
-        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置</h2>
+        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置 <span v-if="selectedAgent.bot_id" class="text-xs text-white/30 font-normal">({{ selectedAgent.bot_id }})</span></h2>
         <input v-else v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-lg font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-0.5 text-white focus:outline-none" ref="nameInput">
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
         <button v-else @click="saveDisplayName()" type="button" class="text-xs px-2 py-1 rounded bg-cyan-600 text-white">確定</button>
