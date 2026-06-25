@@ -2614,7 +2614,7 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
 
 
-@app.get("/api/skills/list")
+@app.get("/api/skills")
 async def api_skills_list(request: Request):
     """列出全部 skills（含啟用角色）"""
     user = get_current_user(request)
@@ -2940,7 +2940,7 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
 
 # ─── MCP Servers CRUD API ───
 
-@app.get("/api/mcp-servers", "/skills")
+@app.get("/api/mcp-servers")
 async def api_mcp_servers_list(request: Request):
     """列出所有 MCP Servers"""
     user = get_current_user(request)
@@ -2961,7 +2961,7 @@ async def api_mcp_servers_list(request: Request):
     return JSONResponse({"servers": servers})
 
 
-@app.get("/api/mcp-servers", "/skills/{server_id}")
+@app.get("/api/mcp-servers/{server_id}")
 async def api_mcp_server_detail(server_id: int, request: Request):
     """取得單一 server 詳情（含 tools）"""
     user = get_current_user(request)
@@ -2982,7 +2982,7 @@ async def api_mcp_server_detail(server_id: int, request: Request):
     return JSONResponse(s)
 
 
-@app.post("/api/mcp-servers", "/skills")
+@app.post("/api/mcp-servers")
 async def api_mcp_server_create(request: Request):
     """新增 MCP Server"""
     user = get_current_user(request)
@@ -3022,7 +3022,7 @@ async def api_mcp_server_create(request: Request):
     return JSONResponse({"ok": True, "id": new_id, "message": f"已建立 {name}"})
 
 
-@app.put("/api/mcp-servers", "/skills/{server_id}")
+@app.put("/api/mcp-servers/{server_id}")
 async def api_mcp_server_update(server_id: int, request: Request):
     """更新 MCP Server"""
     user = get_current_user(request)
@@ -3053,7 +3053,7 @@ async def api_mcp_server_update(server_id: int, request: Request):
     return JSONResponse({"ok": True, "message": "已更新"})
 
 
-@app.delete("/api/mcp-servers", "/skills/{server_id}")
+@app.delete("/api/mcp-servers/{server_id}")
 async def api_mcp_server_delete(server_id: int, request: Request):
     """刪除 MCP Server（CASCADE 刪除 agent configs）"""
     user = get_current_user(request)
@@ -3076,7 +3076,7 @@ def _truncate_desc(desc: str, max_len: int = 50) -> str:
     first_line = first_line.strip()
     return first_line[:max_len] + "..." if len(first_line) > max_len else first_line
 
-@app.post("/api/mcp-servers", "/skills/test-connection")
+@app.post("/api/mcp-servers/test-connection")
 async def api_mcp_test_connection(request: Request):
     """測試 MCP Server 連線 + 取得 tools list（需 admin）"""
     user = get_current_user(request)
@@ -3112,7 +3112,7 @@ async def api_mcp_test_connection(request: Request):
         return JSONResponse({"ok": False, "tools": [], "message": f"連線失敗：{e}"})
 
 
-@app.post("/api/mcp-servers", "/skills/{server_id}/sync-tools")
+@app.post("/api/mcp-servers/{server_id}/sync-tools")
 async def api_mcp_sync_tools(server_id: int, request: Request):
     """從 MCP Server 同步 tools list（JSON-RPC tools/list）"""
     import httpx
@@ -3166,7 +3166,7 @@ async def api_mcp_sync_tools(server_id: int, request: Request):
     return JSONResponse({"ok": True, "tools": tools, "count": len(tools), "message": f"同步成功，共 {len(tools)} 個 tools"})
 
 
-@app.get("/api/mcp-servers", "/skills/pool-for-agent/{agent_name}")
+@app.get("/api/mcp-servers/pool-for-agent/{agent_name}")
 async def api_mcp_pool_for_agent(agent_name: str, request: Request):
     """取得 pool 全部 servers + 該角色的配置狀態（from MySQL）"""
     user = get_current_user(request)
@@ -3190,7 +3190,7 @@ async def api_mcp_pool_for_agent(agent_name: str, request: Request):
     return JSONResponse({"servers": servers, "agent_config": agent_config, "tool_filter": tool_filter})
 
 
-@app.post("/api/mcp-servers", "/skills/save-agent-config/{agent_name}")
+@app.post("/api/mcp-servers/save-agent-config/{agent_name}")
 async def api_mcp_save_agent_config(agent_name: str, request: Request):
     """儲存角色的 MCP 配置到 MySQL + 生成 mcp.json"""
     import json as json_mod
