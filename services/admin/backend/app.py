@@ -511,16 +511,16 @@ AGENT_GROUPS = {
         "platform": "discord",
         "guild_id": os.environ.get("DISCORD_GUILD_ID", ""),
         "agents": [
-            {"name": "bob", "display": "海綿寶寶", "role": "全端工程師", "type": "agent", "icon": "🧽"},
-            {"name": "patrick", "display": "派大星", "role": "後端工程師", "type": "agent", "icon": "⭐"},
-            {"name": "pearl", "display": "珍珍", "role": "全端工程師", "type": "agent", "icon": "🐋"},
-            {"name": "larry", "display": "蝦霸", "role": "後端工程師", "type": "agent", "icon": "🦞"},
-            {"name": "squidward", "display": "章魚哥", "role": "專案經理", "type": "agent", "icon": "🦑"},
-            {"name": "sandy", "display": "珊迪", "role": "客戶成功經理", "type": "agent", "icon": "🐿️"},
-            {"name": "puff", "display": "泡芙老師", "role": "Code Review", "type": "agent", "icon": "🐡"},
-            {"name": "conch", "display": "神奇海螺", "role": "團隊神諭者", "type": "agent", "icon": "🐚"},
-            {"name": "mermaid-man", "display": "海超人", "role": "DevOps", "type": "agent", "icon": "🦸"},
-            {"name": "gary", "display": "小蝸", "role": "維運助手", "type": "service", "icon": "🐌"},
+            {"name": "bob", "type": "agent", "bot_id": "1492085509596516362"},
+            {"name": "patrick", "type": "agent", "bot_id": "1496023645083009024"},
+            {"name": "pearl", "type": "agent", "bot_id": "1509104920954142871"},
+            {"name": "larry", "type": "agent", "bot_id": "1509105546060501184"},
+            {"name": "squidward", "type": "agent", "bot_id": "1503698574477627482"},
+            {"name": "sandy", "type": "agent", "bot_id": "1504275756488986774"},
+            {"name": "puff", "type": "agent", "bot_id": "1503574146117013555"},
+            {"name": "conch", "type": "agent", "bot_id": "1505753410765459567"},
+            {"name": "mermaid-man", "type": "agent", "bot_id": "1511295414366769202"},
+            {"name": "gary", "type": "service", "bot_id": "1493800835853975562"},
         ],
     },
     "keding-dc": {
@@ -530,11 +530,11 @@ AGENT_GROUPS = {
         "platform": "discord",
         "guild_id": "1513867618899988480",
         "agents": [
-            {"name": "order-transform", "display": "訂單小幫手", "role": "訂單處理", "type": "agent", "icon": "📋", "deployment": "keding-dc-order-transform"},
-            {"name": "order-teacher", "display": "訂單小老師", "role": "考試訓練", "type": "agent", "icon": "📝", "deployment": "keding-dc-order-teacher"},
-            {"name": "captain", "display": "美國隊長", "role": "統合協調", "type": "agent", "icon": "🛡️", "deployment": "keding-dc-captain"},
-            {"name": "ironman", "display": "鋼鐵人", "role": "業務管理", "type": "agent", "icon": "🚀", "deployment": "keding-dc-ironman"},
-            {"name": "strange", "display": "奇異博士", "role": "生產管理", "type": "agent", "icon": "🔮", "deployment": "keding-dc-strange"},
+            {"name": "order-transform", "type": "agent", "deployment": "keding-dc-order-transform", "bot_id": "1514058459585445888"},
+            {"name": "order-teacher", "type": "agent", "deployment": "keding-dc-order-teacher", "bot_id": "1516345749854752819"},
+            {"name": "captain", "type": "agent", "deployment": "keding-dc-captain", "bot_id": "1516009402321211493"},
+            {"name": "ironman", "type": "agent", "deployment": "keding-dc-ironman", "bot_id": "1516011013223354428"},
+            {"name": "strange", "type": "agent", "deployment": "keding-dc-strange", "bot_id": "1516011372947701911"},
         ],
     },
     "keding-wecom": {
@@ -563,6 +563,32 @@ if os.path.exists(_EXTRA_GROUPS_FILE):
 AGENTS = []
 for g in AGENT_GROUPS.values():
     AGENTS.extend(g["agents"])
+
+
+# ─── Discord Members Cache（bot_id → display/avatar）────────
+_discord_members_cache = {}  # guild_id → {"ts": timestamp, "data": {bot_id: {name, avatar_url}}}
+_DISCORD_CACHE_TTL = 300  # 5 分鐘
+
+
+async def _get_discord_bot_info(guild_id: str) -> dict:
+    """取得 guild 內所有 bot 的 display name 和 avatar（有 cache）。"""
+    import time
+    now = time.time()
+    cached = _discord_members_cache.get(guild_id)
+    if cached and (now - cached["ts"]) < _DISCORD_CACHE_TTL:
+        return cached["data"]
+    try:
+        from discord_api import list_members
+        members = await list_members(limit=200, guild_id=guild_id)
+        bot_info = {}
+        for m in members:
+            if m.get("bot"):
+                avatar_url = f"https://cdn.discordapp.com/avatars/{m['id']}/{m['avatar']}.png?size=64" if m.get("avatar") else ""
+                bot_info[m["id"]] = {"name": m.get("display_name") or m.get("name", ""), "avatar_url": avatar_url}
+        _discord_members_cache[guild_id] = {"ts": now, "data": bot_info}
+        return bot_info
+    except Exception:
+        return cached["data"] if cached else {}
 
 
 def _get_deploy_name(agent_name: str) -> str:
@@ -668,8 +694,8 @@ def _docker_get_all_status(docker_client) -> list:
             result.append({
                 "name": agent["name"],
                 "deployment": deploy_name,
-                "display": agent["display"],
-                "role": agent["role"],
+                "display": agent.get("display", agent["name"]),
+                "role": agent.get("role", ""),
                 "type": agent["type"],
                 "status": mapped_status,
                 "uptime": uptime,
@@ -680,8 +706,8 @@ def _docker_get_all_status(docker_client) -> list:
             result.append({
                 "name": agent["name"],
                 "deployment": deploy_name,
-                "display": agent["display"],
-                "role": agent["role"],
+                "display": agent.get("display", agent["name"]),
+                "role": agent.get("role", ""),
                 "type": agent["type"],
                 "status": "not_found",
                 "uptime": "-",
@@ -964,15 +990,27 @@ async def api_status(request: Request):
             return JSONResponse({"error": str(e), "agents": []})
 
         result = []
+        # 從 Discord cache 取動態名稱
+        all_bot_info = {}
+        for grp in AGENT_GROUPS.values():
+            gid = grp.get("guild_id", "")
+            if gid:
+                info = await _get_discord_bot_info(gid)
+                all_bot_info.update(info)
+
         for agent in AGENTS:
             deploy_name = agent.get("deployment", agent["name"])
             pod_info = _find_pod_for_agent(deploy_name, pods.items)
+            bid = agent.get("bot_id", "")
+            dc_info = all_bot_info.get(bid, {})
             result.append({
                 "name": agent["name"],
                 "deployment": deploy_name,
-                "display": agent["display"],
-                "role": agent["role"],
+                "display": dc_info.get("name") or agent.get("display", agent["name"]),
+                "role": agent.get("role", ""),
                 "type": agent["type"],
+                "bot_id": bid,
+                "avatar_url": dc_info.get("avatar_url", ""),
                 **pod_info,
             })
         return JSONResponse({"error": None, "agents": result})
@@ -2209,6 +2247,11 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
     grp = AGENT_GROUPS.get(group)
     if not grp:
         raise HTTPException(status_code=400, detail=f"未知分組：{group}")
+
+    # 從 cache 取 Discord bot 資訊
+    gid = grp.get("guild_id", "")
+    bot_info = await _get_discord_bot_info(gid) if gid else {}
+
     agents_dir = AGENTS_DIR
     if grp["agents_subdir"]:
         agents_dir = AGENTS_DIR / grp["agents_subdir"]
@@ -2251,10 +2294,15 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
         kb_path = agent_path / ".local" / "share" / "kiro-cli" / "knowledge_bases"
         kb_count = len(_read_kb_contexts(kb_path)) if kb_path.exists() else 0
 
+        # Discord 動態資訊（有 cache，fallback 到靜態值）
+        bid = agent.get("bot_id", "")
+        dc_info = bot_info.get(bid, {})
         result.append({
             "name": name,
-            "display": agent["display"],
-            "role": agent["role"],
+            "display": dc_info.get("name") or agent.get("display", agent["name"]),
+            "role": agent.get("role", ""),
+            "bot_id": bid,
+            "avatar_url": dc_info.get("avatar_url", ""),
             "mcp_servers": mcp_servers,
             "mcp_enabled": mcp_enabled,
             "skills_count": len(skills_meta),
@@ -2353,6 +2401,46 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     deep_merge(doc, body)
     config_path.write_text(tomlkit.dumps(doc))
     return JSONResponse({"ok": True, "message": "已儲存"})
+
+
+@app.patch("/api/agents/{agent_name}/display")
+async def api_agent_display_update(agent_name: str, request: Request):
+    """修改角色的 Discord nickname"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理員權限")
+    body = await request.json()
+    display = body.get("display", "").strip()
+    if not display:
+        raise HTTPException(status_code=400, detail="display 為必填")
+
+    # 找到該 agent 的 bot_id 和 guild_id
+    bot_id = ""
+    guild_id = ""
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                bot_id = a.get("bot_id", "")
+                guild_id = grp.get("guild_id", "")
+                break
+    if not bot_id or not guild_id:
+        raise HTTPException(status_code=400, detail="找不到該角色的 bot_id 或 guild_id")
+
+    # 打 Discord API 改 nickname
+    try:
+        from discord_api import set_nickname
+        await set_nickname(bot_id, display, guild_id=guild_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Discord API 失敗：{e}")
+
+    # 清除 cache 讓下次 /api/agents 重新抓
+    _discord_members_cache.pop(guild_id, None)
+
+    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱為 {display}"})
 
 
 @app.get("/api/agents/{agent_name}/mcp")
@@ -2454,12 +2542,50 @@ async def api_skills_available(request: Request):
             if d.is_dir():
                 skill_md = d / "SKILL.md"
                 desc = ""
-                if skill_md.exists():
+                # 中文名稱映射
+                SKILL_NAMES = {
+                    "doc-coauthoring": "文件協作",
+                    "docx": "Word 文件",
+                    "pdf": "PDF 處理",
+                    "pptx": "簡報製作",
+                    "xlsx": "Excel 試算表",
+                    "kd-company-knowledge": "公司知識庫",
+                    "kd-complaint-handler": "客訴處理",
+                    "kd-crm-operations": "CRM 操作",
+                    "kd-glossary": "術語對照",
+                    "kd-meeting-updates": "會議更新",
+                    "kd-pricing-assistant": "報價助手",
+                    "kd-product-coding": "產品編碼",
+                    "kd-product-knowledge": "產品知識",
+                }
+                desc = SKILL_NAMES.get(d.name, "")
+                if not desc and skill_md.exists():
                     try:
-                        text = skill_md.read_text()[:200]
-                        desc = text.split("\n")[0].strip("# ").strip()
+                        text = skill_md.read_text()[:500]
+                        lines = text.split("\n")
+                        # Skip YAML frontmatter (---...---)
+                        i = 0
+                        if lines[0].strip() == "---":
+                            i = 1
+                            while i < len(lines) and lines[i].strip() != "---":
+                                # Try to find description in frontmatter
+                                if lines[i].strip().startswith("description:"):
+                                    desc = lines[i].split(":", 1)[1].strip().strip('"').strip("'")[:80]
+                                    break
+                                i += 1
+                            i += 1  # skip closing ---
+                        # If no desc from frontmatter, find first heading or non-empty line
+                        if not desc:
+                            while i < len(lines):
+                                line = lines[i].strip()
+                                if line and line != "---":
+                                    desc = line.strip("# ").strip()[:80]
+                                    break
+                                i += 1
+                        if not desc:
+                            desc = d.name
                     except Exception:
-                        pass
+                        desc = d.name
                 skills.append({"name": d.name, "description": desc})
     return JSONResponse({"skills": skills})
 
@@ -2958,6 +3084,11 @@ for _route in SPA_ROUTES:
     @app.get(_route, response_class=HTMLResponse)
     async def _spa_page(request: Request, _r=_route):
         return HTMLResponse((DIST_DIR / "index.html").read_text())
+
+# SPA sub-routes (e.g. /agent-config/:id)
+@app.get("/agent-config/{path:path}", response_class=HTMLResponse)
+async def _spa_agent_config_sub(request: Request, path: str):
+    return HTMLResponse((DIST_DIR / "index.html").read_text())
 
 
 # ─── Mount Vue SPA dist at root (MUST be LAST, after all routes) ───

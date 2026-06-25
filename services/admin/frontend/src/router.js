@@ -29,7 +29,7 @@ const routes = [
   { path: '/thread-analytics', name: 'thread-analytics', component: ThreadAnalytics },
   { path: '/messaging', name: 'messaging', component: Messaging },
   // AI 角色管理
-  { path: '/agent-config', name: 'agent-config', component: AgentConfig },
+  { path: '/agent-config/:id?', name: 'agent-config', component: AgentConfig },
   { path: '/mcp-servers', name: 'mcp-servers', component: McpServers },
   { path: '/skills', name: 'skills', component: SkillManage },
   { path: '/steering', name: 'steering', component: SteeringManage },

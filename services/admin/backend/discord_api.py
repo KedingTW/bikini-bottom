@@ -26,8 +26,6 @@ def _headers():
 async def list_members(limit=100, after=None, guild_id=None):
     """List guild members."""
     gid = guild_id or GUILD_ID
-    BOT_ROLE_NAMES = {"海綿寶寶", "派大星", "泡芙老師", "章魚哥", "珊迪", "神奇海螺", "小蝸", "珍珍", "蝦霸", "凱倫", "海超人"}
-
     params = {"limit": min(limit, 1000)}
     if after:
         params["after"] = after
@@ -39,7 +37,7 @@ async def list_members(limit=100, after=None, guild_id=None):
         r2.raise_for_status()
         all_roles = r2.json()
 
-    bot_role_ids = {r["id"] for r in all_roles if r["name"] in BOT_ROLE_NAMES or r.get("managed", False)}
+    bot_role_ids = {r["id"] for r in all_roles if r.get("managed", False)}
 
     return [
         {
@@ -113,11 +111,12 @@ async def send_message(channel_id: str, content: str):
         return r.json()
 
 
-async def set_nickname(user_id: str, nick: str):
+async def set_nickname(user_id: str, nick: str, guild_id=None):
     """Set member nickname in guild."""
+    gid = guild_id or GUILD_ID
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.patch(
-            f"{BASE}/guilds/{GUILD_ID}/members/{user_id}",
+            f"{BASE}/guilds/{gid}/members/{user_id}",
             headers=_headers(),
             json={"nick": nick},
         )
