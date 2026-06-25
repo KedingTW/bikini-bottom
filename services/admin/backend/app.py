@@ -2800,16 +2800,19 @@ async def api_skill_agents_save(skill_name: str, request: Request):
         agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
         for agent in grp["agents"]:
             agent_name = agent["name"]
-            link = agents_dir / agent_name / ".kiro" / "skills" / skill_name
+            skills_dir = agents_dir / agent_name / ".kiro" / "skills"
+            link = skills_dir / skill_name
             if agent_name in enabled_agents:
                 # 建立 symlink
                 source = SHARED_SKILLS_DIR / skill_name
-                if source.is_dir() and not link.exists():
-                    link.parent.mkdir(parents=True, exist_ok=True)
+                if source.is_dir():
+                    skills_dir.mkdir(parents=True, exist_ok=True)
+                    if link.is_symlink() or link.exists():
+                        link.unlink()
                     link.symlink_to(source)
             else:
-                # 移除 symlink
-                if link.is_symlink():
+                # 移除 symlink（包含 broken symlink）
+                if link.is_symlink() or link.exists():
                     link.unlink()
 
     return JSONResponse({"ok": True, "message": f"已更新 {skill_name} 的角色配置", "enabled_agents": enabled_agents})
