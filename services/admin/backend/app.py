@@ -545,7 +545,7 @@ def _seed_skills():
                     description = content.split("\n")[0][:200]
                 source = "external" if skill_name in external_skills else "local"
                 conn.execute("INSERT IGNORE INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, ?)",
-                             (skill_name, display_name, description, content, source))
+                             (skill_name, display_name, description or None, content or None, source))
         # 掃角色 symlinks
         for grp in AGENT_GROUPS.values():
             agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
@@ -561,7 +561,9 @@ def _seed_skills():
                                          (agent["name"], row[0]))
         logging.info("[Skills] Seed 完成")
     except Exception as e:
-        logging.warning(f"[Skills] Seed 失敗（可忽略）：{e}")
+        import traceback
+        logging.warning(f"[Skills] Seed 失敗：{e}")
+        traceback.print_exc()
 
 
 _start_metrics_collector()
