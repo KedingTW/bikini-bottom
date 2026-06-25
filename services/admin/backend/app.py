@@ -513,11 +513,12 @@ def _seed_skills():
     """首次啟動：從 shared/skills 目錄匯入 DB，掃角色 symlinks 匯入啟用關係。"""
     if not USE_MYSQL:
         return
-    with get_db() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
-        if count > 0:
-            return
-        import json as json_mod
+    try:
+        with get_db() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+            if count > 0:
+                return
+            import json as json_mod
         if SHARED_SKILLS_DIR.exists():
             skills_json_path = SHARED_SKILLS_DIR / "skills.json"
             external_skills = set()
@@ -558,7 +559,9 @@ def _seed_skills():
                         if row:
                             conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
                                          (agent["name"], row[0]))
-    logging.info("[Skills] Seed 完成")
+        logging.info("[Skills] Seed 完成")
+    except Exception as e:
+        logging.warning(f"[Skills] Seed 失敗（可忽略）：{e}")
 
 
 _seed_skills()
