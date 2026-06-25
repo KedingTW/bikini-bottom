@@ -10,7 +10,6 @@ import ThreadAnalytics from './views/ThreadAnalytics.vue'
 import AgentConfig from './views/AgentConfig.vue'
 import McpServers from './views/McpServers.vue'
 import Skills from './views/Skills.vue'
-import SkillManage from './views/SkillManage.vue'
 import SteeringManage from './views/SteeringManage.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
@@ -33,7 +32,6 @@ const routes = [
   { path: '/agent-config/:id?', name: 'agent-config', component: AgentConfig },
   { path: '/mcp-servers', name: 'mcp-servers', component: McpServers },
   { path: '/skills', name: 'skills', component: Skills },
-  { path: '/skills', name: 'skills', component: SkillManage },
   { path: '/steering', name: 'steering', component: SteeringManage },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },
