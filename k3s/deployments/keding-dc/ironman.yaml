@@ -21,6 +21,8 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        supplementalGroups: [1002]
       containers:
         - name: agent
           image: keding-dc/agent:latest
@@ -37,20 +39,6 @@ spec:
                 secretKeyRef:
                   name: keding-dc-secrets
                   key: IRONMAN_KIRO_KEY
-            - name: GIT_AUTHOR_NAME
-              value: "Iron Man Bot"
-            - name: GIT_COMMITTER_NAME
-              value: "Iron Man Bot"
-            - name: GIT_AUTHOR_EMAIL
-              valueFrom:
-                configMapKeyRef:
-                  name: common-env
-                  key: GIT_EMAIL
-            - name: GIT_COMMITTER_EMAIL
-              valueFrom:
-                configMapKeyRef:
-                  name: common-env
-                  key: GIT_EMAIL
             - name: AGENT_NAME
               value: "keding-dc-ironman"
           resources:
@@ -64,34 +52,47 @@ spec:
             - name: config
               mountPath: /etc/openab/config.toml
               readOnly: true
-            - name: agent-home
+            - name: home
               mountPath: /home/agent
-            - name: kd-dc
-              mountPath: /mnt/kd-dc
-            - name: kd-share
-              mountPath: /mnt/kd-share
+            - name: workspace
+              mountPath: /home/agent/workspace
+            - name: shared-workspace
+              mountPath: /shared/workspace
+            - name: shared-steering
+              mountPath: /opt/steering
               readOnly: true
             - name: shared-skills
               mountPath: /opt/skills
+              readOnly: true
+            - name: kd-share
+              mountPath: /mnt/kd-share
               readOnly: true
       volumes:
         - name: config
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman/config.toml
             type: File
-        - name: agent-home
+        - name: home
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman
             type: Directory
-        - name: kd-dc
+        - name: workspace
           hostPath:
-            path: /mnt/kd-dc
+            path: /mnt/kd-dc/agents/ironman
+            type: Directory
+        - name: shared-workspace
+          hostPath:
+            path: /mnt/kd-dc/shared/workspace
+            type: Directory
+        - name: shared-steering
+          hostPath:
+            path: /mnt/kd-dc/shared/steering
+            type: Directory
+        - name: shared-skills
+          hostPath:
+            path: /mnt/kd-dc/shared/skills
             type: Directory
         - name: kd-share
           hostPath:
             path: /mnt/kd-share
-            type: Directory
-        - name: shared-skills
-          hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
             type: Directory

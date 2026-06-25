@@ -32,7 +32,7 @@ COPY scripts/bikini-bottom/link-shared-skills.sh /usr/local/bin/link-shared-skil
 COPY scripts/bikini-bottom/entrypoint.sh /usr/local/bin/entrypoint-bikini-bottom.sh
 RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-bikini-bottom.sh
 
-# 預建 /nas 目錄
-RUN mkdir -p /nas
+# 預建 /shared 目錄（entrypoint 會 symlink 到 kd-dev/shared）
+RUN mkdir -p /shared
 
 ENTRYPOINT ["/usr/local/bin/entrypoint-bikini-bottom.sh"]

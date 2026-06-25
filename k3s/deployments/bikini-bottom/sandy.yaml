@@ -19,6 +19,8 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        supplementalGroups: [1002]
       containers:
         - name: agent
           image: bikini-bottom/agent:latest
@@ -70,10 +72,12 @@ spec:
             - name: config
               mountPath: /etc/openab/config.toml
               readOnly: true
-            - name: agent-home
+            - name: home
               mountPath: /home/agent
-            - name: kd-dev
-              mountPath: /mnt/kd-dev
+            - name: workspace
+              mountPath: /home/agent/workspace
+            - name: shared-workspace
+              mountPath: /shared/workspace
             - name: shared-steering
               mountPath: /opt/steering
               readOnly: true
@@ -85,19 +89,23 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/sandy/config.toml
             type: File
-        - name: agent-home
+        - name: home
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/sandy
             type: Directory
-        - name: kd-dev
+        - name: workspace
           hostPath:
-            path: /mnt/kd-dev
+            path: /mnt/kd-dev/agents/sandy
+            type: Directory
+        - name: shared-workspace
+          hostPath:
+            path: /mnt/kd-dev/shared/workspace
             type: Directory
         - name: shared-steering
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
+            path: /mnt/kd-dev/shared/steering
             type: Directory
         - name: shared-skills
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+            path: /mnt/kd-dev/shared/skills
             type: Directory

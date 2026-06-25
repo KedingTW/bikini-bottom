@@ -1,19 +1,59 @@
-# 📦 NAS 共享目錄規範
+# 📦 共用儲存與家目錄規範
 
 ## 路徑對照
 
 | Windows | 容器內 |
 |---------|--------|
-| `Z:\18_各部門共享區\21_系統開發課\88.BikiniBottom\shared` | `/nas/shared` |
+| `Z:\18_各部門共享區\21_系統開發課\88.BikiniBottom\shared` | `/shared` |
 
 收到 Windows 路徑時，直接轉換使用，不需要問對方。
 
 ---
 
-## 目錄結構與用途
+## `/home/agent/` — 個人家目錄（私人空間）
+
+### 說明
+你的家目錄是你私人的工作空間，沒有人會來看。你應該自己管理好裡面的內容。
+
+### 目錄結構
+```
+~/
+├── _projects.md              ← 經手專案總覽（自行維護）
+├── workspace/                ← 工作區（掛載自 kd-dev）
+│   └── projects/
+│       └── xxx-project/
+│           └── _status.md    ← 該專案進度
+├── .kiro/                    ← 系統設定（勿亂動）
+│   ├── steering/             ← 人設、規則、記憶
+│   ├── context/              ← 觸發式上下文（可自行新增 .md）
+│   ├── settings/             ← mcp.json, cli.json
+│   └── skills/               ← 技能（symlink，唯讀）
+├── .openab/                  ← 框架資料
+│   ├── cronjob.toml          ← 排程任務（可自行設定）
+│   └── thread_map.json       ← 框架自動管理
+└── ...
+```
+
+### 規則
+- `~/workspace/projects/` 放你自己正在處理的專案草稿、工作檔
+- 要交付給別人的東西放 `/shared/workspace/` 或 `/shared/drop/`
+- `~/_projects.md` 記錄所有經手的專案清單
+- 各專案目錄內用 `_status.md` 記錄進度
+- 其他 `_xxx.md` 用於記錄個人計畫、待辦事項等
+
+### 與 /shared 的差別
+| | ~/（家目錄） | /shared/ |
+|--|-------------|----------|
+| 誰能看 | 只有你自己 | 所有角色 + 人類 |
+| 用途 | 草稿、進行中的工作、私人筆記 | 交付物、協作檔案 |
+| 生命週期 | 你自己管理 | 按專案/drop 規則管理 |
+
+---
+
+## `/shared/` — 共用目錄結構與用途
 
 ```
-/nas/shared/
+/shared/
 ├── workspace/       ← 正式專案工作區（長期保存）
 ├── drop/            ← 臨時檔案交換（定期清理）
 ├── docs/            ← 通用知識文件（不屬於特定專案）
@@ -25,7 +65,7 @@
 
 ---
 
-## `/nas/shared/workspace/` — 正式專案工作區
+## `/shared/workspace/` — 正式專案工作區
 
 ### 何時使用
 - 任務已經過討論、有明確方向（成案）
@@ -34,7 +74,7 @@
 
 ### 目錄結構
 ```
-/nas/shared/workspace/{project-name}/
+/shared/workspace/{project-name}/
 ```
 - `{project-name}`：英文小寫，用 `-` 連接（例如 `video-digest`、`order-transform`）
 - 專案內部結構由負責人自行決定
@@ -46,7 +86,7 @@
 
 ---
 
-## `/nas/shared/drop/` — 臨時檔案交換區
+## `/shared/drop/` — 臨時檔案交換區
 
 ### 何時使用
 - 臨時丟給其他 agent 看的檔案
@@ -65,22 +105,22 @@
 - 取用時認最高版本號
 
 ### ⚠️ 重要警告
-- `/nas/shared/drop/` 會定期清理，**絕對不要把重要資料只存在這裡**
-- 重要檔案一定要保存在自己的工作目錄或 `/nas/shared/workspace/` 下
+- `/shared/drop/` 會定期清理，**絕對不要把重要資料只存在這裡**
+- 重要檔案一定要保存在自己的工作目錄或 `/shared/workspace/` 下
 - 這裡只是「交換」用途，放完就當作會消失
 - 不要修改別人放的檔案，要改就複製到自己目錄改
 - 可以用子目錄整理相關檔案（例如 `drop/order-transform-review/`）
 
 ---
 
-## `/nas/shared/steering/` — 共用 Steering（系統用）
+## `/shared/steering/` — 共用 Steering（系統用）
 
 - 由管理員維護，agent 不應修改
 - 容器啟動時會 symlink 到各 agent 的 steering 目錄
 
 ---
 
-## `/nas/shared/docs/` — 通用知識文件
+## `/shared/docs/` — 通用知識文件
 
 ### 何時使用
 - 不屬於特定專案的通用知識、參考資料
@@ -105,11 +145,13 @@
 ## 判斷流程：檔案該放哪？
 
 ```
-這個檔案屬於某個已成案的專案嗎？
-├── 是 → /nas/shared/workspace/{project-name}/
-└── 否 → 這是通用知識/參考文件嗎？
-    ├── 是 → /nas/shared/docs/
-    └── 否 → 這是臨時交換用的嗎？
-        ├── 是 → /nas/shared/drop/
-        └── 否 → 先放 drop，等確定歸屬再搬
+這個檔案是我自己的草稿/進行中的工作嗎？
+├── 是 → ~/workspace/projects/{project-name}/
+└── 否 → 這個檔案屬於某個已成案的專案嗎？
+    ├── 是 → /shared/workspace/{project-name}/
+    └── 否 → 這是通用知識/參考文件嗎？
+        ├── 是 → /shared/docs/
+        └── 否 → 這是臨時交換用的嗎？
+            ├── 是 → /shared/drop/
+            └── 否 → 先放 ~/workspace/projects/ 自己管理
 ```

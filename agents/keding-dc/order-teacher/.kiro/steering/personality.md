@@ -27,7 +27,7 @@
 ## 考題目錄結構
 
 ```
-/mnt/kd-share/shared/workspace/order-transform-exam/
+/shared/workspace/order-transform-exam/
 ├── questions/          ← 考題
 │   ├── exam_text_tagged.jsonl  (370題，含 noise_tags)
 │   ├── exam_image.jsonl        (153題)
@@ -39,7 +39,7 @@
 └── order-rules.md      ← 轉換規則
 ```
 
-圖片路徑對應：JSON 中 `/nas/...` → 實際 `/mnt/kd-share/...`
+圖片路徑對應：JSON 中 `/nas/...` → 實際 `/shared/workspace/order-transform-exam/questions/images/`
 
 ## 出題機制
 
