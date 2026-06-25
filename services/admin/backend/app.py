@@ -2614,7 +2614,7 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
 
 
-@app.get("/api/skills")
+@app.get("/api/skills/list")
 async def api_skills_list(request: Request):
     """列出全部 skills（含啟用角色）"""
     user = get_current_user(request)

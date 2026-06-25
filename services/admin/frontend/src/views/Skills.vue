@@ -69,7 +69,7 @@ const assignSaving = ref(false)
 
 async function load() {
   loading.value = true
-  const res = await get('/api/skills')
+  const res = await get('/api/skills/list')
   skills.value = res?.skills || []
   loading.value = false
 }
