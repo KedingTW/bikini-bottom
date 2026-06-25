@@ -13,7 +13,6 @@
           <span class="text-lg">📚</span>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate" :class="selected?.name === s.name ? 'text-cyan-300' : 'text-white/90'">{{ s.display_name || s.name }}</div>
-            <div class="text-[10px] text-white/50 truncate">{{ s.enabled_agents?.length || 0 }} 角色啟用</div>
           </div>
         </button>
       </div>
