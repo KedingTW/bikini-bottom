@@ -44,12 +44,14 @@
         </router-link>
       </template>
     </div>
+    <div class="px-4 py-2 text-[10px] text-white/30" v-show="!collapsed">{{ VERSION }}</div>
   </nav>
 </template>
 
 <script setup>
 import { ref, computed, inject } from 'vue'
 import { useRoute } from 'vue-router'
+import { VERSION } from '../version.js'
 
 const props = defineProps({ role: { type: String, default: 'viewer' }, groups: { type: Array, default: () => [] } })
 const route = useRoute()
@@ -87,6 +89,7 @@ const navGroups = [
   { label: '', divider: true, items: [] },
   { label: '共用功能', items: [
     { path: '/mcp-servers', icon: '🗄️', label: 'MCP Servers', admin: true },
+    { path: '/skills', icon: '📚', label: '技能管理', admin: true },
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
     { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
