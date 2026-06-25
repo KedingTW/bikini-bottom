@@ -2608,7 +2608,7 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
 
 @app.get("/api/skills")
 async def api_skills_list(request: Request):
-    """列出全部 skills（含啟用角色數）"""
+    """列出全部 skills（含啟用角色）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2617,7 +2617,12 @@ async def api_skills_list(request: Request):
             (SELECT COUNT(*) FROM skill_agent_config c WHERE c.skill_id = s.id AND c.enabled = 1) as agent_count
             FROM skills s ORDER BY s.name""")
         rows = cur.fetchall()
-    return JSONResponse({"skills": [{"id": r[0], "name": r[1], "display_name": r[2], "description": r[3], "source": r[4], "agent_count": r[5]} for r in rows]})
+        skills = []
+        for r in rows:
+            cur2 = conn.execute("SELECT agent_name FROM skill_agent_config WHERE skill_id = ? AND enabled = 1", (r[0],))
+            agents = [a[0] for a in cur2.fetchall()]
+            skills.append({"id": r[0], "name": r[1], "display_name": r[2], "description": r[3], "source": r[4], "agent_count": r[5], "enabled_agents": agents})
+    return JSONResponse({"skills": skills})
 
 
 @app.get("/api/skills/available")
@@ -2724,6 +2729,49 @@ async def api_skill_delete(skill_name: str, request: Request):
             if link.is_symlink():
                 link.unlink()
     return JSONResponse({"ok": True, "message": f"已刪除 {skill_name}"})
+
+
+@app.put("/api/skills/{skill_name}/agents")
+async def api_skill_agents_save(skill_name: str, request: Request):
+    """批次更新 skill 啟用給哪些角色 + 重建 symlinks"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    enabled_agents = body.get("enabled_agents", [])
+    if not isinstance(enabled_agents, list):
+        raise HTTPException(status_code=400, detail="enabled_agents 必須是陣列")
+
+    with get_db() as conn:
+        row = conn.execute("SELECT id FROM skills WHERE name = ?", (skill_name,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Skill 不存在")
+        skill_id = row[0]
+        # 清除舊的啟用關係
+        conn.execute("DELETE FROM skill_agent_config WHERE skill_id = ?", (skill_id,))
+        # 寫入新的
+        for agent_name in enabled_agents:
+            conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
+                         (agent_name, skill_id))
+
+    # 重建所有角色的 symlinks
+    for grp in AGENT_GROUPS.values():
+        agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
+        for agent in grp["agents"]:
+            agent_name = agent["name"]
+            link = agents_dir / agent_name / ".kiro" / "skills" / skill_name
+            if agent_name in enabled_agents:
+                # 建立 symlink
+                source = SHARED_SKILLS_DIR / skill_name
+                if source.is_dir() and not link.exists():
+                    link.parent.mkdir(parents=True, exist_ok=True)
+                    link.symlink_to(source)
+            else:
+                # 移除 symlink
+                if link.is_symlink():
+                    link.unlink()
+
+    return JSONResponse({"ok": True, "message": f"已更新 {skill_name} 的角色配置", "enabled_agents": enabled_agents})
 
 
 @app.put("/api/agents/{agent_name}/skills")
