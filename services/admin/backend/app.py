@@ -240,6 +240,28 @@ def _init_db():
                 FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS skills (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(64) NOT NULL UNIQUE,
+                display_name VARCHAR(128) DEFAULT '',
+                description TEXT,
+                content TEXT,
+                source VARCHAR(16) DEFAULT 'local',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS skill_agent_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_name VARCHAR(64) NOT NULL,
+                skill_id INT NOT NULL,
+                enabled TINYINT DEFAULT 1,
+                UNIQUE KEY uk_agent_skill (agent_name, skill_id),
+                FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+            )
+        """)
 
         # Migration: ensure mcp_servers columns exist + drop deprecated ones
         for col_def in [
@@ -485,6 +507,61 @@ def _fetch_k8s_metrics() -> dict:
 
 
 _init_db()
+
+
+def _seed_skills():
+    """首次啟動：從 shared/skills 目錄匯入 DB，掃角色 symlinks 匯入啟用關係。"""
+    if not USE_MYSQL:
+        return
+    with get_db() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+        if count > 0:
+            return
+        import json as json_mod
+        if SHARED_SKILLS_DIR.exists():
+            skills_json_path = SHARED_SKILLS_DIR / "skills.json"
+            external_skills = set()
+            if skills_json_path.exists():
+                try:
+                    sj = json_mod.loads(skills_json_path.read_text())
+                    for src in sj.get("sources", []):
+                        external_skills.update(src.get("skills", []))
+                except Exception:
+                    pass
+            for d in sorted(SHARED_SKILLS_DIR.iterdir()):
+                if not d.is_dir():
+                    continue
+                skill_name = d.name
+                skill_md = d / "SKILL.md"
+                content = skill_md.read_text() if skill_md.exists() else ""
+                display_name = skill_name
+                description = ""
+                if content:
+                    for line in content.split("\n"):
+                        if line.startswith("# "):
+                            display_name = line[2:].strip()
+                            break
+                    description = content.split("\n")[0][:200]
+                source = "external" if skill_name in external_skills else "local"
+                conn.execute("INSERT IGNORE INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, ?)",
+                             (skill_name, display_name, description, content, source))
+        # 掃角色 symlinks
+        for grp in AGENT_GROUPS.values():
+            agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
+            for agent in grp["agents"]:
+                agent_skills_dir = agents_dir / agent["name"] / ".kiro" / "skills"
+                if not agent_skills_dir.exists():
+                    continue
+                for item in agent_skills_dir.iterdir():
+                    if item.is_symlink() or item.is_dir():
+                        row = conn.execute("SELECT id FROM skills WHERE name = ?", (item.name,)).fetchone()
+                        if row:
+                            conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
+                                         (agent["name"], row[0]))
+    logging.info("[Skills] Seed 完成")
+
+
+_seed_skills()
 _start_metrics_collector()
 
 
@@ -495,7 +572,6 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
 SHARED_SKILLS_DIR = Path(os.environ.get("SHARED_SKILLS_DIR", "/data/repo/shared/skills"))
-SKILLS_SYMLINK_TARGET = Path(os.environ.get("SKILLS_SYMLINK_TARGET", "/opt/skills"))
 
 # Serve Vue SPA build output
 DIST_DIR = Path(os.environ.get("DIST_DIR", str((BASE_DIR / ".." / "dist").resolve())))
@@ -2530,69 +2606,129 @@ async def api_agent_skill_view(agent_name: str, skill_name: str, request: Reques
     return JSONResponse({"content": skill_md.read_text(), "filename": f"{skill_name}/SKILL.md"})
 
 
-@app.get("/api/skills/available")
-async def api_skills_available(request: Request):
-    """列出共用 skills 目錄中所有可用的 skill"""
+@app.get("/api/skills")
+async def api_skills_list(request: Request):
+    """列出全部 skills（含啟用角色數）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    skills = []
-    if SHARED_SKILLS_DIR.exists():
-        for d in sorted(SHARED_SKILLS_DIR.iterdir()):
-            if d.is_dir():
-                skill_md = d / "SKILL.md"
-                desc = ""
-                # 中文名稱映射
-                SKILL_NAMES = {
-                    "doc-coauthoring": "文件協作",
-                    "docx": "Word 文件",
-                    "pdf": "PDF 處理",
-                    "pptx": "簡報製作",
-                    "xlsx": "Excel 試算表",
-                    "kd-company-knowledge": "公司知識庫",
-                    "kd-complaint-handler": "客訴處理",
-                    "kd-crm-operations": "CRM 操作",
-                    "kd-glossary": "術語對照",
-                    "kd-meeting-updates": "會議更新",
-                    "kd-pricing-assistant": "報價助手",
-                    "kd-product-coding": "產品編碼",
-                    "kd-product-knowledge": "產品知識",
-                }
-                desc = SKILL_NAMES.get(d.name, "")
-                if not desc and skill_md.exists():
-                    try:
-                        text = skill_md.read_text()[:500]
-                        lines = text.split("\n")
-                        # Skip YAML frontmatter (---...---)
-                        i = 0
-                        if lines[0].strip() == "---":
-                            i = 1
-                            while i < len(lines) and lines[i].strip() != "---":
-                                # Try to find description in frontmatter
-                                if lines[i].strip().startswith("description:"):
-                                    desc = lines[i].split(":", 1)[1].strip().strip('"').strip("'")[:80]
-                                    break
-                                i += 1
-                            i += 1  # skip closing ---
-                        # If no desc from frontmatter, find first heading or non-empty line
-                        if not desc:
-                            while i < len(lines):
-                                line = lines[i].strip()
-                                if line and line != "---":
-                                    desc = line.strip("# ").strip()[:80]
-                                    break
-                                i += 1
-                        if not desc:
-                            desc = d.name
-                    except Exception:
-                        desc = d.name
-                skills.append({"name": d.name, "description": desc})
-    return JSONResponse({"skills": skills})
+    with get_db() as conn:
+        cur = conn.execute("""SELECT s.id, s.name, s.display_name, s.description, s.source,
+            (SELECT COUNT(*) FROM skill_agent_config c WHERE c.skill_id = s.id AND c.enabled = 1) as agent_count
+            FROM skills s ORDER BY s.name""")
+        rows = cur.fetchall()
+    return JSONResponse({"skills": [{"id": r[0], "name": r[1], "display_name": r[2], "description": r[3], "source": r[4], "agent_count": r[5]} for r in rows]})
+
+
+@app.get("/api/skills/available")
+async def api_skills_available(request: Request):
+    """列出可用 skills（相容舊前端）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT name, display_name, description FROM skills ORDER BY name")
+        rows = cur.fetchall()
+    return JSONResponse({"skills": [{"name": r[0], "display_name": r[1], "description": r[2] or r[1] or r[0]} for r in rows]})
+
+
+@app.get("/api/skills/{skill_name}")
+async def api_skill_detail(skill_name: str, request: Request):
+    """取得 skill 完整內容"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        cur = conn.execute("SELECT id, name, display_name, description, content, source FROM skills WHERE name = ?", (skill_name,))
+        r = cur.fetchone()
+        if not r:
+            raise HTTPException(status_code=404, detail="Skill 不存在")
+    return JSONResponse({"id": r[0], "name": r[1], "display_name": r[2], "description": r[3], "content": r[4], "source": r[5]})
+
+
+@app.post("/api/skills")
+async def api_skill_create(request: Request):
+    """新增 skill（寫 DB + 生成 SKILL.md）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    name = body.get("name", "").strip()
+    display_name = body.get("display_name", "").strip() or name
+    description = body.get("description", "").strip()
+    content = body.get("content", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name 為必填")
+    safe_name = Path(name).name
+    if safe_name != name:
+        raise HTTPException(status_code=400, detail="無效的 skill 名稱")
+    with get_db() as conn:
+        try:
+            conn.execute("INSERT INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, 'local')",
+                         (name, display_name, description, content))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"建立失敗：{e}")
+    # 生成 SKILL.md
+    skill_dir = SHARED_SKILLS_DIR / name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text(content)
+    return JSONResponse({"ok": True, "message": f"已建立 {name}"})
+
+
+@app.put("/api/skills/{skill_name}")
+async def api_skill_update(skill_name: str, request: Request):
+    """編輯 skill（更新 DB + 重寫 SKILL.md）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    with get_db() as conn:
+        row = conn.execute("SELECT id FROM skills WHERE name = ?", (skill_name,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Skill 不存在")
+        updates = []
+        params = []
+        for field in ["display_name", "description", "content"]:
+            if field in body:
+                updates.append(f"{field} = ?")
+                params.append(body[field])
+        if updates:
+            params.append(skill_name)
+            conn.execute(f"UPDATE skills SET {', '.join(updates)} WHERE name = ?", tuple(params))
+    # 重寫 SKILL.md
+    if "content" in body:
+        skill_dir = SHARED_SKILLS_DIR / skill_name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(body["content"])
+    return JSONResponse({"ok": True, "message": f"已更新 {skill_name}"})
+
+
+@app.delete("/api/skills/{skill_name}")
+async def api_skill_delete(skill_name: str, request: Request):
+    """刪除 skill（刪 DB + 刪檔 + 清 symlinks）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        conn.execute("DELETE FROM skills WHERE name = ?", (skill_name,))
+    # 刪除檔案
+    import shutil
+    skill_dir = SHARED_SKILLS_DIR / skill_name
+    if skill_dir.exists():
+        shutil.rmtree(skill_dir)
+    # 清除所有角色的 symlinks
+    for grp in AGENT_GROUPS.values():
+        agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
+        for agent in grp["agents"]:
+            link = agents_dir / agent["name"] / ".kiro" / "skills" / skill_name
+            if link.is_symlink():
+                link.unlink()
+    return JSONResponse({"ok": True, "message": f"已刪除 {skill_name}"})
 
 
 @app.put("/api/agents/{agent_name}/skills")
 async def api_agent_skills_save(agent_name: str, request: Request):
-    """儲存角色啟用的 skills（管理 symlinks）"""
+    """儲存角色啟用的 skills（DB + 重建 symlinks）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2601,22 +2737,33 @@ async def api_agent_skills_save(agent_name: str, request: Request):
     if not isinstance(enabled_skills, list):
         raise HTTPException(status_code=400, detail="enabled_skills 必須是陣列")
 
+    # 更新 DB
+    with get_db() as conn:
+        # 取得所有 skill id map
+        cur = conn.execute("SELECT id, name FROM skills")
+        skill_map = {r[1]: r[0] for r in cur.fetchall()}
+        # 清除舊的
+        conn.execute("DELETE FROM skill_agent_config WHERE agent_name = ?", (agent_name,))
+        # 寫入新的
+        for skill_name in enabled_skills:
+            sid = skill_map.get(skill_name)
+            if sid:
+                conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
+                             (agent_name, sid))
+
+    # 重建 symlinks
     agent_skills_dir = _get_agent_dir(agent_name) / ".kiro" / "skills"
     agent_skills_dir.mkdir(parents=True, exist_ok=True)
-
-    # 移除現有 symlinks
     for item in agent_skills_dir.iterdir():
         if item.is_symlink():
             item.unlink()
-
-    # 建立新 symlinks（指向 bot 容器可見的 /opt/skills/ 路徑）
     created = []
     for skill_name in enabled_skills:
         safe_name = Path(skill_name).name
         source = SHARED_SKILLS_DIR / safe_name
         if source.is_dir():
             target = agent_skills_dir / safe_name
-            target.symlink_to(SKILLS_SYMLINK_TARGET / safe_name)
+            target.symlink_to(source)
             created.append(safe_name)
 
     return JSONResponse({"ok": True, "message": f"已設定 {len(created)} 個 skills", "enabled": created})
