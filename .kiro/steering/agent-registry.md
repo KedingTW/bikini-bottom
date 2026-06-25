@@ -1,3 +1,6 @@
+---
+inclusion: manual
+---
 # Agent 角色登錄表與維護規範
 
 ## 所有 Bot UID 對照表

@@ -1,9 +1,0 @@
-# Sandy's cronjob 設定
-
-[[jobs]]
-schedule = "0 18 * * 1-5"
-channel = "1508387929364631562"
-message = "請讀取 /nas/shared/workspace/order-transform-exam/README-fetch-sop.md，抓取今天的考題"
-sender_name = "ExamFetch"
-timezone = "Asia/Taipei"
-enabled = true
