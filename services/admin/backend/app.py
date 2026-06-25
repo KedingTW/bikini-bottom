@@ -2382,15 +2382,23 @@ async def api_agents_list(request: Request, group: str = "bikini-bottom"):
                 mcp_enabled = sum(1 for s in servers.values() if not s.get("disabled", False))
             except Exception:
                 pass
-        # Skills (resolve symlinks)
-        skills_path = agent_path / ".kiro" / "skills"
+        # Skills (from DB)
         skills_meta = []
-        if skills_path.exists():
-            for d in sorted(skills_path.iterdir()):
-                if d.is_dir() or d.is_symlink():
-                    target = d.resolve() if d.is_symlink() else d
-                    if target.is_dir():
-                        skills_meta.append(_parse_skill_meta(target))
+        if USE_MYSQL:
+            with get_db() as skill_conn:
+                cur = skill_conn.execute("""SELECT s.name, s.display_name, s.description
+                    FROM skills s JOIN skill_agent_config c ON c.skill_id = s.id
+                    WHERE c.agent_name = ? AND c.enabled = 1 ORDER BY s.name""", (name,))
+                for sr in cur.fetchall():
+                    skills_meta.append({"name": sr[0], "display_name": sr[1] or sr[0], "description": sr[2] or ""})
+        else:
+            skills_path = agent_path / ".kiro" / "skills"
+            if skills_path.exists():
+                for d in sorted(skills_path.iterdir()):
+                    if d.is_dir() or d.is_symlink():
+                        target = d.resolve() if d.is_symlink() else d
+                        if target.is_dir():
+                            skills_meta.append(_parse_skill_meta(target))
         # Steering
         steering_path = agent_path / ".kiro" / "steering"
         steering = sorted([f.name for f in steering_path.iterdir() if f.suffix == ".md"]) if steering_path.exists() else []
