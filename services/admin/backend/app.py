@@ -514,51 +514,51 @@ def _seed_skills():
     if not USE_MYSQL:
         return
     try:
+        import json as json_mod
         with get_db() as conn:
             count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
             if count > 0:
                 return
-            import json as json_mod
-        if SHARED_SKILLS_DIR.exists():
-            skills_json_path = SHARED_SKILLS_DIR / "skills.json"
-            external_skills = set()
-            if skills_json_path.exists():
-                try:
-                    sj = json_mod.loads(skills_json_path.read_text())
-                    for src in sj.get("sources", []):
-                        external_skills.update(src.get("skills", []))
-                except Exception:
-                    pass
-            for d in sorted(SHARED_SKILLS_DIR.iterdir()):
-                if not d.is_dir():
-                    continue
-                skill_name = d.name
-                skill_md = d / "SKILL.md"
-                content = skill_md.read_text() if skill_md.exists() else ""
-                display_name = skill_name
-                description = ""
-                if content:
-                    for line in content.split("\n"):
-                        if line.startswith("# "):
-                            display_name = line[2:].strip()
-                            break
-                    description = content.split("\n")[0][:200]
-                source = "external" if skill_name in external_skills else "local"
-                conn.execute("INSERT IGNORE INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, ?)",
-                             (skill_name, display_name, description or None, content or None, source))
-        # 掃角色 symlinks
-        for grp in AGENT_GROUPS.values():
-            agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
-            for agent in grp["agents"]:
-                agent_skills_dir = agents_dir / agent["name"] / ".kiro" / "skills"
-                if not agent_skills_dir.exists():
-                    continue
-                for item in agent_skills_dir.iterdir():
-                    if item.is_symlink() or item.is_dir():
-                        row = conn.execute("SELECT id FROM skills WHERE name = ?", (item.name,)).fetchone()
-                        if row:
-                            conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
-                                         (agent["name"], row[0]))
+            if SHARED_SKILLS_DIR.exists():
+                skills_json_path = SHARED_SKILLS_DIR / "skills.json"
+                external_skills = set()
+                if skills_json_path.exists():
+                    try:
+                        sj = json_mod.loads(skills_json_path.read_text())
+                        for src in sj.get("sources", []):
+                            external_skills.update(src.get("skills", []))
+                    except Exception:
+                        pass
+                for d in sorted(SHARED_SKILLS_DIR.iterdir()):
+                    if not d.is_dir():
+                        continue
+                    skill_name = d.name
+                    skill_md = d / "SKILL.md"
+                    content = skill_md.read_text() if skill_md.exists() else ""
+                    display_name = skill_name
+                    description = ""
+                    if content:
+                        for line in content.split("\n"):
+                            if line.startswith("# "):
+                                display_name = line[2:].strip()
+                                break
+                        description = content.split("\n")[0][:200]
+                    source = "external" if skill_name in external_skills else "local"
+                    conn.execute("INSERT IGNORE INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, ?)",
+                                 (skill_name, display_name, description or None, content or None, source))
+            # 掃角色 symlinks
+            for grp in AGENT_GROUPS.values():
+                agents_dir = AGENTS_DIR / grp["agents_subdir"] if grp.get("agents_subdir") else AGENTS_DIR
+                for agent in grp["agents"]:
+                    agent_skills_dir = agents_dir / agent["name"] / ".kiro" / "skills"
+                    if not agent_skills_dir.exists():
+                        continue
+                    for item in agent_skills_dir.iterdir():
+                        if item.is_symlink() or item.is_dir():
+                            row = conn.execute("SELECT id FROM skills WHERE name = ?", (item.name,)).fetchone()
+                            if row:
+                                conn.execute("INSERT IGNORE INTO skill_agent_config (agent_name, skill_id, enabled) VALUES (?, ?, 1)",
+                                             (agent["name"], row[0]))
         logging.info("[Skills] Seed 完成")
     except Exception as e:
         import traceback
