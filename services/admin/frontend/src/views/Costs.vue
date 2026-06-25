@@ -49,16 +49,10 @@
           </div>
         </div>
 
-        <!-- Daily Trend Chart -->
+        <!-- Daily Usage Chart (stacked bar + total line) -->
         <div v-if="kiroDailyData.length" class="glass rounded-xl p-5">
-          <h3 class="font-semibold mb-3 text-cyan-300">📈 每日消耗趨勢</h3>
-          <div class="h-48"><canvas ref="kiroChart"></canvas></div>
-        </div>
-
-        <!-- Stacked Bar Chart by User -->
-        <div v-if="kiroDailyData.length" class="glass rounded-xl p-5">
-          <h3 class="font-semibold mb-3 text-cyan-300">📊 每日用量（依帳號）</h3>
-          <div class="h-64"><canvas ref="kiroStackedChart"></canvas></div>
+          <h3 class="font-semibold mb-3 text-cyan-300">📊 每日用量</h3>
+          <div class="h-72"><canvas ref="kiroStackedChart"></canvas></div>
         </div>
 
         <!-- Usage Ranking (Progress Bars) -->
@@ -413,7 +407,7 @@ async function loadAll(forceRefresh = false) {
   loading.value = false
 
   await nextTick()
-  setTimeout(() => { renderCostChart(); renderKiroChart(); renderKiroStackedChart(); }, 100)
+  setTimeout(() => { renderCostChart(); renderKiroStackedChart(); }, 100)
 }
 
 function renderKiroChart() {
@@ -461,11 +455,12 @@ function renderKiroStackedChart() {
     data: { labels: dates, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       scales: {
         x: { stacked: true, ticks: { color: '#bbb', font: { size: 10 }, maxRotation: 0, maxTicksLimit: 15 }, grid: { display: false } },
         y: { stacked: true, beginAtZero: true, ticks: { color: '#bbb', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
       },
-      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#bbb', font: { size: 10 }, boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} credits` } } }
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#bbb', font: { size: 10 }, boxWidth: 12 } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} credits`, footer: items => `合計: ${items.reduce((s, i) => s + i.parsed.y, 0).toFixed(1)} credits` } } }
     }
   })
 }
@@ -493,7 +488,7 @@ function renderCostChart() {
 
 watch(activeTab, async () => {
   await nextTick()
-  setTimeout(() => { renderCostChart(); renderKiroChart(); renderKiroStackedChart(); }, 100)
+  setTimeout(() => { renderCostChart(); renderKiroStackedChart(); }, 100)
 })
 
 function barColor(pct) {
