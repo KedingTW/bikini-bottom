@@ -515,9 +515,29 @@ def _seed_skills():
         return
     try:
         import json as json_mod
+        # 中文名稱對照表
+        DISPLAY_NAMES = {
+            "doc-coauthoring": "文件協作",
+            "docx": "Word 文件",
+            "pdf": "PDF 處理",
+            "pptx": "簡報製作",
+            "xlsx": "Excel 試算表",
+            "kd-company-knowledge": "公司知識庫",
+            "kd-complaint-handler": "客訴處理",
+            "kd-crm-operations": "CRM 操作",
+            "kd-glossary": "術語對照",
+            "kd-meeting-updates": "會議更新",
+            "kd-pricing-assistant": "報價助手",
+            "kd-product-coding": "產品編碼",
+            "kd-product-knowledge": "產品知識",
+            "company-kb": "公司知識庫",
+        }
         with get_db() as conn:
             count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
             if count > 0:
+                # 已有資料：更新 display_name（migration）
+                for name, dn in DISPLAY_NAMES.items():
+                    conn.execute("UPDATE skills SET display_name = ? WHERE name = ? AND (display_name = '' OR display_name = name)", (dn, name))
                 return
             if SHARED_SKILLS_DIR.exists():
                 skills_json_path = SHARED_SKILLS_DIR / "skills.json"
@@ -535,14 +555,17 @@ def _seed_skills():
                     skill_name = d.name
                     skill_md = d / "SKILL.md"
                     content = skill_md.read_text() if skill_md.exists() else ""
-                    display_name = skill_name
+                    display_name = DISPLAY_NAMES.get(skill_name, "")
                     description = ""
                     if content:
-                        for line in content.split("\n"):
-                            if line.startswith("# "):
-                                display_name = line[2:].strip()
-                                break
+                        if not display_name:
+                            for line in content.split("\n"):
+                                if line.startswith("# "):
+                                    display_name = line[2:].strip()
+                                    break
                         description = content.split("\n")[0][:200]
+                    if not display_name:
+                        display_name = skill_name
                     source = "external" if skill_name in external_skills else "local"
                     conn.execute("INSERT IGNORE INTO skills (name, display_name, description, content, source) VALUES (?, ?, ?, ?, ?)",
                                  (skill_name, display_name, description or None, content or None, source))
