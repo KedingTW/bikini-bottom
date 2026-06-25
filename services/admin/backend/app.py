@@ -564,13 +564,18 @@ def _seed_skills():
         logging.warning(f"[Skills] Seed 失敗（可忽略）：{e}")
 
 
-_seed_skills()
 _start_metrics_collector()
 
 
 # ─── App Setup ────────────────────────────────────────────
 app = FastAPI(title="比奇堡 Dashboard", docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+
+@app.on_event("startup")
+async def _on_startup():
+    _seed_skills()
+
 
 BASE_DIR = Path(__file__).resolve().parent
 AGENTS_DIR = Path(os.environ.get("AGENTS_DIR", "/data/agents"))
