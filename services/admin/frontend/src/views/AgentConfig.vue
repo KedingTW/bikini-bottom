@@ -527,13 +527,13 @@ async function saveSkill() {
 async function loadSkills() {
   if (!selectedAgent.value) return
   const [availRes, agentSkills] = await Promise.all([
-    get('/api/skills/available'),
+    get('/api/skills'),
     Promise.resolve(selectedAgent.value.skills || [])
   ])
   if (availRes?.skills) {
     mockSkills.splice(0, mockSkills.length, ...availRes.skills.map(s => ({
       name: s.name,
-      desc: s.description ? s.description : s.name,
+      desc: s.display_name || s.description || s.name,
       enabled: agentSkills.includes(s.name)
     })))
   }
