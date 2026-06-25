@@ -2689,8 +2689,8 @@ async def api_skill_detail(skill_name: str, request: Request):
 async def api_skill_create(request: Request):
     """新增 skill（寫 DB + 生成 SKILL.md）"""
     user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     name = body.get("name", "").strip()
     display_name = body.get("display_name", "").strip() or name
@@ -2718,8 +2718,11 @@ async def api_skill_create(request: Request):
 async def api_skill_update(skill_name: str, request: Request):
     """編輯 skill（更新 DB + 重寫 SKILL.md）"""
     user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    safe_name = Path(skill_name).name
+    if safe_name != skill_name:
+        raise HTTPException(status_code=400, detail="無效的 skill 名稱")
     body = await request.json()
     with get_db() as conn:
         row = conn.execute("SELECT id FROM skills WHERE name = ?", (skill_name,)).fetchone()
@@ -2746,10 +2749,13 @@ async def api_skill_update(skill_name: str, request: Request):
 async def api_skill_delete(skill_name: str, request: Request):
     """刪除 skill（刪 DB + 刪檔 + 清 symlinks）"""
     user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    safe_name = Path(skill_name).name
+    if safe_name != skill_name:
+        raise HTTPException(status_code=400, detail="無效的 skill 名稱")
     with get_db() as conn:
-        conn.execute("DELETE FROM skills WHERE name = ?", (skill_name,))
+        conn.execute("DELETE FROM skills WHERE name = ?", (safe_name,))
     # 刪除檔案
     import shutil
     skill_dir = SHARED_SKILLS_DIR / skill_name
@@ -2769,8 +2775,11 @@ async def api_skill_delete(skill_name: str, request: Request):
 async def api_skill_agents_save(skill_name: str, request: Request):
     """批次更新 skill 啟用給哪些角色 + 重建 symlinks"""
     user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    safe_name = Path(skill_name).name
+    if safe_name != skill_name:
+        raise HTTPException(status_code=400, detail="無效的 skill 名稱")
     body = await request.json()
     enabled_agents = body.get("enabled_agents", [])
     if not isinstance(enabled_agents, list):
