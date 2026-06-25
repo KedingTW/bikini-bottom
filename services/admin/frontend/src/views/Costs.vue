@@ -438,18 +438,18 @@ function renderKiroChart() {
 }
 
 function renderKiroStackedChart() {
-  if (!usageData.value?.periods?.[0]?.raw_data?.length || !kiroStackedChart.value) return
+  if (!usageData.value?.daily_by_user?.length || !kiroStackedChart.value) return
   if (kiroStackedInstance) kiroStackedInstance.destroy()
 
-  const raw = usageData.value.periods[0].raw_data
+  const raw = usageData.value.daily_by_user
   const dates = [...new Set(raw.map(r => r.date))].sort()
-  const users = [...new Set(raw.map(r => r.user || r.email || 'unknown'))]
+  const users = [...new Set(raw.map(r => r.userid || r.user || 'unknown'))]
   const colors = ['#4fc3f7', '#ff7043', '#66bb6a', '#ab47bc', '#ffa726', '#26c6da', '#ef5350', '#8d6e63', '#78909c', '#d4e157']
 
   const datasets = users.map((user, i) => ({
     label: user.split('@')[0],
     data: dates.map(d => {
-      const entry = raw.find(r => r.date === d && (r.user || r.email || 'unknown') === user)
+      const entry = raw.find(r => r.date === d && (r.userid || r.user || 'unknown') === user)
       return entry ? (entry.credits_used || entry.credits || 0) : 0
     }),
     backgroundColor: colors[i % colors.length],

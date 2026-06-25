@@ -1773,6 +1773,8 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
                     {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
                     for k, v in sorted(daily.items())
                 ]
+                # Per-user daily data for stacked chart
+                data["daily_by_user"] = raw
 
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
