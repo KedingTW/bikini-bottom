@@ -1,51 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: patrick
+  name: keding-dc-ironman
   namespace: bikini-bottom
   labels:
-    app: patrick
+    app: keding-dc-ironman
     type: agent
+    group: keding-dc
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: patrick
+      app: keding-dc-ironman
   template:
     metadata:
       labels:
-        app: patrick
+        app: keding-dc-ironman
         type: agent
+        group: keding-dc
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          image: bikini-bottom/agent:latest
+          image: keding-dc/agent:latest
           imagePullPolicy: Never
-          envFrom:
-            - configMapRef:
-                name: channel-ids
+          command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
           env:
             - name: DISCORD_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: discord-tokens
-                  key: PATRICK
+                  name: keding-dc-secrets
+                  key: IRONMAN_BOT_TOKEN
             - name: KIRO_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: kiro-api-keys
-                  key: PATRICK
-            - name: GH_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: github-token
-                  key: GH_TOKEN
+                  name: keding-dc-secrets
+                  key: IRONMAN_KIRO_KEY
             - name: GIT_AUTHOR_NAME
-              value: "派大星 (Patrick)"
+              value: "Iron Man Bot"
             - name: GIT_COMMITTER_NAME
-              value: "派大星 (Patrick)"
+              value: "Iron Man Bot"
             - name: GIT_AUTHOR_EMAIL
               valueFrom:
                 configMapKeyRef:
@@ -57,23 +52,24 @@ spec:
                   name: common-env
                   key: GIT_EMAIL
             - name: AGENT_NAME
-              value: "patrick"
-            - name: AGENT_SKILLS
-              value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
+              value: "keding-dc-ironman"
           resources:
             requests:
               memory: "256Mi"
               cpu: "50m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
           volumeMounts:
             - name: config
               mountPath: /etc/openab/config.toml
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: kd-dev
-              mountPath: /mnt/kd-dev
-            - name: shared-steering
-              mountPath: /opt/steering
+            - name: kd-dc
+              mountPath: /mnt/kd-dc
+            - name: kd-share
+              mountPath: /mnt/kd-share
               readOnly: true
             - name: shared-skills
               mountPath: /opt/skills
@@ -81,19 +77,19 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/patrick/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/patrick
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman
             type: Directory
-        - name: kd-dev
+        - name: kd-dc
           hostPath:
-            path: /mnt/kd-dev
+            path: /mnt/kd-dc
             type: Directory
-        - name: shared-steering
+        - name: kd-share
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
+            path: /mnt/kd-share
             type: Directory
         - name: shared-skills
           hostPath:

@@ -63,8 +63,8 @@ spec:
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: kd-share
-              mountPath: /mnt/kd-share
+            - name: kd-dc
+              mountPath: /mnt/kd-dc
       volumes:
         - name: config
           hostPath:
@@ -74,7 +74,7 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/order-transform
             type: Directory
-        - name: kd-share
+        - name: kd-dc
           hostPath:
-            path: /mnt/kd-share
+            path: /mnt/kd-dc
             type: Directory
