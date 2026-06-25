@@ -1,21 +1,15 @@
 #!/bin/bash
-# Wrapper entrypoint (runs as root): NAS symlink -> drop to agent -> OpenAB
+# Wrapper entrypoint (runs as root): shared symlink -> drop to agent -> OpenAB
 
 # --- host.docker.internal for K3s (hostNetwork mode) ---
 if ! grep -q "host.docker.internal" /etc/hosts 2>/dev/null; then
     echo "127.0.0.1 host.docker.internal" >> /etc/hosts
 fi
 
-# --- NAS symlink ---
-if [ -n "$AGENT_NAME" ] && [ -d "/nas/shared" ]; then
-    ln -sfn /nas/shared /shared
-    echo "[nas-link] /shared -> /nas/shared"
-
-    if [ -d "/nas/agents/$AGENT_NAME/projects" ]; then
-        rm -rf /home/agent/projects 2>/dev/null
-        ln -sfn "/nas/agents/$AGENT_NAME/projects" /home/agent/projects
-        echo "[nas-link] /home/agent/projects -> /nas/agents/$AGENT_NAME/projects"
-    fi
+# --- /shared symlink (kd-dev/shared -> /shared) ---
+if [ -d "/mnt/kd-dev/shared" ]; then
+    ln -sfn /mnt/kd-dev/shared /shared
+    echo "[shared] /shared -> /mnt/kd-dev/shared"
 fi
 
 # --- Shared steering symlink (as agent) ---
@@ -24,33 +18,49 @@ su -s /bin/bash agent -c "/usr/local/bin/link-shared-steering.sh"
 # --- Shared skills symlink (as agent) ---
 su -s /bin/bash agent -c "/usr/local/bin/link-shared-skills.sh"
 
-# --- Backup thread_map before OpenAB overwrites it ---
+# --- Preserve thread_map across restarts ---
 THREAD_MAP="/home/agent/.openab/thread_map.json"
 THREAD_MAP_BAK="/home/agent/.openab/thread_map.json.bak"
-if [ -f "$THREAD_MAP" ] && [ "$(python3 -c "import json; print(len(json.load(open('$THREAD_MAP'))))" 2>/dev/null)" != "0" ]; then
+
+# 備份：只要檔案存在就備份（不管是否為空）
+if [ -f "$THREAD_MAP" ]; then
     cp "$THREAD_MAP" "$THREAD_MAP_BAK"
-    echo "[thread-map] backed up $(python3 -c "import json; print(len(json.load(open('$THREAD_MAP_BAK'))))" 2>/dev/null) entries"
+    echo "[thread-map] backed up ($(wc -c < "$THREAD_MAP") bytes)"
 fi
 
-# --- Restore thread_map after OpenAB starts (background) ---
+# 恢復：等 OpenAB 啟動後合併（背景執行）
 (
-    sleep 5
+    sleep 8
     if [ -f "$THREAD_MAP_BAK" ]; then
-        # Merge: keep OpenAB's new entries + restore old ones
         python3 -c "
-import json
-bak = json.load(open('$THREAD_MAP_BAK'))
+import json, sys
+
+bak_path = '$THREAD_MAP_BAK'
+cur_path = '$THREAD_MAP'
+
 try:
-    cur = json.load(open('$THREAD_MAP'))
+    bak = json.load(open(bak_path))
+except:
+    bak = {}
+
+try:
+    cur = json.load(open(cur_path))
 except:
     cur = {}
-merged = {**cur, **bak}
-json.dump(merged, open('$THREAD_MAP', 'w'))
-print(f'[thread-map] restored {len(merged)} entries (was {len(cur)})')
-" 2>/dev/null
-        rm -f "$THREAD_MAP_BAK"
+
+merged = {**bak, **cur}
+json.dump(merged, open(cur_path, 'w'))
+print(f'[thread-map] restored {len(merged)} entries (bak={len(bak)}, new={len(cur)})')
+" 2>&1 || echo "[thread-map] restore FAILED, keeping .bak"
+        # 不刪除 .bak — 保留作為安全網
     fi
 ) &
 
 # --- Drop privileges and start OpenAB ---
+# 確保 agent 屬於 gid 1002（host 檔案 group），讓 supplementalGroups 生效
+if ! grep -q "^kd:" /etc/group 2>/dev/null; then
+    groupadd -g 1002 kd 2>/dev/null || true
+fi
+usermod -aG kd agent 2>/dev/null || true
+
 exec setpriv --reuid=agent --regid=agent --init-groups openab "$@"

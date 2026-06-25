@@ -10,7 +10,7 @@ max_bot_turns = 100
 [agent]
 command = "kiro-cli"
 args = ["acp", "--trust-all-tools"]
-working_dir = "/home/agent"
+working_dir = "/home/agent/workspace"
 env = { KIRO_API_KEY = "${KIRO_API_KEY}" }
 inherit_env = ["KIRO_API_KEY"]
 

@@ -1,0 +1,43 @@
+[discord]
+bot_token = "${DISCORD_BOT_TOKEN}"
+allowed_channels = ["${CHANNEL_KRUSTY_KRAB}", "${CHANNEL_PLAZA}", "${CHANNEL_MEETING}", "${CHANNEL_REPORT}", "${CHANNEL_KRUSTY_KRAB_FORUM}", "${CHANNEL_MEETING_FORUM}"]
+allow_bot_messages = "mentions"
+trusted_bot_ids = ["1492085509596516362", "1496023645083009024", "1509104920954142871", "1509105546060501184", "1505753410765459567", "1503574146117013555", "1504275756488986774", "1511295414366769202", "1493800835853975562"]
+allow_user_messages = "mentions"
+allowed_role_ids = ["1504289434122588200", "1506122390751678484", "1503699904176853033", "1506130693812391946"]
+max_bot_turns = 100
+
+[agent]
+command = "kiro-cli"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent/workspace"
+env = { KIRO_API_KEY = "${KIRO_API_KEY}" }
+inherit_env = ["GH_TOKEN", "GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL", "KIRO_API_KEY"]
+
+[pool]
+max_sessions = 10
+session_ttl_hours = 24
+
+[reactions]
+enabled = true
+remove_after_reply = false
+
+[reactions.emojis]
+queued = "👀"
+thinking = "🤔"
+tool = "🔥"
+coding = "📋"
+web = "⚡"
+done = "🆗"
+error = "😱"
+
+[reactions.timing]
+debounce_ms = 700
+stall_soft_ms = 10000
+stall_hard_ms = 30000
+done_hold_ms = 1500
+error_hold_ms = 2500
+
+[cron]
+usercron_enabled = true
+usercron_path = "cronjob.toml"

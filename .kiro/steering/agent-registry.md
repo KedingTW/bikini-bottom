@@ -24,7 +24,7 @@ inclusion: manual
 
 ### 1. 更新所有現有 agent 的 `trusted_bot_ids`
 
-每個 agent 的 `agents/<alias>/config.toml` 中的 `trusted_bot_ids` 必須包含**除了自己以外的所有其他 bot UID**。
+每個 agent 的 `agents/bikini-bottom/<alias>/config.toml` 中的 `trusted_bot_ids` 必須包含**除了自己以外的所有其他 bot UID**。
 
 新增一個角色時，必須：
 - 在新角色的 `config.toml` 中列出所有其他 bot 的 UID
@@ -35,7 +35,7 @@ inclusion: manual
 ```python
 import os, re
 
-base = "agents"
+base = "agents/bikini-bottom"
 # 從上方表格取得完整 bot 清單
 bots = {
     "bob": "1492085509596516362",

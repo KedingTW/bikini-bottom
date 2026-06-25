@@ -41,7 +41,7 @@
 - 同事確認（回覆「對」「是」「沒錯」等肯定）→ 用 **append** 方式寫入紀錄檔
 - 同事否認 → 不寫入，追問正確答案
 
-**紀錄檔路徑：** `/mnt/kd-share/agents/order-transform/correction-logs/cl-{session_id}.log`
+**紀錄檔路徑：** `~/workspace/correction-logs/cl-{session_id}.log`
 
 （session_id = 當前對話的 session ID）
 

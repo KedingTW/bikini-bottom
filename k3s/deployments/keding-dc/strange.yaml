@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keding-dc-strange
+  namespace: bikini-bottom
+  labels:
+    app: keding-dc-strange
+    type: agent
+    group: keding-dc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keding-dc-strange
+  template:
+    metadata:
+      labels:
+        app: keding-dc-strange
+        type: agent
+        group: keding-dc
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        supplementalGroups: [1002]
+      containers:
+        - name: agent
+          image: keding-dc/agent:latest
+          imagePullPolicy: Never
+          command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: keding-dc-secrets
+                  key: STRANGE_BOT_TOKEN
+            - name: KIRO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: keding-dc-secrets
+                  key: STRANGE_KIRO_KEY
+            - name: AGENT_NAME
+              value: "keding-dc-strange"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/openab/config.toml
+              readOnly: true
+            - name: home
+              mountPath: /home/agent
+            - name: workspace
+              mountPath: /home/agent/workspace
+            - name: shared-workspace
+              mountPath: /shared/workspace
+            - name: shared-steering
+              mountPath: /opt/steering
+              readOnly: true
+            - name: shared-skills
+              mountPath: /opt/skills
+              readOnly: true
+            - name: kd-share
+              mountPath: /mnt/kd-share
+              readOnly: true
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/strange/config.toml
+            type: File
+        - name: home
+          hostPath:
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/strange
+            type: Directory
+        - name: workspace
+          hostPath:
+            path: /mnt/kd-dc/agents/strange
+            type: Directory
+        - name: shared-workspace
+          hostPath:
+            path: /mnt/kd-dc/shared/workspace
+            type: Directory
+        - name: shared-steering
+          hostPath:
+            path: /mnt/kd-dc/shared/steering
+            type: Directory
+        - name: shared-skills
+          hostPath:
+            path: /mnt/kd-dc/shared/skills
+            type: Directory
+        - name: kd-share
+          hostPath:
+            path: /mnt/kd-share
+            type: Directory
