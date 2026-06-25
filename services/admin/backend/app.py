@@ -535,9 +535,9 @@ def _seed_skills():
         with get_db() as conn:
             count = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
             if count > 0:
-                # 已有資料：更新 display_name（migration）
+                # 已有資料：更新 display_name（確保中文名稱覆蓋）
                 for name, dn in DISPLAY_NAMES.items():
-                    conn.execute("UPDATE skills SET display_name = ? WHERE name = ? AND (display_name = '' OR display_name = name)", (dn, name))
+                    conn.execute("UPDATE skills SET display_name = ? WHERE name = ?", (dn, name))
                 return
             if SHARED_SKILLS_DIR.exists():
                 skills_json_path = SHARED_SKILLS_DIR / "skills.json"
