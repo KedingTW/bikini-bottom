@@ -42,6 +42,7 @@ AGENTS=(
     "keding-dc/ironman"
     "keding-dc/strange"
     "keding-dc/order-transform"
+    "keding-dc/order-teacher"
     "keding-wecom/order-transform"
 )
 

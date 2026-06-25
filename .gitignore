@@ -1,46 +1,80 @@
 # 環境變數（含 token、密鑰）
 .env
+env
 
 # 角色的工作產出（clone 的 repo、AI 產生的檔案）
-agents/*/projects
-agents/*/work/
-agents/*/.cache/
-agents/*/.conda/
-agents/*/.config/
-agents/*/.local/
-agents/*/.semantic_search/
-agents/*/miniconda3/
-agents/*/data/
-agents/*/.bash_history
-agents/*/.gitconfig
+agents/**/projects
+agents/**/work/
+agents/**/.cache/
+agents/**/.conda/
+agents/**/.config/
+agents/**/.local/
+agents/**/.semantic_search/
+agents/**/miniconda/
+agents/**/miniconda3/
+agents/**/data/
+agents/**/.bash_history
+agents/**/.gitconfig
 
 # 容器內安裝的 runtime（node、python 等）
-agents/*/node-v*/
+agents/**/node-v*/
+agents/**/python/
+agents/**/.nvm/
+agents/**/.composer/
 
 # kiro-cli session 資料
-agents/*/.kiro/sessions/
-agents/*/.kiro/settings/
+agents/**/.kiro/sessions/
+
+# kiro-cli settings（bikini-bottom 透過 NAS 備份；keding-dc 需追蹤）
+agents/bikini-bottom/**/.kiro/settings/
 
 # 動態記憶（每個環境不同）
-agents/*/.kiro/steering/memory.md
+agents/**/.kiro/steering/memory.md
 
 # OpenAB runtime — thread_map 是動態映射，不進 git
-agents/*/.openab/thread_map.json
-agents/*/.openab/thread_map.json.bak
+agents/**/.openab/thread_map.json
+agents/**/.openab/thread_map.json.bak
 
 # Agent SSH 金鑰（不可進 git）
-agents/*/.ssh/
+agents/**/.ssh/
 
 # 角色私有的 spec / 工作筆記（這個 repo 只管團隊配置，角色專屬產出之後另外做備份機制）
-agents/squidward/_projects.md
-agents/squidward/als-daily-report-spec.md
-agents/squidward/order-data-transform-rules.md
-agents/squidward/video-digest-flow.md
-agents/squidward/product-knowledge-comic/
-agents/sandy/renovation-warrior-report-spec.md
+agents/bikini-bottom/squidward/_projects.md
+agents/bikini-bottom/squidward/als-daily-report-spec.md
+agents/bikini-bottom/squidward/order-data-transform-rules.md
+agents/bikini-bottom/squidward/video-digest-flow.md
+agents/bikini-bottom/squidward/product-knowledge-comic/
+agents/bikini-bottom/squidward/als-mcp-discord-login-flow.svg
+agents/bikini-bottom/squidward/als-api/
+agents/bikini-bottom/squidward/als-vue/
+agents/bikini-bottom/squidward/hr-backend/
+agents/bikini-bottom/squidward/mes-backend/
+agents/bikini-bottom/squidward/project/
+agents/bikini-bottom/squidward/webhook/
+agents/bikini-bottom/squidward/*.mp3
+agents/bikini-bottom/squidward/*.mp4
+agents/bikini-bottom/squidward/*.webm
+agents/bikini-bottom/squidward/*_transcript.txt
+agents/bikini-bottom/sandy/renovation-warrior-report-spec.md
 
 # 舊的 steering 目錄（已搬到 agents/）
 steering-old/
+
+# 舊的 agents 頂層目錄（已搬到 agents/<group>/<agent>/）
+agents/_archived_duplicates/
+
+# bikini-bottom agents（已透過 NAS 定期備份，不需進 git）
+agents/bikini-bottom/
+
+# keding-dc agents（已透過 NAS 定期備份）
+agents/keding-dc/captain/
+agents/keding-dc/ironman/
+agents/keding-dc/order-transform/
+agents/keding-dc/order-teacher/
+agents/keding-dc/strange/
+
+# keding-wecom agents（已透過 NAS 定期備份）
+agents/keding-wecom/
 
 # Python
 __pycache__/
@@ -68,43 +102,44 @@ shared/reports/
 shared/workspace/
 
 # Agent 字型檔
-agents/*/.fonts/
+agents/**/.fonts/
 
 # Kiro skills（自動產生）
-agents/*/.kiro/skills/
+agents/**/.kiro/skills/
 
 # 共用 steering symlink（容器啟動時由 link-shared-steering.sh 自動產生）
-agents/*/.kiro/steering/channel-handoff.md
-agents/*/.kiro/steering/cronjob.md
-agents/*/.kiro/steering/discord-roles.md
-agents/*/.kiro/steering/mcp-policy.md
-agents/*/.kiro/steering/rules.md
-agents/*/.kiro/steering/security.md
-agents/*/.kiro/steering/shared-drive.md
-agents/*/.kiro/steering/team-members.md
+agents/**/.kiro/steering/channel-handoff.md
+agents/**/.kiro/steering/cronjob.md
+agents/**/.kiro/steering/discord-roles.md
+agents/**/.kiro/steering/mcp-policy.md
+agents/**/.kiro/steering/rules.md
+agents/**/.kiro/steering/security.md
+agents/**/.kiro/steering/shared-drive.md
+agents/**/.kiro/steering/team-members.md
+agents/**/.kiro/steering/kd-shared-drive.md
 
 # 舊方案 mcp-redmine clone（已改用 redmine-mcp-server，參考 docs/mcp-redmine-setup.md）
 mcp-redmine/
 
 # kiro-cli 自動產生的 agent config 範例
-agents/*/.kiro/agents/
+agents/**/.kiro/agents/
 
 # Agent 狀態檔（由 agent 自動產生，不進 git）
 agents/**/projects/**/_status.md
 
 # OpenAB runtime — sessions/logs 不進 git（cronjob.toml 需追蹤）
-agents/*/.openab/sessions/
-agents/*/.openab/*.log
+agents/**/.openab/sessions/
+agents/**/.openab/*.log
 
 # 容器內自動產生的 shell 設定
-agents/*/.profile
-agents/*/.zshrc
-agents/*/.bashrc
-agents/*/.npm/
-agents/*/.kiro/.cli_bash_history
+agents/**/.profile
+agents/**/.zshrc
+agents/**/.bashrc
+agents/**/.npm/
+agents/**/.kiro/.cli_bash_history
 
 # AWS SSO cache（含 token，敏感資料）
-agents/*/.aws/
+agents/**/.aws/
 
 # IDE 個人設定
 .vscode/
@@ -124,6 +159,18 @@ agents-migration.tar
 
 # MCP 備份（含 token，不進 git）
 mcp-backup/
+mcp_backup_*.sql
 
 # Vue build 產物（由 npm run build 產生，不進 git）
 services/admin/dist/
+
+# Logs（由 cron 或 monitor 產生）
+logs/
+
+# DB 備份
+services/admin/data/*.bak.*
+
+# order-transform 動態產生的筆記
+agents/**/order-transform/correction-log.md
+agents/**/order-transform/personality_update.md
+agents/**/order-transform/memory/
