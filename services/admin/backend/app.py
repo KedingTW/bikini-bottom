@@ -1750,33 +1750,24 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
                 if row:
                     return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
 
-            from query_usage import get_usage_data, query_usage
+            from query_usage import get_usage_data, query_usage, parse_range
             data = get_usage_data(range)
 
-            # Also compute daily_totals for chart
+            # Compute daily_totals for chart (直接查 Athena)
             if data.get("periods"):
                 from collections import defaultdict
-                p = data["periods"][0]  # Use first period's date range
-                # Aggregate from raw user data by date
+                from datetime import date as date_type
                 daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
-                for u in p.get("raw_data", []):
-                    d = daily[u["date"]]
-                    d["credits"] += u.get("credits_used", 0) or u.get("credits", 0)
-                    d["messages"] += u.get("total_messages", 0) or u.get("messages", 0)
-                    d["conversations"] += u.get("chat_conversations", 0) or u.get("conversations", 0)
-
-                if not daily:
-                    # Fallback: try query directly
-                    try:
-                        from datetime import date
-                        raw = query_usage(p.get("_start", date.today()), p.get("_end", date.today()))
-                        for r in raw:
-                            d = daily[r["date"]]
-                            d["credits"] += r.get("credits_used", 0)
-                            d["messages"] += r.get("total_messages", 0)
-                            d["conversations"] += r.get("chat_conversations", 0)
-                    except Exception:
-                        pass
+                try:
+                    r_info = parse_range(range)
+                    raw = query_usage(r_info["start"], r_info["end"])
+                    for row in raw:
+                        d = daily[row["date"]]
+                        d["credits"] += row.get("credits_used", 0)
+                        d["messages"] += row.get("total_messages", 0)
+                        d["conversations"] += row.get("chat_conversations", 0)
+                except Exception:
+                    pass
 
                 data["daily_totals"] = [
                     {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
