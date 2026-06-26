@@ -2544,7 +2544,11 @@ async def api_agent_profile(agent_name: str, request: Request):
 async def api_agent_profile_save(agent_name: str, request: Request):
     """儲存角色 profile + 更新 Discord nickname"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     role_title = body.get("role_title", "").strip()
