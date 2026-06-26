@@ -75,7 +75,7 @@
                   <span class="text-xs text-white/70 min-w-[90px] text-right">{{ u.credits.toFixed(1) }} / {{ u.limit }}</span>
                 </div>
               </div>
-              <div class="text-xs text-white/50 min-w-[130px] text-right">
+              <div class="text-xs text-white/50 min-w-[130px] text-right hidden sm:block">
                 <span title="訊息數">💬 {{ u.messages }}</span>
                 <span class="ml-2" title="對話數">🗂️ {{ u.conversations }}</span>
               </div>
