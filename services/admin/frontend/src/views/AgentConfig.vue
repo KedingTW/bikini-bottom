@@ -6,12 +6,14 @@
     </div>
 
     <div v-if="selectedAgent">
-      <div class="flex items-center gap-2 mb-4">
+      <div class="flex flex-wrap items-center gap-2 mb-4">
         <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置 <span v-if="selectedAgent.bot_id" class="text-xs text-white/30 font-normal">({{ selectedAgent.bot_id }})</span></h2>
-        <input v-else v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-lg font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-0.5 text-white focus:outline-none" ref="nameInput">
+        <template v-else>
+          <input v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-base font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1 text-white focus:outline-none w-40 sm:w-auto">
+          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1 rounded bg-cyan-600 text-white">確定</button>
+          <button @click="editingName = false" type="button" class="text-xs px-3 py-1 rounded border border-white/20 text-white/60">取消</button>
+        </template>
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
-        <button v-else @click="saveDisplayName()" type="button" class="text-xs px-2 py-1 rounded bg-cyan-600 text-white">確定</button>
-        <button v-if="editingName" @click="editingName = false" type="button" class="text-xs px-2 py-1 rounded border border-white/20 text-white/60">取消</button>
       </div>
 
       <div class="space-y-2">
@@ -220,9 +222,10 @@
               <span class="font-medium">🔌 MCP 配置</span>
               <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
             </button>
-            <button :disabled="!dirty.mcp" @click="saveMcp()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+            <button :disabled="!dirty.mcp" @click="saveSection('mcp')" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
           </div>
           <div v-if="open.mcp" @change.capture="markDirty('mcp')" @input.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
+
             <div class="flex justify-end mb-2">
               <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP 伺服器管理</router-link>
             </div>
@@ -450,7 +453,7 @@ async function saveDisplayName() {
   const res = await fetch(`/api/agents/${selectedAgent.value.name}/display`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display: newDisplayName.value.trim() })
+    body: JSON.stringify({ display: newDisplayName.value.trim(), old_display: selectedAgent.value.display })
   })
   if (res.ok) {
     selectedAgent.value.display = newDisplayName.value.trim()
@@ -586,9 +589,13 @@ async function saveMcp() {
   })
   console.log('[saveMcp] payload:', { config, toolFilter })
   const res = await post(`/api/mcp-servers/save-agent-config/${selectedAgent.value.name}`, { config, toolFilter })
-  if (res?.ok) dirty.mcp = false
+  if (res?.ok) {
+    dirty.mcp = false
+  }
   console.log('[saveMcp] result:', res)
 }
+
+
 
 async function saveSkill() {
   if (!selectedAgent.value) return
@@ -704,8 +711,11 @@ const saveDialogKey = ref(null)
 async function doSave(restart) {
   const key = saveDialogKey.value
   saveDialogKey.value = null
-  // Send cfg to PATCH API
-  if (selectedAgent.value) {
+  if (!selectedAgent.value) return
+  if (key === 'mcp') {
+    await saveMcp()
+  } else {
+    // Send cfg to PATCH API (basic config)
     const payload = JSON.parse(JSON.stringify(cfg))
     console.log('[doSave]', selectedAgent.value.name, 'payload:', payload)
     const res = await fetch(`/api/agents/${selectedAgent.value.name}/config`, {
@@ -714,9 +724,9 @@ async function doSave(restart) {
       body: JSON.stringify(payload)
     })
     if (res.ok) dirty[key] = false
-    if (restart) {
-      await post(`/api/restart/${selectedAgent.value.name}`)
-    }
+  }
+  if (restart) {
+    await post(`/api/restart/${selectedAgent.value.name}`)
   }
 }
 
