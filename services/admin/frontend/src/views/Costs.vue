@@ -37,7 +37,7 @@
           </div>
           <div class="glass rounded-xl p-4 text-center">
             <div class="text-2xl font-bold text-cyan-300">{{ kiroDailyAvg }}</div>
-            <div class="text-xs text-white/50 mt-1">日均消耗</div>
+            <div class="text-xs text-white/50 mt-1">日均消耗 <span class="text-white/30">(排除低用量日)</span></div>
           </div>
           <div class="glass rounded-xl p-4 text-center">
             <div class="text-2xl font-bold text-purple-300">{{ kiroTopUser }}</div>
@@ -348,8 +348,17 @@ const kiroDailyAvg = computed(() => {
     const dayOfMonth = now.getDate()
     return (total / dayOfMonth).toFixed(1)
   }
-  const total = usageData.value.daily_totals.reduce((s, d) => s + d.credits, 0)
-  return (total / usageData.value.daily_totals.length).toFixed(1)
+  const days = usageData.value.daily_totals
+  const credits = days.map(d => d.credits).sort((a, b) => a - b)
+  // Calculate median
+  const mid = Math.floor(credits.length / 2)
+  const median = credits.length % 2 ? credits[mid] : (credits[mid - 1] + credits[mid]) / 2
+  // Exclude days below 30% of median (holidays/low-usage days)
+  const threshold = median * 0.3
+  const workDays = days.filter(d => d.credits >= threshold)
+  if (!workDays.length) return '0'
+  const total = workDays.reduce((s, d) => s + d.credits, 0)
+  return (total / workDays.length).toFixed(1)
 })
 
 const kiroTopUser = computed(() => {
