@@ -204,3 +204,11 @@ async def get_channel_messages(channel_id: str, limit: int = 100, before: str = 
         )
         r.raise_for_status()
         return r.json()
+
+
+async def modify_role(role_id: str, name: str, guild_id=None):
+    """修改 role 名稱"""
+    gid = guild_id or GUILD_ID
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.patch(f"{BASE}/guilds/{gid}/roles/{role_id}", headers=_headers(), json={"name": name})
+        r.raise_for_status()
