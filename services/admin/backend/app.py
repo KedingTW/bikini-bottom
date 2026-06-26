@@ -2564,13 +2564,17 @@ async def api_agent_profile_save(agent_name: str, request: Request):
                 guild_id = grp.get("guild_id", "")
                 break
     if bot_id and guild_id:
-        # Get current display from Discord members cache or fallback
-        display = agent_name
+        # Get current nickname from cache, extract display part (before parentheses)
+        import re as _re
+        current_nick = agent_name
         cached = _discord_members_cache.get(guild_id)
         if cached:
             for m in cached.get("members", []):
                 if str(m.get("id")) == bot_id:
-                    display = m.get("name", agent_name)
+                    current_nick = m.get("nick") or m.get("name", agent_name)
+                    break
+        # Extract name part: "阿尼(舊職責)" → "阿尼"
+        display = _re.sub(r'\s*\([^)]*\)\s*$', '', current_nick).strip() or agent_name
                     break
         nick = f"{display}({role_title})" if role_title else display
         try:
