@@ -38,9 +38,10 @@
           <div class="glass rounded-xl p-4 text-center">
             <div class="text-2xl font-bold text-cyan-300">{{ kiroDailyAvg }}</div>
             <div class="text-xs text-white/50 mt-1">日均消耗</div>
+            <div class="text-[10px] text-white/30">排除低用量日</div>
           </div>
           <div class="glass rounded-xl p-4 text-center">
-            <div class="text-2xl font-bold text-purple-300">{{ kiroTopUser }}</div>
+            <div class="text-lg font-bold text-purple-300 truncate">{{ kiroTopUser }}</div>
             <div class="text-xs text-white/50 mt-1">最活躍使用者</div>
           </div>
           <div class="glass rounded-xl p-4 text-center">
@@ -63,7 +64,7 @@
               <span class="w-6 text-center text-lg">{{ medals[i] || '' }}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="font-medium">{{ u.user }}</span>
+                  <span class="font-medium truncate">{{ u.user }}</span>
                   <span class="text-xs text-white/50">{{ u.tier }}</span>
                   <span class="text-xs text-white/40 ml-auto">{{ u.pct.toFixed(0) }}%</span>
                 </div>
@@ -74,7 +75,7 @@
                   <span class="text-xs text-white/70 min-w-[90px] text-right">{{ u.credits.toFixed(1) }} / {{ u.limit }}</span>
                 </div>
               </div>
-              <div class="text-xs text-white/50 min-w-[130px] text-right">
+              <div class="text-xs text-white/50 min-w-[130px] text-right hidden sm:block">
                 <span title="訊息數">💬 {{ u.messages }}</span>
                 <span class="ml-2" title="對話數">🗂️ {{ u.conversations }}</span>
               </div>
@@ -125,7 +126,7 @@
             </tr></thead>
             <tbody>
               <tr v-for="u in usageData.periods[0].users" :key="u.user" class="border-t border-white/5 hover:bg-white/5">
-                <td class="px-5 py-2 text-sm font-medium">{{ u.user }}</td>
+                <td class="px-5 py-2 text-sm font-medium truncate max-w-[200px]">{{ u.user }}</td>
                 <td class="px-5 py-2 text-sm text-center">{{ u.tier }}</td>
                 <td class="px-5 py-2 text-sm text-right">{{ u.limit }}</td>
                 <td class="px-5 py-2 text-sm text-right font-medium">{{ u.credits.toFixed(1) }}</td>
@@ -348,8 +349,17 @@ const kiroDailyAvg = computed(() => {
     const dayOfMonth = now.getDate()
     return (total / dayOfMonth).toFixed(1)
   }
-  const total = usageData.value.daily_totals.reduce((s, d) => s + d.credits, 0)
-  return (total / usageData.value.daily_totals.length).toFixed(1)
+  const days = usageData.value.daily_totals
+  const credits = days.map(d => d.credits).sort((a, b) => a - b)
+  // Calculate median
+  const mid = Math.floor(credits.length / 2)
+  const median = credits.length % 2 ? credits[mid] : (credits[mid - 1] + credits[mid]) / 2
+  // Exclude days below 30% of median (holidays/low-usage days)
+  const threshold = median * 0.3
+  const workDays = days.filter(d => d.credits >= threshold)
+  if (!workDays.length) return '0'
+  const total = workDays.reduce((s, d) => s + d.credits, 0)
+  return (total / workDays.length).toFixed(1)
 })
 
 const kiroTopUser = computed(() => {
@@ -441,7 +451,7 @@ function renderKiroStackedChart() {
   const colors = ['#4fc3f7', '#ff7043', '#66bb6a', '#ab47bc', '#ffa726', '#26c6da', '#ef5350', '#8d6e63', '#78909c', '#d4e157']
 
   const datasets = users.map((user, i) => ({
-    label: user.split('@')[0],
+    label: user.split('@')[0].slice(0, 15),
     data: dates.map(d => {
       const entry = raw.find(r => r.date === d && (r.userid || r.user || 'unknown') === user)
       return entry ? (entry.credits_used || entry.credits || 0) : 0
