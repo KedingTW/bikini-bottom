@@ -220,13 +220,10 @@
               <span class="font-medium">🔌 MCP 配置</span>
               <span class="ml-auto text-sm text-white/40">{{ mcpEnabledCount }}/{{ mockMcp.length }}</span>
             </button>
-            <button :disabled="!dirty.mcp" @click="saveMcp()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+            <button :disabled="!dirty.mcp" @click="saveSection('mcp')" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
           </div>
           <div v-if="open.mcp" @change.capture="markDirty('mcp')" @input.capture="markDirty('mcp')" class="px-4 pb-4 border-t border-white/5 space-y-2">
-            <div v-if="mcpNeedRestart" class="flex items-center gap-2 bg-amber-600/15 text-amber-300 px-3 py-2 rounded-lg text-sm mb-2">
-              <span>⚠️ 設定已儲存，需要重啟角色才會生效</span>
-              <button @click="restartAfterMcp()" class="ml-auto px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white">🔄 重啟</button>
-            </div>
+
             <div class="flex justify-end mb-2">
               <router-link to="/mcp-servers" class="text-xs px-3 py-1.5 rounded bg-ocean-700 border border-white/15 text-white/60 hover:text-white no-underline">⚙️ MCP 伺服器管理</router-link>
             </div>
@@ -592,16 +589,11 @@ async function saveMcp() {
   const res = await post(`/api/mcp-servers/save-agent-config/${selectedAgent.value.name}`, { config, toolFilter })
   if (res?.ok) {
     dirty.mcp = false
-    mcpNeedRestart.value = true
   }
   console.log('[saveMcp] result:', res)
 }
 
-const mcpNeedRestart = ref(false)
-async function restartAfterMcp() {
-  await post(`/api/restart/${selectedAgent.value.name}`)
-  mcpNeedRestart.value = false
-}
+
 
 async function saveSkill() {
   if (!selectedAgent.value) return
@@ -717,8 +709,11 @@ const saveDialogKey = ref(null)
 async function doSave(restart) {
   const key = saveDialogKey.value
   saveDialogKey.value = null
-  // Send cfg to PATCH API
-  if (selectedAgent.value) {
+  if (!selectedAgent.value) return
+  if (key === 'mcp') {
+    await saveMcp()
+  } else {
+    // Send cfg to PATCH API (basic config)
     const payload = JSON.parse(JSON.stringify(cfg))
     console.log('[doSave]', selectedAgent.value.name, 'payload:', payload)
     const res = await fetch(`/api/agents/${selectedAgent.value.name}/config`, {
@@ -727,9 +722,10 @@ async function doSave(restart) {
       body: JSON.stringify(payload)
     })
     if (res.ok) dirty[key] = false
-    if (restart) {
-      await post(`/api/restart/${selectedAgent.value.name}`)
-    }
+  }
+  if (restart) {
+    await post(`/api/restart/${selectedAgent.value.name}`)
+  }
   }
 }
 
