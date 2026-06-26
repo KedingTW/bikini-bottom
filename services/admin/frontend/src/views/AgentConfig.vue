@@ -16,12 +16,14 @@
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
       </div>
 
-      <!-- 職責 -->
-      <div class="flex items-center gap-2 mb-4">
-        <span class="text-sm text-white/60">角色定位：</span>
-        <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-cyan-400/50 w-40" placeholder="如：全端工程師">
-        <button @click="saveRoleTitle()" :disabled="!roleTitle && !roleTitleLoaded" class="text-xs px-3 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30">儲存</button>
-        <span v-if="roleTitleMsg" class="text-xs text-green-400">{{ roleTitleMsg }}</span>
+      <!-- 角色定位 -->
+      <div class="mb-4">
+        <div class="text-xs text-white/50 mb-1">角色定位</div>
+        <div class="flex items-center gap-2">
+          <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-400/50 flex-1 max-w-[200px]" placeholder="如：全端工程師">
+          <button @click="saveRoleTitle()" class="text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white">儲存</button>
+          <span v-if="roleTitleMsg" class="text-xs">{{ roleTitleMsg }}</span>
+        </div>
       </div>
 
       <div class="space-y-2">
