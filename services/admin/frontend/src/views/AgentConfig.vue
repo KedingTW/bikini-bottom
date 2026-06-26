@@ -726,7 +726,6 @@ async function doSave(restart) {
   if (restart) {
     await post(`/api/restart/${selectedAgent.value.name}`)
   }
-  }
 }
 
 async function openKbDialog(k) {
