@@ -268,11 +268,26 @@
           <div v-if="open.kb" @change.capture="markDirty('kb')" @input.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-if="!mockKb.length" class="text-sm text-white/40 py-4">暫無知識庫</div>
-              <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3">
-                <span class="text-cyan-400">📖</span>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm text-white/90 truncate">{{ k.name }}</div>
-                  <div class="text-xs text-white/40">{{ k.items }} 項 · {{ k.source }}</div>
+              <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
+                <div class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-white/5" @click="toggleKb(k)">
+                  <span class="text-cyan-400">📖</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-white/90 truncate">{{ k.name }}</div>
+                    <div class="text-xs text-white/40">{{ k.items }} 項 · {{ k.source }}</div>
+                  </div>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ k.embedding_type }}</span>
+                  <span v-if="k.updated_at" class="text-[10px] text-white/30">{{ k.updated_at.slice(0, 10) }}</span>
+                  <span class="text-xs text-white/30">{{ k._open ? '▼' : '▶' }}</span>
+                </div>
+                <div v-if="k._open" class="px-4 pb-3 border-t border-white/5">
+                  <div v-if="k.chunks === null" class="text-xs text-white/40 py-2">載入中...</div>
+                  <div v-else-if="!k.chunks.length" class="text-xs text-white/40 py-2">無 chunks</div>
+                  <div v-else class="max-h-[250px] overflow-y-auto space-y-1 mt-2">
+                    <div v-for="c in k.chunks" :key="c.id" class="bg-ocean-800/50 rounded px-3 py-2">
+                      <div class="text-[10px] text-cyan-400/70 truncate mb-0.5">{{ c.path }}</div>
+                      <div class="text-xs text-white/60 line-clamp-3">{{ c.preview }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -642,12 +657,20 @@ async function doSave(restart) {
   }
 }
 
+async function toggleKb(k) {
+  k._open = !k._open
+  if (k._open && k.chunks === null) {
+    const res = await get(`/api/agents/${selectedAgent.value.name}/kb/${k.id}/chunks`)
+    k.chunks = res?.chunks || []
+  }
+}
+
 async function loadKb() {
   if (!selectedAgent.value) return
   const res = await get(`/api/agents/${selectedAgent.value.name}/kb`)
   if (res?.contexts) {
     mockKb.splice(0, mockKb.length, ...res.contexts.map(c => ({
-      id: c.id || c.name, name: c.name, items: c.item_count || 0, source: c.source_path || ''
+      id: c.id || c.name, name: c.name, items: c.item_count || 0, source: c.source_path || '', embedding_type: c.embedding_type || 'Best', updated_at: c.updated_at || '', _open: false, chunks: null
     })))
   } else {
     mockKb.splice(0, mockKb.length)
