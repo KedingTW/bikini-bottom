@@ -2575,7 +2575,7 @@ async def api_agent_display_update(agent_name: str, request: Request):
     # 清除 cache 讓下次 /api/agents 重新抓
     _discord_members_cache.pop(guild_id, None)
 
-    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱為 {display}"})
+    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱為 {display}", "role_renamed": role_renamed, "debug": {"candidates": candidates, "roles_found": [r["name"] for r in roles[:10]] if "roles" in dir() else []}})
 
 
 @app.get("/api/agents/{agent_name}/mcp")

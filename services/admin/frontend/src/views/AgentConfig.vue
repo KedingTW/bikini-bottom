@@ -6,12 +6,14 @@
     </div>
 
     <div v-if="selectedAgent">
-      <div class="flex items-center gap-2 mb-4">
+      <div class="flex flex-wrap items-center gap-2 mb-4">
         <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置 <span v-if="selectedAgent.bot_id" class="text-xs text-white/30 font-normal">({{ selectedAgent.bot_id }})</span></h2>
-        <input v-else v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-lg font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-0.5 text-white focus:outline-none" ref="nameInput">
+        <template v-else>
+          <input v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-base font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1 text-white focus:outline-none w-40 sm:w-auto">
+          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1 rounded bg-cyan-600 text-white">確定</button>
+          <button @click="editingName = false" type="button" class="text-xs px-3 py-1 rounded border border-white/20 text-white/60">取消</button>
+        </template>
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
-        <button v-else @click="saveDisplayName()" type="button" class="text-xs px-2 py-1 rounded bg-cyan-600 text-white">確定</button>
-        <button v-if="editingName" @click="editingName = false" type="button" class="text-xs px-2 py-1 rounded border border-white/20 text-white/60">取消</button>
       </div>
 
       <div class="space-y-2">
