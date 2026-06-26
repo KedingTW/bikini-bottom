@@ -1569,9 +1569,17 @@ async def api_dismiss_alert(alert_id: int, request: Request):
 
 
 def _insert_alert(agent: str, level: str, message: str):
-    """Insert an alert into database."""
+    """Insert an alert into database (with 24h dedup)."""
     try:
         with get_db() as conn:
+            # Dedup: same agent + message within 24h → skip
+            since_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+            existing = conn.execute(
+                "SELECT id FROM alerts WHERE agent = ? AND message = ? AND ts >= ? AND dismissed = 0",
+                (agent, message, since_24h)
+            ).fetchone()
+            if existing:
+                return  # Skip duplicate
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute("INSERT INTO alerts (ts, agent, level, message) VALUES (?, ?, ?, ?)", (ts, agent, level, message))
     except Exception as e:
@@ -1580,7 +1588,7 @@ def _insert_alert(agent: str, level: str, message: str):
 
 @app.get("/api/alerts/history")
 async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
-    """取得異常通知歷史紀錄（含已關閉）"""
+    """取得異常通知歷史紀錄（未關閉的不限時間，已關閉的限 days 天）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -1590,12 +1598,12 @@ async def api_alerts_history(request: Request, days: int = 7, agent: str = ""):
         with get_db() as conn:
             if agent:
                 rows = conn.execute(
-                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? AND agent = ? ORDER BY ts DESC",
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE (dismissed = 0 OR ts >= ?) AND agent = ? ORDER BY ts DESC",
                     (since, agent),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE ts >= ? ORDER BY ts DESC",
+                    "SELECT id, ts, agent, level, message, dismissed FROM alerts WHERE dismissed = 0 OR ts >= ? ORDER BY ts DESC",
                     (since,),
                 ).fetchall()
         alerts = [{"id": r[0], "ts": r[1], "agent": r[2], "level": r[3], "message": r[4], "dismissed": bool(r[5])} for r in rows]

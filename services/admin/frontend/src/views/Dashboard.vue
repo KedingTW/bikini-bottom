@@ -129,7 +129,7 @@ async function fetchAlerts() {
 
 async function dismissAlert(id) {
   await post(`/api/alerts/${id}/dismiss`)
-  fetchAlerts()
+  alerts.value = alerts.value.filter(a => a.id !== id)
 }
 
 async function restart(agent) {
