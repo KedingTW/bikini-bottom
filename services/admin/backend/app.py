@@ -2557,22 +2557,25 @@ async def api_agent_display_update(agent_name: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Discord API 失敗：{e}")
 
     # 同步修改對應的 Discord Role 名稱
+    role_renamed = False
     try:
         from discord_api import list_roles, modify_role
         roles = await list_roles(guild_id=guild_id)
-        # 找到 managed=False 且名稱跟舊 display 或 agent_name 相關的 role
+        # 找到對應 role：比對舊名、agent name、或 bot 的 managed role
         old_display = ""
         for grp in AGENT_GROUPS.values():
             for a in grp["agents"]:
                 if a["name"] == agent_name:
                     old_display = a.get("display", agent_name)
                     break
+        candidates = [old_display, agent_name, agent_name.capitalize()]
         for r in roles:
-            if not r.get("managed") and (r["name"] == old_display or r["name"] == agent_name):
+            if r["name"] in candidates:
                 await modify_role(r["id"], display, guild_id=guild_id)
+                role_renamed = True
                 break
-    except Exception:
-        pass  # Role 改名失敗不阻擋，nickname 已成功
+    except Exception as e:
+        logging.warning(f"Role rename failed for {agent_name}: {e}")
 
     # 清除 cache 讓下次 /api/agents 重新抓
     _discord_members_cache.pop(guild_id, None)
