@@ -451,7 +451,7 @@ async function saveDisplayName() {
   const res = await fetch(`/api/agents/${selectedAgent.value.name}/display`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display: newDisplayName.value.trim() })
+    body: JSON.stringify({ display: newDisplayName.value.trim(), old_display: selectedAgent.value.display })
   })
   if (res.ok) {
     selectedAgent.value.display = newDisplayName.value.trim()

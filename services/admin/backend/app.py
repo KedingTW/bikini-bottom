@@ -2534,6 +2534,7 @@ async def api_agent_display_update(agent_name: str, request: Request):
         raise HTTPException(status_code=403, detail="需要管理員權限")
     body = await request.json()
     display = body.get("display", "").strip()
+    old_display = body.get("old_display", "").strip()
     if not display:
         raise HTTPException(status_code=400, detail="display 為必填")
 
@@ -2561,14 +2562,8 @@ async def api_agent_display_update(agent_name: str, request: Request):
     try:
         from discord_api import list_roles, modify_role
         roles = await list_roles(guild_id=guild_id)
-        # 找到對應 role：比對舊名、agent name、或 bot 的 managed role
-        old_display = ""
-        for grp in AGENT_GROUPS.values():
-            for a in grp["agents"]:
-                if a["name"] == agent_name:
-                    old_display = a.get("display", agent_name)
-                    break
-        candidates = [old_display, agent_name, agent_name.capitalize()]
+        # 找到對應 role：比對前端傳來的舊名、agent name
+        candidates = [c for c in [old_display, agent_name, agent_name.capitalize()] if c]
         for r in roles:
             if r["name"] in candidates:
                 await modify_role(r["id"], display, guild_id=guild_id)
