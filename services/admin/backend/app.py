@@ -2626,9 +2626,29 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     if safe_name != filename:
         raise HTTPException(status_code=400, detail="無效的檔案名稱")
     path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
-    return JSONResponse({"content": path.read_text(), "filename": safe_name})
+    # Handle symlinks: try resolve, then try reading the link target directly
+    try:
+        if path.is_symlink():
+            target = path.resolve()
+            if target.exists():
+                return JSONResponse({"content": target.read_text(), "filename": safe_name})
+            # Symlink target not reachable, try readlink and find in shared steering
+            import os
+            link_target = os.readlink(str(path))
+            # Try common shared steering locations
+            for base in [Path("/data/repo/shared/steering"), Path("/opt/bikini-bottom/repo/shared/steering"), Path("/shared/steering")]:
+                candidate = base / Path(link_target).name
+                if candidate.exists():
+                    return JSONResponse({"content": candidate.read_text(), "filename": safe_name})
+            return JSONResponse({"content": f"(symlink → {link_target}，目標不可讀取)", "filename": safe_name})
+        elif path.exists():
+            return JSONResponse({"content": path.read_text(), "filename": safe_name})
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse({"content": f"(讀取失敗：{e})", "filename": safe_name})
 
 
 @app.put("/api/agents/{agent_name}/steering/{filename}")

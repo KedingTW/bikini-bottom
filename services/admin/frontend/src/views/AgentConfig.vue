@@ -252,7 +252,34 @@
           </div>
         </div>
 
-        <!-- 4. 知識庫配置 -->
+        <!-- 4. 排程任務 -->
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('cron')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
+              <span class="font-medium">⏰ 排程任務</span>
+              <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
+            </button>
+            <button @click="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 重新載入</button>
+            <button :disabled="!dirty.cron" @click="saveCron()" class="ml-1 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+          </div>
+          <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5" :class="{'opacity-40 pointer-events-none': !cfg.cron.usercron_enabled}">
+            <div class="space-y-2">
+              <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
+                <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
+                <span class="text-sm text-white/70 flex-1 truncate">{{ c.message }}</span>
+                <span class="text-xs text-white/40 shrink-0">{{ getChannelName(c.channel_id) }}</span>
+                <button @click.stop="deleteCron(i)" type="button" class="text-red-400/60 hover:text-red-400 shrink-0">✕</button>
+              </div>
+            </div>
+            <div v-if="mockCrons.length > cronLimit" class="mt-3 text-center">
+              <button @click="cronLimit += 20" class="text-sm text-cyan-400 hover:underline">載入更多...</button>
+            </div>
+            <button @click="editCron(null)" class="mt-3 w-full py-2.5 rounded border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40 text-sm">+ 新增排程任務</button>
+          </div>
+        </div>
+
+        <!-- 5. 知識庫配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <button @click="toggle('kb')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left">
             <span class="text-white/30">{{ open.kb ? '▼' : '▶' }}</span>
@@ -318,33 +345,6 @@
           </div>
         </div>
       </div>
-
-        <!-- 5. 排程任務 -->
-        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <div class="flex items-center px-4 py-3">
-            <button @click="toggle('cron')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
-              <span class="text-white/30">{{ open.cron ? '▼' : '▶' }}</span>
-              <span class="font-medium">⏰ 排程任務</span>
-              <span class="ml-auto text-sm text-white/40">{{ mockCrons.length }} 筆</span>
-            </button>
-            <button @click="loadCrons()" type="button" class="ml-2 text-xs px-2 py-0.5 rounded bg-white/10 text-white/50 hover:text-white">🔄 重新載入</button>
-            <button :disabled="!dirty.cron" @click="saveCron()" class="ml-1 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
-          </div>
-          <div v-if="open.cron" @change.capture="markDirty('cron')" @input.capture="markDirty('cron')" class="px-4 pb-4 border-t border-white/5" :class="{'opacity-40 pointer-events-none': !cfg.cron.usercron_enabled}">
-            <div class="space-y-2">
-              <div v-for="(c, i) in visibleCrons" :key="i" class="bg-ocean-700/50 rounded px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-ocean-700/80" @click="editCron(c)">
-                <span class="text-sm font-mono text-cyan-400 min-w-[100px]">{{ c.schedule }}</span>
-                <span class="text-sm text-white/70 flex-1 truncate">{{ c.message }}</span>
-                <span class="text-xs text-white/40 shrink-0">{{ getChannelName(c.channel_id) }}</span>
-                <button @click.stop="deleteCron(i)" type="button" class="text-red-400/60 hover:text-red-400 shrink-0">✕</button>
-              </div>
-            </div>
-            <div v-if="mockCrons.length > cronLimit" class="mt-3 text-center">
-              <button @click="cronLimit += 20" class="text-sm text-cyan-400 hover:underline">載入更多...</button>
-            </div>
-            <button @click="editCron(null)" class="mt-3 w-full py-2.5 rounded border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40 text-sm">+ 新增排程任務</button>
-          </div>
-        </div>
 
       <!-- Steering Dialog -->
       <div v-if="steeringDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="steeringDialog = null">
