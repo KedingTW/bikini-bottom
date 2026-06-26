@@ -275,7 +275,7 @@
                     <div class="text-sm text-white/90 truncate">{{ k.name }}</div>
                     <div class="text-xs text-white/40">{{ k.items }} 項 · {{ k.source }}</div>
                   </div>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ k.embedding_type }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ k.embedding_type === 'Best' ? '語意' : '關鍵字' }}</span>
                   <span v-if="k.updated_at" class="text-[10px] text-white/30">{{ k.updated_at.slice(0, 10) }}</span>
                   <span class="text-xs text-white/30">{{ k._open ? '▼' : '▶' }}</span>
                 </div>
@@ -283,9 +283,9 @@
                   <div v-if="k.chunks === null" class="text-xs text-white/40 py-2">載入中...</div>
                   <div v-else-if="!k.chunks.length" class="text-xs text-white/40 py-2">無 chunks</div>
                   <div v-else class="max-h-[250px] overflow-y-auto space-y-1 mt-2">
-                    <div v-for="c in k.chunks" :key="c.id" class="bg-ocean-800/50 rounded px-3 py-2">
+                    <div v-for="c in k.chunks" :key="c.id" class="bg-ocean-800/50 rounded px-3 py-2 cursor-pointer hover:bg-ocean-800/80" @click="chunkDialog = c">
                       <div class="text-[10px] text-cyan-400/70 truncate mb-0.5">{{ c.path }}</div>
-                      <div class="text-xs text-white/60 line-clamp-3">{{ c.preview }}</div>
+                      <div class="text-xs text-white/60 line-clamp-2">{{ (c.text || '').slice(0, 150) }}...</div>
                     </div>
                   </div>
                 </div>
@@ -333,6 +333,19 @@
           <div class="flex gap-3 justify-end mt-5">
             <button @click="cronDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
             <button @click="saveCronDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">儲存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chunk Detail Dialog -->
+      <div v-if="chunkDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="chunkDialog = null">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 80vh;">
+          <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+            <span class="text-sm font-medium text-cyan-300 truncate">{{ chunkDialog.path }}</span>
+            <button @click="chunkDialog = null" class="text-xl text-white/60 hover:text-white ml-2">&times;</button>
+          </div>
+          <div class="px-6 py-4 overflow-y-auto flex-1">
+            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/80 bg-black/20 p-4 rounded-lg">{{ chunkDialog.text }}</pre>
           </div>
         </div>
       </div>
@@ -427,6 +440,7 @@ const cronLimit = ref(20)
 const advancedOpen = ref(false)
 const cronDialog = ref(null)
 const showWorkDir = ref(false)
+const chunkDialog = ref(null)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) {

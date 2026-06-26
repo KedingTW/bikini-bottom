@@ -3000,7 +3000,7 @@ async def api_agent_kb_chunks(agent_name: str, kb_id: str, request: Request):
                 "id": item.get("id", ""),
                 "path": payload.get("path", ""),
                 "file_type": payload.get("file_type", ""),
-                "preview": (payload.get("text", "") or "")[:200],
+                "text": payload.get("text", "") or "",
             })
         return JSONResponse({"chunks": chunks, "count": len(chunks)})
     except Exception as e:
