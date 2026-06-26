@@ -536,7 +536,7 @@ const steeringFiles = ref([])
 async function loadSteering() {
   if (!selectedAgent.value) return
   const res = await get(`/api/agents/${selectedAgent.value.name}/steering`)
-  steeringFiles.value = res?.files || []
+  steeringFiles.value = (res?.files || []).sort((a, b) => (a.is_shared === b.is_shared) ? a.filename.localeCompare(b.filename) : a.is_shared ? 1 : -1)
 }
 
 const steeringDialog = ref(null)
