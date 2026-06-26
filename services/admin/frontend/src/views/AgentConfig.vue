@@ -16,6 +16,14 @@
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
       </div>
 
+      <!-- 職責 -->
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-sm text-white/60">職責：</span>
+        <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-cyan-400/50 w-40" placeholder="如：全端工程師">
+        <button @click="saveRoleTitle()" :disabled="!roleTitle && !roleTitleLoaded" class="text-xs px-3 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30">儲存</button>
+        <span v-if="roleTitleMsg" class="text-xs text-green-400">{{ roleTitleMsg }}</span>
+      </div>
+
       <div class="space-y-2">
         <!-- 1. 基本配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
@@ -441,6 +449,26 @@ const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentLi
 
 const open = reactive({ basic: true, steering: false, mcp: false, skill: false, cron: false, kb: false })
 const editingName = ref(false)
+const roleTitle = ref('')
+const roleTitleLoaded = ref(false)
+const roleTitleMsg = ref('')
+
+async function loadRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/profile`)
+  roleTitle.value = res?.role_title || ''
+  roleTitleLoaded.value = true
+}
+
+async function saveRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await fetch(`/api/agents/${selectedAgent.value.name}/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role_title: roleTitle.value })
+  })
+  if (res.ok) { roleTitleMsg.value = '✅'; setTimeout(() => { roleTitleMsg.value = '' }, 2000) }
+}
 const newDisplayName = ref('')
 
 function startEditName() {
@@ -497,7 +525,7 @@ watch(selectedAgent, async (a) => {
   if (a) {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
-    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering()])
+    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering(), loadRoleTitle()])
     await nextTick()
     Object.keys(dirty).forEach(k => dirty[k] = false)
     ready.value = true
