@@ -18,7 +18,7 @@
 
       <!-- 職責 -->
       <div class="flex items-center gap-2 mb-4">
-        <span class="text-sm text-white/60">職責：</span>
+        <span class="text-sm text-white/60">角色定位：</span>
         <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-cyan-400/50 w-40" placeholder="如：全端工程師">
         <button @click="saveRoleTitle()" :disabled="!roleTitle && !roleTitleLoaded" class="text-xs px-3 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30">儲存</button>
         <span v-if="roleTitleMsg" class="text-xs text-green-400">{{ roleTitleMsg }}</span>
@@ -442,7 +442,7 @@ import TagInput from '../components/TagInput.vue'
 import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
-const { get, post } = useApi()
+const { get, post, put } = useApi()
 const route = useRoute()
 const router = useRouter()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
@@ -462,12 +462,9 @@ async function loadRoleTitle() {
 
 async function saveRoleTitle() {
   if (!selectedAgent.value) return
-  const res = await fetch(`/api/agents/${selectedAgent.value.name}/profile`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role_title: roleTitle.value })
-  })
-  if (res.ok) { roleTitleMsg.value = '✅'; setTimeout(() => { roleTitleMsg.value = '' }, 2000) }
+  const res = await put(`/api/agents/${selectedAgent.value.name}/profile`, { role_title: roleTitle.value.trim() })
+  if (res?.ok) { roleTitleMsg.value = '✅'; setTimeout(() => { roleTitleMsg.value = '' }, 2000) }
+  else { roleTitleMsg.value = '❌ ' + (res?.detail || '儲存失敗') }
 }
 const newDisplayName = ref('')
 
