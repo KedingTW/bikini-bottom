@@ -37,10 +37,11 @@
           </div>
           <div class="glass rounded-xl p-4 text-center">
             <div class="text-2xl font-bold text-cyan-300">{{ kiroDailyAvg }}</div>
-            <div class="text-xs text-white/50 mt-1">日均消耗 <span class="text-white/30">(排除低用量日)</span></div>
+            <div class="text-xs text-white/50 mt-1">日均消耗</div>
+            <div class="text-[10px] text-white/30">排除低用量日</div>
           </div>
           <div class="glass rounded-xl p-4 text-center">
-            <div class="text-2xl font-bold text-purple-300 truncate max-w-[150px] mx-auto">{{ kiroTopUser }}</div>
+            <div class="text-lg font-bold text-purple-300 truncate">{{ kiroTopUser }}</div>
             <div class="text-xs text-white/50 mt-1">最活躍使用者</div>
           </div>
           <div class="glass rounded-xl p-4 text-center">
@@ -63,7 +64,7 @@
               <span class="w-6 text-center text-lg">{{ medals[i] || '' }}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="font-medium truncate max-w-[120px] inline-block">{{ u.user }}</span>
+                  <span class="font-medium truncate">{{ u.user }}</span>
                   <span class="text-xs text-white/50">{{ u.tier }}</span>
                   <span class="text-xs text-white/40 ml-auto">{{ u.pct.toFixed(0) }}%</span>
                 </div>
@@ -125,7 +126,7 @@
             </tr></thead>
             <tbody>
               <tr v-for="u in usageData.periods[0].users" :key="u.user" class="border-t border-white/5 hover:bg-white/5">
-                <td class="px-5 py-2 text-sm font-medium truncate max-w-[150px]">{{ u.user }}</td>
+                <td class="px-5 py-2 text-sm font-medium truncate max-w-[200px]">{{ u.user }}</td>
                 <td class="px-5 py-2 text-sm text-center">{{ u.tier }}</td>
                 <td class="px-5 py-2 text-sm text-right">{{ u.limit }}</td>
                 <td class="px-5 py-2 text-sm text-right font-medium">{{ u.credits.toFixed(1) }}</td>
