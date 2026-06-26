@@ -2319,6 +2319,7 @@ def _read_kb_contexts(kb_path: Path) -> list:
                 "source_path": c.get("source_path", ""),
                 "item_count": c.get("item_count", 0),
                 "updated_at": c.get("updated_at", ""),
+                "embedding_type": c.get("embedding_type", "Best"),
                 "persistent": c.get("persistent", False),
                 "auto_sync": c.get("auto_sync", False),
                 "size_bytes": size,
@@ -2974,6 +2975,36 @@ async def api_agent_kb_view(agent_name: str, kb_id: str, request: Request):
         "content": content,
         "content_error": content_error,
     })
+
+
+@app.get("/api/agents/{agent_name}/kb/{kb_id}/chunks")
+async def api_agent_kb_chunks(agent_name: str, kb_id: str, request: Request):
+    """取得 KB 的 chunk 列表（來源檔案 + 文字預覽）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import json as json_mod
+    safe_id = Path(kb_id).name
+    if safe_id != kb_id:
+        raise HTTPException(status_code=400, detail="無效的 KB ID")
+    kb_path = _get_agent_dir(agent_name) / ".local" / "share" / "kiro-cli" / "knowledge_bases"
+    data_file = kb_path / "kiro_default" / safe_id / "data.json"
+    if not data_file.exists():
+        return JSONResponse({"chunks": [], "count": 0})
+    try:
+        raw = json_mod.loads(data_file.read_text())
+        chunks = []
+        for item in raw:
+            payload = item.get("payload", {})
+            chunks.append({
+                "id": item.get("id", ""),
+                "path": payload.get("path", ""),
+                "file_type": payload.get("file_type", ""),
+                "text": payload.get("text", "") or "",
+            })
+        return JSONResponse({"chunks": chunks, "count": len(chunks)})
+    except Exception as e:
+        return JSONResponse({"chunks": [], "count": 0, "error": str(e)})
 
 
 # ─── MCP Servers CRUD API ───
