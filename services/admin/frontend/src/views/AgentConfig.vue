@@ -16,6 +16,16 @@
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
       </div>
 
+      <!-- 角色定位 -->
+      <div class="mb-4">
+        <div class="text-xs text-white/50 mb-1">角色定位</div>
+        <div class="flex items-center gap-2">
+          <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-400/50 flex-1 max-w-[200px]" placeholder="如：全端工程師">
+          <button @click="saveRoleTitle()" class="text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white">儲存</button>
+          <span v-if="roleTitleMsg" class="text-xs">{{ roleTitleMsg }}</span>
+        </div>
+      </div>
+
       <div class="space-y-2">
         <!-- 1. 基本配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
@@ -434,13 +444,30 @@ import TagInput from '../components/TagInput.vue'
 import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
-const { get, post } = useApi()
+const { get, post, put } = useApi()
 const route = useRoute()
 const router = useRouter()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
 const open = reactive({ basic: true, steering: false, mcp: false, skill: false, cron: false, kb: false })
 const editingName = ref(false)
+const roleTitle = ref('')
+const roleTitleLoaded = ref(false)
+const roleTitleMsg = ref('')
+
+async function loadRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/profile`)
+  roleTitle.value = res?.role_title || ''
+  roleTitleLoaded.value = true
+}
+
+async function saveRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await put(`/api/agents/${selectedAgent.value.name}/profile`, { role_title: roleTitle.value.trim() })
+  if (res?.ok) { roleTitleMsg.value = '✅'; setTimeout(() => { roleTitleMsg.value = '' }, 2000) }
+  else { roleTitleMsg.value = '❌ ' + (res?.detail || '儲存失敗') }
+}
 const newDisplayName = ref('')
 
 function startEditName() {
@@ -497,7 +524,7 @@ watch(selectedAgent, async (a) => {
   if (a) {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
-    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering()])
+    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering(), loadRoleTitle()])
     await nextTick()
     Object.keys(dirty).forEach(k => dirty[k] = false)
     ready.value = true

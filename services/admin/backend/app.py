@@ -288,6 +288,13 @@ def _init_db():
             cur.execute("ALTER TABLE mcp_server_tools ADD COLUMN description VARCHAR(255) DEFAULT ''")
         except Exception:
             pass
+        # agent_profiles table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS agent_profiles (
+                agent_name VARCHAR(64) PRIMARY KEY,
+                role_title VARCHAR(128) DEFAULT ''
+            )
+        """)
         cur.close()
         conn.close()
     else:
@@ -2522,16 +2529,74 @@ async def api_agent_config_patch(agent_name: str, request: Request):
     return JSONResponse({"ok": True, "message": "已儲存"})
 
 
-@app.patch("/api/agents/{agent_name}/display")
-async def api_agent_display_update(agent_name: str, request: Request):
-    """修改角色的 Discord nickname"""
+@app.get("/api/agents/{agent_name}/profile")
+async def api_agent_profile(agent_name: str, request: Request):
+    """取得角色 profile（role_title）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role_title FROM agent_profiles WHERE agent_name = ?", (agent_name,)).fetchone()
+    return JSONResponse({"role_title": row[0] if row else ""})
+
+
+@app.put("/api/agents/{agent_name}/profile")
+async def api_agent_profile_save(agent_name: str, request: Request):
+    """儲存角色 profile + 更新 Discord nickname"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_db() as conn:
         row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
     if not row or row[0] != "admin":
-        raise HTTPException(status_code=403, detail="需要管理員權限")
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    role_title = body.get("role_title", "").strip()
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO agent_profiles (agent_name, role_title) VALUES (?, ?)", (agent_name, role_title))
+
+    # Update Discord nickname to {display}({role_title})
+    bot_id, guild_id = "", ""
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            if a["name"] == agent_name:
+                bot_id = a.get("bot_id", "")
+                guild_id = grp.get("guild_id", "")
+                break
+    if bot_id and guild_id:
+        # Get current nickname from cache, extract display part (before parentheses)
+        import re as _re
+        current_nick = agent_name
+        cached = _discord_members_cache.get(guild_id)
+        if cached:
+            for m in cached.get("members", []):
+                if str(m.get("id")) == bot_id:
+                    current_nick = m.get("nick") or m.get("name", agent_name)
+                    break
+        # Extract name part: "阿尼(舊職責)" → "阿尼"
+        display = _re.sub(r'\s*\([^)]*\)\s*$', '', current_nick).strip() or agent_name
+                    break
+        nick = f"{display}({role_title})" if role_title else display
+        try:
+            from discord_api import set_nickname
+            await set_nickname(bot_id, nick, guild_id=guild_id)
+            _discord_members_cache.pop(guild_id, None)
+        except Exception as e:
+            return JSONResponse({"ok": True, "message": f"已儲存，但更新 nickname 失敗：{e}"})
+
+    return JSONResponse({"ok": True, "message": f"已儲存 {agent_name} 的職責"})
+
+
+@app.patch("/api/agents/{agent_name}/display")
+async def api_agent_display_update(agent_name: str, request: Request):
+    """修改角色的 Discord nickname（格式：display(role_title)）+ 同步身分組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     display = body.get("display", "").strip()
     old_display = body.get("old_display", "").strip()
@@ -2539,8 +2604,7 @@ async def api_agent_display_update(agent_name: str, request: Request):
         raise HTTPException(status_code=400, detail="display 為必填")
 
     # 找到該 agent 的 bot_id 和 guild_id
-    bot_id = ""
-    guild_id = ""
+    bot_id, guild_id = "", ""
     for grp in AGENT_GROUPS.values():
         for a in grp["agents"]:
             if a["name"] == agent_name:
@@ -2550,19 +2614,24 @@ async def api_agent_display_update(agent_name: str, request: Request):
     if not bot_id or not guild_id:
         raise HTTPException(status_code=400, detail="找不到該角色的 bot_id 或 guild_id")
 
+    # 取得 role_title 組合 nickname
+    with get_db() as conn:
+        row = conn.execute("SELECT role_title FROM agent_profiles WHERE agent_name = ?", (agent_name,)).fetchone()
+    role_title = row[0] if row else ""
+    nick = f"{display}({role_title})" if role_title else display
+
     # 打 Discord API 改 nickname
     try:
         from discord_api import set_nickname
-        await set_nickname(bot_id, display, guild_id=guild_id)
+        await set_nickname(bot_id, nick, guild_id=guild_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Discord API 失敗：{e}")
 
-    # 同步修改對應的 Discord Role 名稱
+    # 同步修改身分組名稱（純名字，不帶括號）
     role_renamed = False
     try:
         from discord_api import list_roles, modify_role
         roles = await list_roles(guild_id=guild_id)
-        # 找到對應 role：比對前端傳來的舊名、agent name
         candidates = [c for c in [old_display, agent_name, agent_name.capitalize()] if c]
         for r in roles:
             if r["name"] in candidates:
@@ -2572,10 +2641,11 @@ async def api_agent_display_update(agent_name: str, request: Request):
     except Exception as e:
         logging.warning(f"Role rename failed for {agent_name}: {e}")
 
-    # 清除 cache 讓下次 /api/agents 重新抓
+    # 清除 cache
     _discord_members_cache.pop(guild_id, None)
 
-    return JSONResponse({"ok": True, "message": f"已更新 {agent_name} 的顯示名稱為 {display}", "role_renamed": role_renamed, "debug": {"candidates": candidates, "roles_found": [r["name"] for r in roles[:10]] if "roles" in dir() else []}})
+    return JSONResponse({"ok": True, "message": f"已更新為 {nick}", "role_renamed": role_renamed})
+
 
 
 @app.get("/api/agents/{agent_name}/mcp")
