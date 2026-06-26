@@ -268,27 +268,15 @@
           <div v-if="open.kb" @change.capture="markDirty('kb')" @input.capture="markDirty('kb')" class="px-4 pb-4 border-t border-white/5">
             <div class="space-y-2">
               <div v-if="!mockKb.length" class="text-sm text-white/40 py-4">暫無知識庫</div>
-              <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
-                <div class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-white/5" @click="toggleKb(k)">
-                  <span class="text-cyan-400">📖</span>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm text-white/90 truncate">{{ k.name }}</div>
-                    <div class="text-xs text-white/40">{{ k.items }} 項 · {{ k.source }}</div>
-                  </div>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ k.embedding_type === 'Best' ? '語意' : '關鍵字' }}</span>
-                  <span v-if="k.updated_at" class="text-[10px] text-white/30">{{ k.updated_at.slice(0, 10) }}</span>
-                  <span class="text-xs text-white/30">{{ k._open ? '▼' : '▶' }}</span>
+              <div v-for="k in mockKb" :key="k.id" class="bg-ocean-700/50 rounded-lg px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-white/5" @click="openKbDialog(k)">
+                <span class="text-cyan-400">📖</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-white/90 truncate">{{ k.name }}</div>
+                  <div class="text-xs text-white/40">{{ k.items }} 項 · {{ k.source }}</div>
                 </div>
-                <div v-if="k._open" class="px-4 pb-3 border-t border-white/5">
-                  <div v-if="k.chunks === null" class="text-xs text-white/40 py-2">載入中...</div>
-                  <div v-else-if="!k.chunks.length" class="text-xs text-white/40 py-2">無 chunks</div>
-                  <div v-else class="max-h-[250px] overflow-y-auto space-y-1 mt-2">
-                    <div v-for="c in k.chunks" :key="c.id" class="bg-ocean-800/50 rounded px-3 py-2 cursor-pointer hover:bg-ocean-800/80" @click="chunkDialog = c">
-                      <div class="text-[10px] text-cyan-400/70 truncate mb-0.5">{{ c.path }}</div>
-                      <div class="text-xs text-white/60 line-clamp-2">{{ (c.text || '').slice(0, 150) }}...</div>
-                    </div>
-                  </div>
-                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-600/20 text-cyan-300">{{ k.embedding_type === 'Best' ? '語意' : '關鍵字' }}</span>
+                <span v-if="k.updated_at" class="text-[10px] text-white/30">{{ k.updated_at.slice(0, 10) }}</span>
+                <span class="text-white/30">›</span>
               </div>
             </div>
           </div>
@@ -337,15 +325,25 @@
         </div>
       </div>
 
-      <!-- Chunk Detail Dialog -->
-      <div v-if="chunkDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="chunkDialog = null">
-        <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 80vh;">
+      <!-- KB Chunks Dialog -->
+      <div v-if="kbDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="kbDialog = null">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 85vh;">
           <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
-            <span class="text-sm font-medium text-cyan-300 truncate">{{ chunkDialog.path }}</span>
-            <button @click="chunkDialog = null" class="text-xl text-white/60 hover:text-white ml-2">&times;</button>
+            <div>
+              <span class="font-semibold">{{ kbDialog.name }}</span>
+              <span class="text-xs text-white/40 ml-2">{{ kbDialog.chunks?.length || 0 }} chunks</span>
+            </div>
+            <button @click="kbDialog = null" class="text-xl text-white/60 hover:text-white ml-2">&times;</button>
           </div>
           <div class="px-6 py-4 overflow-y-auto flex-1">
-            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/80 bg-black/20 p-4 rounded-lg">{{ chunkDialog.text }}</pre>
+            <div v-if="kbDialog.loading" class="text-sm text-white/40 text-center py-4">載入中...</div>
+            <div v-else-if="!kbDialog.chunks?.length" class="text-sm text-white/40 text-center py-4">無 chunks</div>
+            <div v-else class="space-y-3">
+              <div v-for="c in kbDialog.chunks" :key="c.id" class="bg-ocean-800/50 rounded-lg p-3">
+                <div class="text-[10px] text-cyan-400/70 truncate mb-1">{{ c.path }}</div>
+                <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/70 max-h-[200px] overflow-y-auto">{{ c.text }}</pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -440,7 +438,7 @@ const cronLimit = ref(20)
 const advancedOpen = ref(false)
 const cronDialog = ref(null)
 const showWorkDir = ref(false)
-const chunkDialog = ref(null)
+const kbDialog = ref(null)
 
 function toggle(key) { open[key] = !open[key] }
 function onSelect(a) {
@@ -671,12 +669,11 @@ async function doSave(restart) {
   }
 }
 
-async function toggleKb(k) {
-  k._open = !k._open
-  if (k._open && k.chunks === null) {
-    const res = await get(`/api/agents/${selectedAgent.value.name}/kb/${k.id}/chunks`)
-    k.chunks = res?.chunks || []
-  }
+async function openKbDialog(k) {
+  kbDialog.value = { name: k.name, chunks: null, loading: true }
+  const res = await get(`/api/agents/${selectedAgent.value.name}/kb/${k.id}/chunks`)
+  kbDialog.value.chunks = res?.chunks || []
+  kbDialog.value.loading = false
 }
 
 async function loadKb() {
