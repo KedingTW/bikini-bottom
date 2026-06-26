@@ -2600,6 +2600,22 @@ async def api_agent_mcp_save(agent_name: str, request: Request):
     return JSONResponse({"ok": True, "message": "已儲存"})
 
 
+@app.get("/api/agents/{agent_name}/steering")
+async def api_agent_steering_list(agent_name: str, request: Request):
+    """列出角色的 steering 檔案 + 是否為共用（symlink）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    steering_path = _get_agent_dir(agent_name) / ".kiro" / "steering"
+    if not steering_path.exists():
+        return JSONResponse({"files": []})
+    files = []
+    for f in sorted(steering_path.iterdir()):
+        if f.suffix == ".md":
+            files.append({"filename": f.name, "is_shared": f.is_symlink()})
+    return JSONResponse({"files": files})
+
+
 @app.get("/api/agents/{agent_name}/steering/{filename}")
 async def api_agent_steering(agent_name: str, filename: str, request: Request):
     """取得 steering 檔案內容"""
@@ -2610,9 +2626,29 @@ async def api_agent_steering(agent_name: str, filename: str, request: Request):
     if safe_name != filename:
         raise HTTPException(status_code=400, detail="無效的檔案名稱")
     path = _get_agent_dir(agent_name) / ".kiro" / "steering" / safe_name
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
-    return JSONResponse({"content": path.read_text(), "filename": safe_name})
+    # Handle symlinks: try resolve, then try reading the link target directly
+    try:
+        if path.is_symlink():
+            target = path.resolve()
+            if target.exists():
+                return JSONResponse({"content": target.read_text(), "filename": safe_name})
+            # Symlink target not reachable, try readlink and find in shared steering
+            import os
+            link_target = os.readlink(str(path))
+            # Try common shared steering locations
+            for base in [Path("/data/repo/shared/steering"), Path("/opt/bikini-bottom/repo/shared/steering"), Path("/shared/steering")]:
+                candidate = base / Path(link_target).name
+                if candidate.exists():
+                    return JSONResponse({"content": candidate.read_text(), "filename": safe_name})
+            return JSONResponse({"content": f"(symlink → {link_target}，目標不可讀取)", "filename": safe_name})
+        elif path.exists():
+            return JSONResponse({"content": path.read_text(), "filename": safe_name})
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse({"content": f"(讀取失敗：{e})", "filename": safe_name})
 
 
 @app.put("/api/agents/{agent_name}/steering/{filename}")

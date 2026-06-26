@@ -171,7 +171,48 @@
           </div>
         </div>
 
-        <!-- 2. MCP 配置 -->
+        <!-- Steering -->
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('steering')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.steering ? '▼' : '▶' }}</span>
+              <span class="font-medium">📜 Steering</span>
+              <span class="ml-auto text-sm text-white/40">{{ steeringFiles.length }} 個檔案</span>
+            </button>
+          </div>
+          <div v-if="open.steering" class="px-4 pb-4 border-t border-white/5">
+            <div v-if="!steeringFiles.length" class="text-sm text-white/40 py-4">無 Steering 檔案</div>
+            <div v-else class="space-y-1">
+              <div v-for="f in steeringFiles" :key="f.filename" class="bg-ocean-700/50 rounded px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-white/5" @click="openSteering(f)">
+                <span class="text-cyan-400">📄</span>
+                <span class="text-sm text-white/90 flex-1 truncate">{{ f.filename }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded" :class="f.is_shared ? 'bg-blue-600/20 text-blue-300' : 'bg-green-600/20 text-green-300'">{{ f.is_shared ? '共用' : '專屬' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Skill 配置 -->
+        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
+          <div class="flex items-center px-4 py-3">
+            <button @click="toggle('skill')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
+              <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
+              <span class="font-medium">📚 技能配置</span>
+              <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
+            </button>
+            <button :disabled="!dirty.skill" @click="saveSkill()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
+          </div>
+          <div v-if="open.skill" @change.capture="markDirty('skill')" @input.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+              <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
+                <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
+                <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.desc }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. MCP 配置 -->
         <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
           <div class="flex items-center px-4 py-3">
             <button @click="toggle('mcp')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
@@ -207,26 +248,6 @@
                   </label>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Skill 配置 -->
-        <div class="bg-ocean-800/50 rounded-lg border border-white/5 overflow-hidden">
-          <div class="flex items-center px-4 py-3">
-            <button @click="toggle('skill')" class="flex items-center gap-3 flex-1 hover:bg-white/5 rounded text-left -ml-2 pl-2 py-0.5">
-              <span class="text-white/30">{{ open.skill ? '▼' : '▶' }}</span>
-              <span class="font-medium">📚 技能配置</span>
-              <span class="ml-auto text-sm text-white/40">{{ mockSkills.filter(s=>s.enabled).length }}/{{ mockSkills.length }}</span>
-            </button>
-            <button :disabled="!dirty.skill" @click="saveSkill()" class="ml-2 px-3 py-1 text-xs rounded bg-cyan-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500 transition">💾 儲存</button>
-          </div>
-          <div v-if="open.skill" @change.capture="markDirty('skill')" @input.capture="markDirty('skill')" class="px-4 pb-4 border-t border-white/5">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
-              <label v-for="s in mockSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2.5 rounded hover:bg-white/5 cursor-pointer">
-                <input type="checkbox" v-model="s.enabled" class="w-4 h-4 accent-cyan-500">
-                <span class="text-sm" :class="s.enabled ? 'text-white/90' : 'text-white/40'">{{ s.desc }}</span>
-              </label>
             </div>
           </div>
         </div>
@@ -325,6 +346,22 @@
         </div>
       </div>
 
+      <!-- Steering Dialog -->
+      <div v-if="steeringDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="steeringDialog = null">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 80vh;">
+          <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold">{{ steeringDialog.filename }}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded" :class="steeringDialog.is_shared ? 'bg-blue-600/20 text-blue-300' : 'bg-green-600/20 text-green-300'">{{ steeringDialog.is_shared ? '共用' : '專屬' }}</span>
+            </div>
+            <button @click="steeringDialog = null" class="text-xl text-white/60 hover:text-white">&times;</button>
+          </div>
+          <div class="px-6 py-4 overflow-y-auto flex-1">
+            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/80">{{ steeringDialog.content }}</pre>
+          </div>
+        </div>
+      </div>
+
       <!-- KB Chunks Dialog -->
       <div v-if="kbDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="kbDialog = null">
         <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 85vh;">
@@ -399,7 +436,7 @@ const route = useRoute()
 const router = useRouter()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
-const open = reactive({ basic: true, mcp: false, skill: false, cron: false, kb: false })
+const open = reactive({ basic: true, steering: false, mcp: false, skill: false, cron: false, kb: false })
 const editingName = ref(false)
 const newDisplayName = ref('')
 
@@ -457,7 +494,7 @@ watch(selectedAgent, async (a) => {
   if (a) {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
-    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb()])
+    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering()])
     await nextTick()
     Object.keys(dirty).forEach(k => dirty[k] = false)
     ready.value = true
@@ -493,6 +530,20 @@ function resetBasicConfig() {
   cfg.reactions.remove_after_reply = false
   cfg.reactions.tool_display = 'full'
   Object.assign(cfg.reactions.emojis, defaultEmojis)
+}
+
+const steeringFiles = ref([])
+async function loadSteering() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/steering`)
+  steeringFiles.value = (res?.files || []).sort((a, b) => (a.is_shared === b.is_shared) ? a.filename.localeCompare(b.filename) : a.is_shared ? 1 : -1)
+}
+
+const steeringDialog = ref(null)
+async function openSteering(f) {
+  steeringDialog.value = { filename: f.filename, content: '載入中...', is_shared: f.is_shared }
+  const res = await get(`/api/agents/${selectedAgent.value.name}/steering/${f.filename}`)
+  steeringDialog.value.content = res?.content || '(無內容)'
 }
 
 async function loadMcp() {
