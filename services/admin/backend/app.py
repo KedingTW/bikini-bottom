@@ -3517,6 +3517,104 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
 
 
 
+# ─── Role Groups CRUD ───
+
+@app.get("/api/role-groups")
+async def api_role_groups_list(request: Request):
+    """列出所有角色組（含成員數）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT g.id, g.name, g.description,
+                   (SELECT COUNT(*) FROM role_group_members m WHERE m.group_id = g.id) as member_count
+            FROM role_groups g ORDER BY g.id
+        """).fetchall()
+    return JSONResponse({"groups": [{"id": r[0], "name": r[1], "description": r[2], "member_count": r[3]} for r in rows]})
+
+
+@app.post("/api/role-groups")
+async def api_role_group_create(request: Request):
+    """新增角色組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name 為必填")
+    with get_db() as conn:
+        conn.execute("INSERT INTO role_groups (name, description) VALUES (?, ?)", (name, body.get("description", "")))
+    return JSONResponse({"ok": True})
+
+
+@app.put("/api/role-groups/{group_id}")
+async def api_role_group_update(group_id: int, request: Request):
+    """修改角色組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    with get_db() as conn:
+        conn.execute("UPDATE role_groups SET name = ?, description = ? WHERE id = ?",
+                     (body.get("name", ""), body.get("description", ""), group_id))
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/role-groups/{group_id}")
+async def api_role_group_delete(group_id: int, request: Request):
+    """刪除角色組"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        conn.execute("DELETE FROM role_groups WHERE id = ?", (group_id,))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/role-groups/{group_id}/members")
+async def api_role_group_members(group_id: int, request: Request):
+    """取得角色組成員"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        rows = conn.execute("SELECT agent_name FROM role_group_members WHERE group_id = ?", (group_id,)).fetchall()
+    return JSONResponse({"members": [r[0] for r in rows]})
+
+
+@app.put("/api/role-groups/{group_id}/members")
+async def api_role_group_members_save(group_id: int, request: Request):
+    """更新角色組成員"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    members = body.get("members", [])
+    with get_db() as conn:
+        conn.execute("DELETE FROM role_group_members WHERE group_id = ?", (group_id,))
+        for name in members:
+            conn.execute("INSERT INTO role_group_members (group_id, agent_name) VALUES (?, ?)", (group_id, name))
+    return JSONResponse({"ok": True})
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/steering", "/cronjobs", "/knowledge",
