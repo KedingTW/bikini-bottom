@@ -202,6 +202,7 @@
                 <span class="text-[10px] px-1.5 py-0.5 rounded" :class="f.is_shared ? 'bg-blue-600/20 text-blue-300' : 'bg-green-600/20 text-green-300'">{{ f.is_shared ? '共用' : '專屬' }}</span>
               </div>
             </div>
+            <button @click="previewTeamMembers()" type="button" class="mt-3 w-full py-2 text-xs rounded border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40">🔄 生成 team-members.md</button>
           </div>
         </div>
 
@@ -356,6 +357,23 @@
           <div class="flex gap-3 justify-end mt-5">
             <button @click="cronDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
             <button @click="saveCronDialog()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">儲存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Members Preview Dialog -->
+      <div v-if="teamMembersDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="teamMembersDialog = null">
+        <div class="bg-ocean-700 rounded-xl w-full max-w-3xl shadow-2xl border border-white/10 flex flex-col" style="max-height: 80vh;">
+          <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+            <span class="font-semibold">team-members.md 預覽</span>
+            <button @click="teamMembersDialog = null" class="text-xl text-white/60 hover:text-white">&times;</button>
+          </div>
+          <div class="px-6 py-4 overflow-y-auto flex-1">
+            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words text-white/80">{{ teamMembersDialog.content }}</pre>
+          </div>
+          <div class="px-6 py-3 border-t border-white/10 flex justify-end gap-3 shrink-0">
+            <button @click="teamMembersDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70 hover:bg-white/10">取消</button>
+            <button @click="confirmGenerateTeamMembers()" :disabled="teamMembersDialog.saving" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium disabled:opacity-50">💾 確認寫入</button>
           </div>
         </div>
       </div>
@@ -581,6 +599,23 @@ async function loadSteering() {
 }
 
 const steeringDialog = ref(null)
+const teamMembersDialog = ref(null)
+
+async function previewTeamMembers() {
+  teamMembersDialog.value = { content: '載入中...', saving: false }
+  const res = await get('/api/generate-team-members/preview')
+  teamMembersDialog.value.content = res?.content || '(無內容)'
+}
+
+async function confirmGenerateTeamMembers() {
+  teamMembersDialog.value.saving = true
+  const res = await post('/api/generate-team-members')
+  if (res?.ok) {
+    teamMembersDialog.value = null
+    loadSteering()
+  }
+}
+
 async function openSteering(f) {
   steeringDialog.value = { filename: f.filename, content: '載入中...', is_shared: f.is_shared }
   const res = await get(`/api/agents/${selectedAgent.value.name}/steering/${f.filename}`)
