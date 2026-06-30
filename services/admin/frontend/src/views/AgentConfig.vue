@@ -7,7 +7,7 @@
 
     <div v-if="selectedAgent">
       <div class="flex flex-wrap items-center gap-2 mb-4">
-        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }}{{ roleTitle ? '(' + roleTitle + ')' : '' }} 配置</h2>
+        <h2 v-if="!editingName" class="text-lg font-semibold">{{ displayName }}{{ roleTitle ? '(' + roleTitle + ')' : '' }} 配置</h2>
         <template v-else>
           <div class="flex flex-col sm:flex-row gap-2">
             <div>
@@ -470,11 +470,18 @@ async function saveRoleTitle() {
   else { roleTitleMsg.value = '❌ ' + (res?.detail || '儲存失敗') }
 }
 const newDisplayName = ref('')
+const displayName = computed(() => {
+  const d = selectedAgent.value?.display || ''
+  return d.replace(/\s*\([^)]*\)\s*$/, '').trim()
+})
 const newRoleTitle = ref('')
 
 function startEditName() {
-  newDisplayName.value = selectedAgent.value.display
-  newRoleTitle.value = roleTitle.value
+  // Split "阿尼A(又掛了)" → name="阿尼A", title="又掛了"
+  const full = selectedAgent.value.display || ''
+  const match = full.match(/^(.+?)(?:\((.+)\))?$/)
+  newDisplayName.value = match ? match[1].trim() : full
+  newRoleTitle.value = match && match[2] ? match[2].trim() : roleTitle.value
   editingName.value = true
 }
 
@@ -483,7 +490,7 @@ async function saveDisplayName() {
   const res = await fetch(`/api/agents/${selectedAgent.value.name}/display`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display: newDisplayName.value.trim(), role_title: newRoleTitle.value.trim(), old_display: selectedAgent.value.display })
+    body: JSON.stringify({ display: newDisplayName.value.trim(), role_title: newRoleTitle.value.trim(), old_display: (selectedAgent.value.display || '').replace(/\s*\([^)]*\)\s*$/, '').trim() })
   })
   if (res.ok) {
     selectedAgent.value.display = newDisplayName.value.trim()
