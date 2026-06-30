@@ -295,6 +295,29 @@ def _init_db():
                 role_title VARCHAR(128) DEFAULT ''
             )
         """)
+        # Role groups
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS role_groups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                description TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS role_group_members (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id INT NOT NULL,
+                agent_name VARCHAR(64) NOT NULL,
+                UNIQUE KEY uk_group_agent (group_id, agent_name),
+                FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
+            )
+        """)
+        # Seed role groups if empty
+        cur.execute("SELECT COUNT(*) FROM role_groups")
+        if cur.fetchone()[0] == 0:
+            for name in ['全端工程師', '後端工程師', 'Code Reviewer', 'PM', '客戶成功', 'DevOps']:
+                cur.execute("INSERT INTO role_groups (name) VALUES (%s)", (name,))
         cur.close()
         conn.close()
     else:
@@ -3496,7 +3519,7 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
 
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
