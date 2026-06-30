@@ -7,24 +7,25 @@
 
     <div v-if="selectedAgent">
       <div class="flex flex-wrap items-center gap-2 mb-4">
-        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置 <span v-if="selectedAgent.bot_id" class="text-xs text-white/30 font-normal">({{ selectedAgent.bot_id }})</span></h2>
+        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }}{{ roleTitle ? '(' + roleTitle + ')' : '' }} 配置</h2>
         <template v-else>
-          <input v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-base font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1 text-white focus:outline-none w-40 sm:w-auto">
-          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1 rounded bg-cyan-600 text-white">確定</button>
-          <button @click="editingName = false" type="button" class="text-xs px-3 py-1 rounded border border-white/20 text-white/60">取消</button>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div>
+              <div class="text-[10px] text-white/40 mb-0.5">名字</div>
+              <input v-model="newDisplayName" @keydown.escape="editingName = false" class="bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1.5 text-sm text-white focus:outline-none w-32">
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 mb-0.5">角色定位</div>
+              <input v-model="newRoleTitle" @keydown.escape="editingName = false" class="bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1.5 text-sm text-white focus:outline-none w-32" placeholder="如：全端工程師">
+            </div>
+          </div>
+          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1.5 rounded bg-cyan-600 text-white">確定</button>
+          <button @click="editingName = false" type="button" class="text-xs px-3 py-1.5 rounded border border-white/20 text-white/60">取消</button>
         </template>
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
       </div>
 
-      <!-- 角色定位 -->
-      <div class="mb-4">
-        <div class="text-xs text-white/50 mb-1">角色定位</div>
-        <div class="flex items-center gap-2">
-          <input v-model="roleTitle" class="bg-ocean-800 border border-white/15 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-400/50 flex-1 max-w-[200px]" placeholder="如：全端工程師">
-          <button @click="saveRoleTitle()" class="text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white">儲存</button>
-          <span v-if="roleTitleMsg" class="text-xs">{{ roleTitleMsg }}</span>
-        </div>
-      </div>
+
 
       <div class="space-y-2">
         <!-- 1. 基本配置 -->
@@ -469,9 +470,11 @@ async function saveRoleTitle() {
   else { roleTitleMsg.value = '❌ ' + (res?.detail || '儲存失敗') }
 }
 const newDisplayName = ref('')
+const newRoleTitle = ref('')
 
 function startEditName() {
   newDisplayName.value = selectedAgent.value.display
+  newRoleTitle.value = roleTitle.value
   editingName.value = true
 }
 
@@ -480,10 +483,11 @@ async function saveDisplayName() {
   const res = await fetch(`/api/agents/${selectedAgent.value.name}/display`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display: newDisplayName.value.trim(), old_display: selectedAgent.value.display })
+    body: JSON.stringify({ display: newDisplayName.value.trim(), role_title: newRoleTitle.value.trim(), old_display: selectedAgent.value.display })
   })
   if (res.ok) {
     selectedAgent.value.display = newDisplayName.value.trim()
+    roleTitle.value = newRoleTitle.value.trim()
     editingName.value = false
   } else {
     const err = await res.json().catch(() => ({}))

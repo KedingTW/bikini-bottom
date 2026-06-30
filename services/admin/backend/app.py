@@ -2599,8 +2599,13 @@ async def api_agent_display_update(agent_name: str, request: Request):
     body = await request.json()
     display = body.get("display", "").strip()
     old_display = body.get("old_display", "").strip()
+    new_role_title = body.get("role_title", "").strip()
     if not display:
         raise HTTPException(status_code=400, detail="display 為必填")
+
+    # 儲存 role_title
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO agent_profiles (agent_name, role_title) VALUES (?, ?)", (agent_name, new_role_title))
 
     # 找到該 agent 的 bot_id 和 guild_id
     bot_id, guild_id = "", ""
@@ -2613,11 +2618,8 @@ async def api_agent_display_update(agent_name: str, request: Request):
     if not bot_id or not guild_id:
         raise HTTPException(status_code=400, detail="找不到該角色的 bot_id 或 guild_id")
 
-    # 取得 role_title 組合 nickname
-    with get_db() as conn:
-        row = conn.execute("SELECT role_title FROM agent_profiles WHERE agent_name = ?", (agent_name,)).fetchone()
-    role_title = row[0] if row else ""
-    nick = f"{display}({role_title})" if role_title else display
+    # 組合 nickname
+    nick = f"{display}({new_role_title})" if new_role_title else display
 
     # 打 Discord API 改 nickname
     try:
