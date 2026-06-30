@@ -2575,7 +2575,6 @@ async def api_agent_profile_save(agent_name: str, request: Request):
                     break
         # Extract name part: "阿尼(舊職責)" → "阿尼"
         display = _re.sub(r'\s*\([^)]*\)\s*$', '', current_nick).strip() or agent_name
-                    break
         nick = f"{display}({role_title})" if role_title else display
         try:
             from discord_api import set_nickname
