@@ -7,14 +7,25 @@
 
     <div v-if="selectedAgent">
       <div class="flex flex-wrap items-center gap-2 mb-4">
-        <h2 v-if="!editingName" class="text-lg font-semibold">{{ selectedAgent.display }} 配置 <span v-if="selectedAgent.bot_id" class="text-xs text-white/30 font-normal">({{ selectedAgent.bot_id }})</span></h2>
+        <h2 v-if="!editingName" class="text-lg font-semibold">{{ displayName }}{{ roleTitle ? '(' + roleTitle + ')' : '' }} 配置</h2>
         <template v-else>
-          <input v-model="newDisplayName" @keydown.enter="saveDisplayName()" @keydown.escape="editingName = false" class="text-base font-semibold bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1 text-white focus:outline-none w-40 sm:w-auto">
-          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1 rounded bg-cyan-600 text-white">確定</button>
-          <button @click="editingName = false" type="button" class="text-xs px-3 py-1 rounded border border-white/20 text-white/60">取消</button>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div>
+              <div class="text-[10px] text-white/40 mb-0.5">名字</div>
+              <input v-model="newDisplayName" @keydown.escape="editingName = false" class="bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1.5 text-sm text-white focus:outline-none w-32">
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 mb-0.5">角色定位</div>
+              <input v-model="newRoleTitle" @keydown.escape="editingName = false" class="bg-ocean-800 border border-cyan-400/50 rounded px-2 py-1.5 text-sm text-white focus:outline-none w-32" placeholder="如：全端工程師">
+            </div>
+          </div>
+          <button @click="saveDisplayName()" type="button" class="text-xs px-3 py-1.5 rounded bg-cyan-600 text-white">確定</button>
+          <button @click="editingName = false" type="button" class="text-xs px-3 py-1.5 rounded border border-white/20 text-white/60">取消</button>
         </template>
         <button v-if="!editingName" @click="startEditName()" type="button" class="text-white/40 hover:text-white text-sm">✏️</button>
       </div>
+
+
 
       <div class="space-y-2">
         <!-- 1. 基本配置 -->
@@ -434,17 +445,43 @@ import TagInput from '../components/TagInput.vue'
 import IdSelect from '../components/IdSelect.vue'
 import EmojiPicker from '../components/EmojiPicker.vue'
 
-const { get, post } = useApi()
+const { get, post, put } = useApi()
 const route = useRoute()
 const router = useRouter()
 const { agents, selectedAgent, loading, selectAgent, currentGroup } = useAgentList()
 
 const open = reactive({ basic: true, steering: false, mcp: false, skill: false, cron: false, kb: false })
 const editingName = ref(false)
+const roleTitle = ref('')
+const roleTitleLoaded = ref(false)
+const roleTitleMsg = ref('')
+
+async function loadRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await get(`/api/agents/${selectedAgent.value.name}/profile`)
+  roleTitle.value = res?.role_title || ''
+  roleTitleLoaded.value = true
+}
+
+async function saveRoleTitle() {
+  if (!selectedAgent.value) return
+  const res = await put(`/api/agents/${selectedAgent.value.name}/profile`, { role_title: roleTitle.value.trim() })
+  if (res?.ok) { roleTitleMsg.value = '✅'; setTimeout(() => { roleTitleMsg.value = '' }, 2000) }
+  else { roleTitleMsg.value = '❌ ' + (res?.detail || '儲存失敗') }
+}
 const newDisplayName = ref('')
+const displayName = computed(() => {
+  const d = selectedAgent.value?.display || ''
+  return d.replace(/\s*\([^)]*\)\s*$/, '').trim()
+})
+const newRoleTitle = ref('')
 
 function startEditName() {
-  newDisplayName.value = selectedAgent.value.display
+  // Split "阿尼A(又掛了)" → name="阿尼A", title="又掛了"
+  const full = selectedAgent.value.display || ''
+  const match = full.match(/^(.+?)(?:\((.+)\))?$/)
+  newDisplayName.value = match ? match[1].trim() : full
+  newRoleTitle.value = match && match[2] ? match[2].trim() : roleTitle.value
   editingName.value = true
 }
 
@@ -453,10 +490,11 @@ async function saveDisplayName() {
   const res = await fetch(`/api/agents/${selectedAgent.value.name}/display`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display: newDisplayName.value.trim(), old_display: selectedAgent.value.display })
+    body: JSON.stringify({ display: newDisplayName.value.trim(), role_title: newRoleTitle.value.trim(), old_display: (selectedAgent.value.display || '').replace(/\s*\([^)]*\)\s*$/, '').trim() })
   })
   if (res.ok) {
     selectedAgent.value.display = newDisplayName.value.trim()
+    roleTitle.value = newRoleTitle.value.trim()
     editingName.value = false
   } else {
     const err = await res.json().catch(() => ({}))
@@ -497,7 +535,7 @@ watch(selectedAgent, async (a) => {
   if (a) {
     ready.value = false
     Object.keys(dirty).forEach(k => dirty[k] = false)
-    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering()])
+    await Promise.all([loadConfig(a.name), loadCrons(), loadSkills(), loadMcp(), loadKb(), loadSteering(), loadRoleTitle()])
     await nextTick()
     Object.keys(dirty).forEach(k => dirty[k] = false)
     ready.value = true
