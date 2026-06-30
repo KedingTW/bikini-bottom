@@ -2750,7 +2750,11 @@ async def api_skill_detail(skill_name: str, request: Request):
 async def api_skill_create(request: Request):
     """新增 skill（寫 DB + 生成 SKILL.md）"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _role_row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _role_row or _role_row[0] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     name = body.get("name", "").strip()
@@ -2779,7 +2783,11 @@ async def api_skill_create(request: Request):
 async def api_skill_update(skill_name: str, request: Request):
     """編輯 skill（更新 DB + 重寫 SKILL.md）"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _role_row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _role_row or _role_row[0] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     safe_name = Path(skill_name).name
     if safe_name != skill_name:
@@ -2810,7 +2818,11 @@ async def api_skill_update(skill_name: str, request: Request):
 async def api_skill_delete(skill_name: str, request: Request):
     """刪除 skill（刪 DB + 刪檔 + 清 symlinks）"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _role_row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _role_row or _role_row[0] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     safe_name = Path(skill_name).name
     if safe_name != skill_name:
@@ -2836,7 +2848,11 @@ async def api_skill_delete(skill_name: str, request: Request):
 async def api_skill_agents_save(skill_name: str, request: Request):
     """批次更新 skill 啟用給哪些角色 + 重建 symlinks"""
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _role_row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _role_row or _role_row[0] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     safe_name = Path(skill_name).name
     if safe_name != skill_name:

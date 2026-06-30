@@ -61,6 +61,7 @@
 
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 
 const { get, put } = useApi()
@@ -73,6 +74,13 @@ const allAgents = ref([])
 const agentsLoading = ref(false)
 const enabledAgents = ref([])
 const dirty = ref(false)
+
+onBeforeRouteLeave(() => {
+  if (dirty.value && !confirm('有未儲存的變更，確定要離開嗎？')) return false
+})
+window.addEventListener('beforeunload', (e) => {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+})
 const saving = ref(false)
 const saveStatus = ref(null)
 
@@ -91,6 +99,7 @@ async function loadAgents() {
 }
 
 function selectSkill(s) {
+  if (dirty.value && !confirm('有未儲存的變更，確定要切換嗎？')) return
   selected.value = s
   enabledAgents.value = [...(s.enabled_agents || [])]
   dirty.value = false
