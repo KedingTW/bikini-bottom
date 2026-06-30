@@ -3494,6 +3494,90 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
 
 
 
+
+# ─── Team Members 生成 ───
+
+@app.get("/api/generate-team-members/preview")
+async def api_team_members_preview(request: Request):
+    """預覽 team-members.md 內容（不寫入）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    content = _generate_team_members_md()
+    return JSONResponse({"content": content})
+
+
+@app.post("/api/generate-team-members")
+async def api_team_members_generate(request: Request):
+    """生成 team-members.md 並寫入所有角色的 steering"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        row = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    md_content = _generate_team_members_md()
+
+    # Write to all agents' steering directories
+    written = []
+    for grp in AGENT_GROUPS.values():
+        for a in grp["agents"]:
+            steering_dir = _get_agent_dir(a["name"]) / ".kiro" / "steering"
+            if steering_dir.exists():
+                target = steering_dir / "team-members.md"
+                # Remove symlink if exists
+                if target.is_symlink():
+                    target.unlink()
+                target.write_text(md_content, encoding="utf-8")
+                written.append(a["name"])
+
+    return JSONResponse({"ok": True, "message": f"已寫入 {len(written)} 個角色", "written": written, "content": md_content})
+
+
+def _generate_team_members_md() -> str:
+    """Generate team-members.md from DB + AGENT_GROUPS + Discord cache."""
+    import json as json_mod
+
+    # Get role_titles from DB
+    role_titles = {}
+    try:
+        with get_db() as conn:
+            rows = conn.execute("SELECT agent_name, role_title FROM agent_profiles").fetchall()
+            role_titles = {r[0]: r[1] for r in rows}
+    except Exception:
+        pass
+
+    lines = ["# 團隊成員\n"]
+    lines.append("| 角色 | 職責 | Discord UID | Mention 格式 |")
+    lines.append("|------|------|-------------|-------------|")
+
+    for grp_id, grp in AGENT_GROUPS.items():
+        guild_id = grp.get("guild_id", "")
+        for a in grp["agents"]:
+            name = a["name"]
+            bot_id = a.get("bot_id", "")
+            role_title = role_titles.get(name, "")
+
+            # Get display name from cache
+            display = name
+            cached = _discord_members_cache.get(guild_id)
+            if cached:
+                for m in cached.get("members", []):
+                    if str(m.get("id")) == bot_id:
+                        nick = m.get("nick") or m.get("name", name)
+                        # Strip role_title from nick for pure name
+                        import re
+                        display = re.sub(r'\s*\([^)]*\)\s*$', '', nick).strip() or name
+                        break
+
+            mention = f"`<@{bot_id}>`" if bot_id else ""
+            lines.append(f"| {display} | {role_title} | `{bot_id}` | {mention} |")
+
+    return "\n".join(lines) + "\n"
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
               "/agent-config", "/mcp", "/mcp-servers", "/skills", "/steering", "/cronjobs", "/knowledge",
