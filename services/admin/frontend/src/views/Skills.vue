@@ -99,6 +99,7 @@ async function loadAgents() {
 }
 
 function selectSkill(s) {
+  if (dirty.value && !confirm('有未儲存的變更，確定要切換嗎？')) return
   selected.value = s
   enabledAgents.value = [...(s.enabled_agents || [])]
   dirty.value = false
