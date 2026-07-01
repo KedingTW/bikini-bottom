@@ -76,6 +76,7 @@ const navGroups = [
   ]},
   { label: 'AI 角色管理', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
+    { path: '/role-groups', icon: '👥', label: '角色組', admin: true },
   ]},
   { label: '伺服器管理', items: [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
@@ -90,7 +91,6 @@ const navGroups = [
   { label: '共用功能', items: [
     { path: '/mcp-servers', icon: '🗄️', label: 'MCP Servers', admin: true },
     { path: '/skills', icon: '📚', label: '技能管理', admin: true },
-    { path: '/role-groups', icon: '👥', label: '角色組', admin: true },
     { path: '/costs', icon: '💰', label: '成本監控', admin: false },
     { path: '/deploy', icon: '🚀', label: '部署管理', admin: true },
     { path: '/system', icon: '🖥️', label: '系統資源', admin: false },
