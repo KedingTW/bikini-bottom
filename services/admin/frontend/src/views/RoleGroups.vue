@@ -53,6 +53,32 @@
         </div>
         <button @click="saveMembers()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存成員</button>
         <span v-if="saveMsg" class="text-xs ml-2" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
+
+        <!-- Skills binding -->
+        <div class="mt-6">
+          <div class="text-sm text-white/60 mb-2">綁定技能</div>
+          <div v-if="!allSkills.length" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="space-y-1 mb-3">
+            <label v-for="s in allSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
+              <input type="checkbox" :value="s.name" v-model="boundSkills" class="w-4 h-4 accent-cyan-500">
+              <span class="text-sm text-white/90">{{ s.display_name || s.name }}</span>
+            </label>
+          </div>
+          <button @click="saveSkills()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存技能</button>
+        </div>
+
+        <!-- MCP binding -->
+        <div class="mt-6">
+          <div class="text-sm text-white/60 mb-2">綁定 MCP Server</div>
+          <div v-if="!allMcpServers.length" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="space-y-1 mb-3">
+            <label v-for="s in allMcpServers" :key="s.id" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
+              <input type="checkbox" :value="s.id" v-model="boundMcp" class="w-4 h-4 accent-cyan-500">
+              <span class="text-sm text-white/90">{{ s.name }}</span>
+            </label>
+          </div>
+          <button @click="saveMcp()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存 MCP</button>
+        </div>
       </div>
     </div>
 
@@ -87,6 +113,10 @@ const agentsLoading = ref(false)
 const addDialog = ref(false)
 const addName = ref('')
 const saveMsg = ref('')
+const allSkills = ref([])
+const allMcpServers = ref([])
+const boundSkills = ref([])
+const boundMcp = ref([])
 
 async function load() {
   loading.value = true
@@ -102,12 +132,38 @@ async function loadAgents() {
   agentsLoading.value = false
 }
 
+async function loadSkillsAndMcp() {
+  if (!allSkills.value.length) {
+    const res = await get('/api/skills')
+    allSkills.value = res?.skills || []
+  }
+  if (!allMcpServers.value.length) {
+    const res = await get('/api/mcp-servers')
+    allMcpServers.value = res?.servers || []
+  }
+}
+
+async function saveSkills() {
+  const res = await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
+  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000) }
+}
+
+async function saveMcp() {
+  const res = await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: boundMcp.value })
+  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000) }
+}
+
 async function selectGroup(g) {
   selected.value = g
   desc.value = g.description || ''
   const res = await get(`/api/role-groups/${g.id}/members`)
   members.value = res?.members || []
   if (!allAgents.value.length) loadAgents()
+  loadSkillsAndMcp()
+  const skillRes = await get(`/api/role-groups/${g.id}/skills`)
+  boundSkills.value = skillRes?.skills || []
+  const mcpRes = await get(`/api/role-groups/${g.id}/mcp`)
+  boundMcp.value = mcpRes?.servers || []
 }
 
 async function saveDesc() {
