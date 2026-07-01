@@ -3610,9 +3610,98 @@ async def api_role_group_members_save(group_id: int, request: Request):
     return JSONResponse({"ok": True})
 
 
+# ─── Bot Token Pool ───
+
+@app.get("/api/token-pool")
+async def api_token_pool_list(request: Request):
+    """列出 token pool（不回傳完整 token）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        rows = conn.execute("SELECT id, bot_id, bot_name, status, assigned_to, assigned_at, created_at FROM bot_token_pool ORDER BY id").fetchall()
+    tokens = [{"id": r[0], "bot_id": r[1], "bot_name": r[2], "status": r[3], "assigned_to": r[4], "assigned_at": str(r[5]) if r[5] else None, "created_at": str(r[6]) if r[6] else None} for r in rows]
+    available = sum(1 for t in tokens if t["status"] == "available")
+    return JSONResponse({"tokens": tokens, "available": available, "total": len(tokens)})
+
+
+@app.post("/api/token-pool")
+async def api_token_pool_add(request: Request):
+    """新增 token（自動從 token 解碼 bot_id）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    token = body.get("token", "").strip()
+    bot_name = body.get("bot_name", "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="token 為必填")
+    # Decode bot_id from token (first segment is base64 of user_id)
+    import base64
+    try:
+        first_part = token.split(".")[0]
+        # Add padding
+        padded = first_part + "=" * (4 - len(first_part) % 4)
+        bot_id = base64.b64decode(padded).decode("utf-8")
+    except Exception:
+        bot_id = ""
+    if not bot_id:
+        raise HTTPException(status_code=400, detail="無法從 token 解碼 bot_id")
+    with get_db() as conn:
+        conn.execute("INSERT INTO bot_token_pool (token, bot_id, bot_name) VALUES (?, ?, ?)", (token, bot_id, bot_name))
+    return JSONResponse({"ok": True, "bot_id": bot_id})
+
+
+@app.patch("/api/token-pool/{token_id}/status")
+async def api_token_pool_status(token_id: int, request: Request):
+    """切換 token 狀態"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    status = body.get("status", "available")
+    if status not in ("available", "disabled"):
+        raise HTTPException(status_code=400, detail="status 只能是 available 或 disabled")
+    with get_db() as conn:
+        conn.execute("UPDATE bot_token_pool SET status = ? WHERE id = ?", (status, token_id))
+    return JSONResponse({"ok": True})
+
+
+@app.delete("/api/token-pool/{token_id}")
+async def api_token_pool_delete(token_id: int, request: Request):
+    """刪除 token（只能刪 available）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    with get_db() as conn:
+        row = conn.execute("SELECT status FROM bot_token_pool WHERE id = ?", (token_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Token 不存在")
+        if row[0] != "available":
+            raise HTTPException(status_code=400, detail="只能刪除 available 狀態的 token")
+        conn.execute("DELETE FROM bot_token_pool WHERE id = ?", (token_id,))
+    return JSONResponse({"ok": True})
+
+
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/token-pool", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:

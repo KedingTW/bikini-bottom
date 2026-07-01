@@ -11,6 +11,7 @@ import AgentConfig from './views/AgentConfig.vue'
 import McpServers from './views/McpServers.vue'
 import Skills from './views/Skills.vue'
 import RoleGroups from './views/RoleGroups.vue'
+import TokenPool from './views/TokenPool.vue'
 import SteeringManage from './views/SteeringManage.vue'
 import Users from './views/Users.vue'
 import ComingSoon from './views/ComingSoon.vue'
@@ -34,6 +35,7 @@ const routes = [
   { path: '/mcp-servers', name: 'mcp-servers', component: McpServers },
   { path: '/skills', name: 'skills', component: Skills },
   { path: '/role-groups', name: 'role-groups', component: RoleGroups },
+  { path: '/token-pool', name: 'token-pool', component: TokenPool },
   { path: '/steering', name: 'steering', component: SteeringManage },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },
