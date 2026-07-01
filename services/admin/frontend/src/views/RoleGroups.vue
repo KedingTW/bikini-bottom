@@ -31,9 +31,7 @@
       <div v-if="selected">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
-          <button @click="deleteGroup()" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
           <button @click="saveAll()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存</button>
-          <span v-if="saveMsg" class="text-xs text-green-400">{{ saveMsg }}</span>
         </div>
         <!-- Description -->
         <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
@@ -95,6 +93,8 @@
             </div>
           </div>
         </div>
+
+        <button @click="deleteGroup()" class="mt-4 text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除此角色組</button>
       </div>
     </div>
 
@@ -211,13 +211,10 @@ async function selectGroup(g) {
 }
 
 async function saveAll() {
-  saveMsg.value = ''
   await put(`/api/role-groups/${selected.value.id}`, { name: selected.value.name, description: desc.value })
   await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
   await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
   await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
-  saveMsg.value = '已儲存'
-  setTimeout(() => { saveMsg.value = '' }, 2000)
   load()
 }
 
