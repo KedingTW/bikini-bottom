@@ -31,53 +31,55 @@
       <div v-if="selected">
         <div class="flex items-center gap-3 mb-4">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
-          <button @click="deleteGroup()" class="ml-auto text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
+          <button @click="deleteGroup()" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
+          <button @click="saveAll()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存</button>
+          <span v-if="saveMsg" class="text-xs" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
         </div>
 
         <!-- Description -->
-        <div class="mb-4">
+        <div class="mb-5">
           <div class="text-xs text-white/50 mb-1">說明</div>
           <input v-model="desc" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
-          <button @click="saveDesc()" class="mt-2 text-xs px-3 py-1 rounded bg-cyan-600 text-white">儲存說明</button>
         </div>
 
         <!-- Members -->
-        <div class="text-sm text-white/60 mb-2">成員（勾選角色）</div>
-        <div v-if="agentsLoading" class="text-sm text-white/40">載入中...</div>
-        <div v-else class="space-y-1 mb-4">
-          <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
-            <input type="checkbox" :value="a.name" v-model="members" class="w-4 h-4 accent-cyan-500">
-            <img v-if="a.avatar_url" :src="a.avatar_url" class="w-6 h-6 rounded-full">
-            <span class="text-sm text-white/90">{{ a.display }}</span>
-          </label>
+        <div class="mb-5">
+          <div class="text-sm text-white/60 mb-2">成員</div>
+          <div v-if="agentsLoading" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="space-y-1">
+            <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
+              <input type="checkbox" :value="a.name" v-model="members" class="w-4 h-4 accent-cyan-500">
+              <img v-if="a.avatar_url" :src="a.avatar_url" class="w-6 h-6 rounded-full">
+              <span class="text-sm text-white/90">{{ a.display }}</span>
+            </label>
+          </div>
         </div>
-        <button @click="saveMembers()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存成員</button>
-        <span v-if="saveMsg" class="text-xs ml-2" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
 
-        <!-- Skills binding -->
-        <div class="mt-6">
-          <div class="text-sm text-white/60 mb-2">綁定技能</div>
+        <!-- Skills -->
+        <div class="mb-5">
+          <div class="text-sm text-white/60 mb-1">綁定技能</div>
+          <div class="text-[10px] text-white/30 mb-2">模板配置（招募臨時角色時套用）</div>
           <div v-if="!allSkills.length" class="text-xs text-white/40">載入中...</div>
-          <div v-else class="space-y-1 mb-3">
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-1">
             <label v-for="s in allSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
               <input type="checkbox" :value="s.name" v-model="boundSkills" class="w-4 h-4 accent-cyan-500">
-              <span class="text-sm text-white/90">{{ s.display_name || s.name }}</span>
+              <span class="text-sm" :class="boundSkills.includes(s.name) ? 'text-white/90' : 'text-white/40'">{{ s.display_name || s.name }}</span>
             </label>
           </div>
-          <button @click="saveSkills()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存技能</button>
         </div>
 
-        <!-- MCP binding -->
-        <div class="mt-6">
-          <div class="text-sm text-white/60 mb-2">綁定 MCP Server</div>
+        <!-- MCP -->
+        <div class="mb-5">
+          <div class="text-sm text-white/60 mb-1">綁定 MCP Server</div>
+          <div class="text-[10px] text-white/30 mb-2">模板配置（招募臨時角色時套用）</div>
           <div v-if="!allMcpServers.length" class="text-xs text-white/40">載入中...</div>
-          <div v-else class="space-y-1 mb-3">
+          <div v-else class="space-y-1">
             <label v-for="s in allMcpServers" :key="s.id" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
               <input type="checkbox" :value="s.id" v-model="boundMcp" class="w-4 h-4 accent-cyan-500">
-              <span class="text-sm text-white/90">{{ s.name }}</span>
+              <span class="text-sm" :class="boundMcp.includes(s.id) ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
+              <span v-if="s.tool_count" class="text-[10px] text-white/30 ml-auto">{{ s.tool_count }} tools</span>
             </label>
           </div>
-          <button @click="saveMcp()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存 MCP</button>
         </div>
       </div>
     </div>
@@ -143,16 +145,6 @@ async function loadSkillsAndMcp() {
   }
 }
 
-async function saveSkills() {
-  const res = await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
-  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000) }
-}
-
-async function saveMcp() {
-  const res = await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: boundMcp.value })
-  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000) }
-}
-
 async function selectGroup(g) {
   selected.value = g
   desc.value = g.description || ''
@@ -166,16 +158,15 @@ async function selectGroup(g) {
   boundMcp.value = mcpRes?.servers || []
 }
 
-async function saveDesc() {
-  await put(`/api/role-groups/${selected.value.id}`, { name: selected.value.name, description: desc.value })
-  selected.value.description = desc.value
-}
-
-async function saveMembers() {
+async function saveAll() {
   saveMsg.value = ''
-  const res = await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
-  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000); load() }
-  else { saveMsg.value = '❌ 儲存失敗' }
+  await put(`/api/role-groups/${selected.value.id}`, { name: selected.value.name, description: desc.value })
+  await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
+  await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
+  await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: boundMcp.value })
+  saveMsg.value = '✅'
+  setTimeout(() => { saveMsg.value = '' }, 2000)
+  load()
 }
 
 async function deleteGroup() {
