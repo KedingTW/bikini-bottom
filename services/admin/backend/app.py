@@ -313,11 +313,6 @@ def _init_db():
                 FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
             )
         """)
-        # Seed role groups if empty
-        cur.execute("SELECT COUNT(*) FROM role_groups")
-        if cur.fetchone()[0] == 0:
-            for name in ['全端工程師', '後端工程師', 'Code Reviewer', 'PM', '客戶成功', 'DevOps']:
-                cur.execute("INSERT INTO role_groups (name) VALUES (%s)", (name,))
         cur.close()
         conn.close()
     else:
