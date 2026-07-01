@@ -33,10 +33,8 @@
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
           <button @click="deleteGroup()" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
           <button @click="saveAll()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存</button>
-          <span v-if="saveMsg" class="text-xs" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
+          <span v-if="saveMsg" class="text-xs text-green-400">{{ saveMsg }}</span>
         </div>
-        <div class="text-xs text-white/40 mb-4">模板配置（招募臨時角色時套用）</div>
-
         <!-- Description -->
         <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
           <div class="text-xs text-white/50 mb-1">說明</div>
@@ -55,6 +53,8 @@
             </label>
           </div>
         </div>
+
+        <div class="text-xs text-white/40 my-3 px-1">— 以下為模板配置（招募臨時角色時套用）—</div>
 
         <!-- Skills -->
         <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
@@ -216,7 +216,7 @@ async function saveAll() {
   await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
   await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
   await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
-  saveMsg.value = '✅'
+  saveMsg.value = '已儲存'
   setTimeout(() => { saveMsg.value = '' }, 2000)
   load()
 }
