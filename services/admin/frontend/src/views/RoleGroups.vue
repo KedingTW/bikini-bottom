@@ -73,12 +73,27 @@
           <div class="text-sm text-white/60 mb-1">綁定 MCP Server</div>
           <div class="text-[10px] text-white/30 mb-2">模板配置（招募臨時角色時套用）</div>
           <div v-if="!allMcpServers.length" class="text-xs text-white/40">載入中...</div>
-          <div v-else class="space-y-1">
-            <label v-for="s in allMcpServers" :key="s.id" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
-              <input type="checkbox" :value="s.id" v-model="boundMcp" class="w-4 h-4 accent-cyan-500">
-              <span class="text-sm" :class="boundMcp.includes(s.id) ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
-              <span v-if="s.tool_count" class="text-[10px] text-white/30 ml-auto">{{ s.tool_count }} tools</span>
-            </label>
+          <div v-else class="space-y-2">
+            <div v-for="s in allMcpServers" :key="s.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
+              <div class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/5" @click="toggleMcpExpand(s)">
+                <input type="checkbox" :checked="isMcpEnabled(s.id)" @click.stop="toggleMcpServer(s)" class="w-4 h-4 accent-cyan-500">
+                <span class="text-sm flex-1" :class="isMcpEnabled(s.id) ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
+                <span class="text-[10px] text-white/30">{{ getMcpToolCount(s.id) }}/{{ (s.tools || []).length }}</span>
+                <span class="text-xs text-white/30">{{ s._open ? '▼' : '▶' }}</span>
+              </div>
+              <div v-if="s._open && isMcpEnabled(s.id)" class="px-3 pb-2 border-t border-white/5">
+                <div class="flex gap-2 py-1.5 mb-1">
+                  <button @click="mcpSelectAll(s)" type="button" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">全選</button>
+                  <button @click="mcpDeselectAll(s)" type="button" class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white/60">取消</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                  <label v-for="t in (s.tools || [])" :key="t" class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 cursor-pointer text-xs">
+                    <input type="checkbox" :checked="isMcpToolEnabled(s.id, t)" @change="toggleMcpTool(s.id, t)" class="w-3 h-3 accent-cyan-500">
+                    <span :class="isMcpToolEnabled(s.id, t) ? 'text-white/90' : 'text-white/40'">{{ t }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -118,7 +133,7 @@ const saveMsg = ref('')
 const allSkills = ref([])
 const allMcpServers = ref([])
 const boundSkills = ref([])
-const boundMcp = ref([])
+const boundMcp = ref({})  // { server_id: [enabled_tools] or 'all' }
 
 async function load() {
   loading.value = true
@@ -141,9 +156,45 @@ async function loadSkillsAndMcp() {
   }
   if (!allMcpServers.value.length) {
     const res = await get('/api/mcp-servers')
-    allMcpServers.value = res?.servers || []
+    allMcpServers.value = (res?.servers || []).map(s => ({ ...s, _open: false }))
+    // Load tools for each server
+    for (const s of allMcpServers.value) {
+      const detail = await get(`/api/mcp-servers/${s.id}`)
+      if (detail?.tools) s.tools = detail.tools.map(t => typeof t === 'string' ? t : t.name || t.tool_name)
+    }
   }
 }
+
+function isMcpEnabled(sid) { return sid in boundMcp.value }
+function getMcpToolCount(sid) {
+  if (!boundMcp.value[sid]) return 0
+  return boundMcp.value[sid] === 'all' ? (allMcpServers.value.find(s => s.id === sid)?.tools || []).length : boundMcp.value[sid].length
+}
+function toggleMcpServer(s) {
+  if (isMcpEnabled(s.id)) { delete boundMcp.value[s.id] }
+  else { boundMcp.value[s.id] = 'all' }
+}
+function toggleMcpExpand(s) { s._open = !s._open }
+function isMcpToolEnabled(sid, tool) {
+  if (!boundMcp.value[sid]) return false
+  if (boundMcp.value[sid] === 'all') return true
+  return boundMcp.value[sid].includes(tool)
+}
+function toggleMcpTool(sid, tool) {
+  const server = allMcpServers.value.find(s => s.id === sid)
+  const allTools = server?.tools || []
+  if (boundMcp.value[sid] === 'all') {
+    boundMcp.value[sid] = allTools.filter(t => t !== tool)
+  } else {
+    const arr = boundMcp.value[sid] || []
+    if (arr.includes(tool)) { boundMcp.value[sid] = arr.filter(t => t !== tool) }
+    else { boundMcp.value[sid] = [...arr, tool] }
+    if (boundMcp.value[sid].length >= allTools.length) boundMcp.value[sid] = 'all'
+  }
+  if (Array.isArray(boundMcp.value[sid]) && boundMcp.value[sid].length === 0) delete boundMcp.value[sid]
+}
+function mcpSelectAll(s) { boundMcp.value[s.id] = 'all' }
+function mcpDeselectAll(s) { delete boundMcp.value[s.id] }
 
 async function selectGroup(g) {
   selected.value = g
@@ -155,7 +206,9 @@ async function selectGroup(g) {
   const skillRes = await get(`/api/role-groups/${g.id}/skills`)
   boundSkills.value = skillRes?.skills || []
   const mcpRes = await get(`/api/role-groups/${g.id}/mcp`)
-  boundMcp.value = mcpRes?.servers || []
+  // Convert to object: each enabled server = 'all' (for now)
+  boundMcp.value = {}
+  for (const sid of (mcpRes?.servers || [])) { boundMcp.value[sid] = 'all' }
 }
 
 async function saveAll() {
@@ -163,7 +216,7 @@ async function saveAll() {
   await put(`/api/role-groups/${selected.value.id}`, { name: selected.value.name, description: desc.value })
   await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
   await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
-  await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: boundMcp.value })
+  await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
   saveMsg.value = '✅'
   setTimeout(() => { saveMsg.value = '' }, 2000)
   load()
