@@ -600,7 +600,7 @@ async function loadMcp() {
       const tools = s.tools.map(t => ({
         name: typeof t === 'string' ? t : t.name || t.tool_name,
         description: typeof t === 'string' ? '' : (t.description || ''),
-        enabled: isEnabled && (filterTools.length === 0 || filterTools.includes(typeof t === 'string' ? t : t.name || t.tool_name))
+        enabled: isEnabled && !filterTools.includes(typeof t === 'string' ? t : t.name || t.tool_name)
       }))
       const enabledTools = tools.filter(t => t.enabled).length
       return {
@@ -619,9 +619,9 @@ async function saveMcp() {
   mockMcp.forEach(s => {
     if (s.enabled && s.id) {
       config[String(s.id)] = { env: s.env || 'local', enabled: true }
-      const enabledTools = s.tools.filter(t => t.enabled).map(t => t.name)
-      if (enabledTools.length < s.tools.length) {
-        toolFilter[String(s.id)] = enabledTools
+      const disabledTools = s.tools.filter(t => !t.enabled).map(t => t.name)
+      if (disabledTools.length > 0) {
+        toolFilter[String(s.id)] = disabledTools
       }
     }
   })
