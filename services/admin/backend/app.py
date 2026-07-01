@@ -3478,7 +3478,7 @@ async def api_mcp_save_agent_config(agent_name: str, request: Request):
                 if args:
                     entry["args"] = args
             if server_id in tool_filters:
-                entry["allowedTools"] = tool_filters[server_id]
+                entry["disabledTools"] = tool_filters[server_id]
             mcp_json["mcpServers"][srv["name"]] = entry
 
         mcp_path = _get_agent_dir(agent_name) / ".kiro" / "settings" / "mcp.json"
