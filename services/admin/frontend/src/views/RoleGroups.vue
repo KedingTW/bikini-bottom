@@ -29,22 +29,23 @@
       </div>
 
       <div v-if="selected">
-        <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-3 mb-2">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
           <button @click="deleteGroup()" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
           <button @click="saveAll()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存</button>
           <span v-if="saveMsg" class="text-xs" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
         </div>
+        <div class="text-xs text-white/40 mb-4">模板配置（招募臨時角色時套用）</div>
 
         <!-- Description -->
-        <div class="mb-5">
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
           <div class="text-xs text-white/50 mb-1">說明</div>
           <input v-model="desc" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
         </div>
 
         <!-- Members -->
-        <div class="mb-5">
-          <div class="text-sm text-white/60 mb-2">成員</div>
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">成員</div>
           <div v-if="agentsLoading" class="text-xs text-white/40">載入中...</div>
           <div v-else class="space-y-1">
             <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
@@ -56,9 +57,8 @@
         </div>
 
         <!-- Skills -->
-        <div class="mb-5">
-          <div class="text-sm text-white/60 mb-1">綁定技能</div>
-          <div class="text-[10px] text-white/30 mb-2">模板配置（招募臨時角色時套用）</div>
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">綁定技能</div>
           <div v-if="!allSkills.length" class="text-xs text-white/40">載入中...</div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-1">
             <label v-for="s in allSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
@@ -69,9 +69,8 @@
         </div>
 
         <!-- MCP -->
-        <div class="mb-5">
-          <div class="text-sm text-white/60 mb-1">綁定 MCP Server</div>
-          <div class="text-[10px] text-white/30 mb-2">模板配置（招募臨時角色時套用）</div>
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">綁定 MCP Server</div>
           <div v-if="!allMcpServers.length" class="text-xs text-white/40">載入中...</div>
           <div v-else class="space-y-2">
             <div v-for="s in allMcpServers" :key="s.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
