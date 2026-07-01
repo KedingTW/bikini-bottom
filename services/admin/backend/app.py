@@ -313,6 +313,18 @@ def _init_db():
                 FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS bot_token_pool (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                token TEXT NOT NULL,
+                bot_id VARCHAR(64) NOT NULL,
+                bot_name VARCHAR(100) DEFAULT '',
+                status VARCHAR(20) DEFAULT 'available',
+                assigned_to VARCHAR(64) DEFAULT NULL,
+                assigned_at TIMESTAMP DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         cur.close()
         conn.close()
     else:
