@@ -31,12 +31,12 @@
       <div v-if="selected">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
-          <button @click="saveAll()" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存</button>
+          <button @click="saveAll()" :disabled="!dirty" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30 disabled:cursor-not-allowed">💾 儲存</button>
         </div>
         <!-- Description -->
         <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
           <div class="text-xs text-white/50 mb-1">說明</div>
-          <input v-model="desc" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
+          <input v-model="desc" @input="markDirty()" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
         </div>
 
         <!-- Members -->
@@ -45,7 +45,7 @@
           <div v-if="agentsLoading" class="text-xs text-white/40">載入中...</div>
           <div v-else class="space-y-1">
             <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
-              <input type="checkbox" :value="a.name" v-model="members" class="w-4 h-4 accent-cyan-500">
+              <input type="checkbox" :value="a.name" v-model="members" @change="markDirty()" class="w-4 h-4 accent-cyan-500">
               <img v-if="a.avatar_url" :src="a.avatar_url" class="w-6 h-6 rounded-full">
               <span class="text-sm text-white/90">{{ a.display }}</span>
             </label>
@@ -60,7 +60,7 @@
           <div v-if="!allSkills.length" class="text-xs text-white/40">載入中...</div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-1">
             <label v-for="s in allSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
-              <input type="checkbox" :value="s.name" v-model="boundSkills" class="w-4 h-4 accent-cyan-500">
+              <input type="checkbox" :value="s.name" v-model="boundSkills" @change="markDirty()" class="w-4 h-4 accent-cyan-500">
               <span class="text-sm" :class="boundSkills.includes(s.name) ? 'text-white/90' : 'text-white/40'">{{ s.display_name || s.name }}</span>
             </label>
           </div>
@@ -73,19 +73,19 @@
           <div v-else class="space-y-2">
             <div v-for="s in allMcpServers" :key="s.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
               <div class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/5" @click="toggleMcpExpand(s)">
-                <input type="checkbox" :checked="isMcpEnabled(s.id)" @click.stop="toggleMcpServer(s)" class="w-4 h-4 accent-cyan-500">
+                <input type="checkbox" :checked="isMcpEnabled(s.id)" @click.stop="toggleMcpServer(s); markDirty()" class="w-4 h-4 accent-cyan-500">
                 <span class="text-sm flex-1" :class="isMcpEnabled(s.id) ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
                 <span class="text-[10px] text-white/30">{{ getMcpToolCount(s.id) }}/{{ (s.tools || []).length }}</span>
                 <span class="text-xs text-white/30">{{ s._open ? '▼' : '▶' }}</span>
               </div>
               <div v-if="s._open && isMcpEnabled(s.id)" class="px-3 pb-2 border-t border-white/5">
                 <div class="flex gap-2 py-1.5 mb-1">
-                  <button @click="mcpSelectAll(s)" type="button" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">全選</button>
-                  <button @click="mcpDeselectAll(s)" type="button" class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white/60">取消</button>
+                  <button @click="mcpSelectAll(s); markDirty()" type="button" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">全選</button>
+                  <button @click="mcpDeselectAll(s); markDirty()" type="button" class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white/60">取消</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
                   <label v-for="t in (s.tools || [])" :key="t" class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 cursor-pointer text-xs">
-                    <input type="checkbox" :checked="isMcpToolEnabled(s.id, t)" @change="toggleMcpTool(s.id, t)" class="w-3 h-3 accent-cyan-500">
+                    <input type="checkbox" :checked="isMcpToolEnabled(s.id, t)" @change="toggleMcpTool(s.id, t); markDirty()" class="w-3 h-3 accent-cyan-500">
                     <span :class="isMcpToolEnabled(s.id, t) ? 'text-white/90' : 'text-white/40'">{{ t }}</span>
                   </label>
                 </div>
@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted, watch } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 
@@ -131,6 +131,7 @@ const addDialog = ref(false)
 const addName = ref('')
 const saveMsg = ref('')
 const dirty = ref(false)
+const ready = ref(false)
 onBeforeRouteLeave(() => {
   if (dirty.value && !confirm('有未儲存的變更，確定要離開嗎？')) return false
 })
@@ -172,6 +173,8 @@ async function loadSkillsAndMcp() {
     }
   }
 }
+
+function markDirty() { if (ready.value) dirty.value = true }
 
 function isMcpEnabled(sid) { return sid in boundMcp.value }
 function getMcpToolCount(sid) {
@@ -219,6 +222,7 @@ async function selectGroup(g) {
   boundMcp.value = {}
   for (const sid of (mcpRes?.servers || [])) { boundMcp.value[sid] = 'all' }
   dirty.value = false
+  ready.value = true
 }
 
 async function saveAll() {
@@ -227,6 +231,7 @@ async function saveAll() {
   await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
   await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
   dirty.value = false
+  ready.value = false
   load()
 }
 
@@ -244,10 +249,6 @@ async function doAdd() {
   addDialog.value = false
   load()
 }
-
-// Dirty tracking
-watch([members, boundSkills, desc], () => { dirty.value = true }, { deep: true })
-watch(boundMcp, () => { dirty.value = true }, { deep: true })
 
 onMounted(load)
 </script>
