@@ -3653,7 +3653,7 @@ async def api_token_pool_add(request: Request):
         raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     token = body.get("token", "").strip()
-    bot_name = body.get("bot_name", "").strip()
+    bot_name = body.get("bot_name", "").strip()  # optional
     if not token:
         raise HTTPException(status_code=400, detail="token 為必填")
     # Decode bot_id from token (first segment is base64 of user_id)

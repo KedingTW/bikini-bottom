@@ -12,10 +12,10 @@
       <div>尚未新增任何帳號</div>
     </div>
     <div v-else class="space-y-2">
-      <div v-for="t in tokens" :key="t.id" class="bg-ocean-800/50 rounded-lg border border-white/5 p-4 flex items-center gap-4">
+      <div v-for="(t, i) in tokens" :key="t.id" class="bg-ocean-800/50 rounded-lg border border-white/5 p-4 flex items-center gap-4">
+        <span class="text-sm text-white/50 font-mono w-8">#{{ i + 1 }}</span>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium text-white/90">{{ t.bot_name || '未命名' }}</div>
-          <div class="text-xs text-white/40 font-mono">{{ t.bot_id.slice(0, 6) }}...{{ t.bot_id.slice(-4) }}</div>
+          <div class="text-sm font-medium text-white/90 font-mono">Bot ID: ...{{ t.bot_id.slice(-4) }}</div>
         </div>
         <span class="text-[10px] px-2 py-0.5 rounded" :class="{
           'bg-green-600/20 text-green-300': t.status === 'available',
@@ -34,11 +34,7 @@
       <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
         <h3 class="text-lg font-semibold mb-4">新增帳號</h3>
         <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">名稱</label>
-          <input v-model="addForm.name" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-sm focus:outline-none focus:border-cyan-400/60" placeholder="如：臨時工 A">
-        </div>
-        <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">帳號 Token <span class="text-red-400">*</span></label>
+          <label class="block text-sm text-white/70 mb-1">貼上 Bot Token <span class="text-red-400">*</span></label>
           <textarea v-model="addForm.token" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="貼上 Discord Bot Token"></textarea>
         </div>
         <div v-if="addError" class="mb-3 text-sm text-red-400">{{ addError }}</div>
@@ -59,7 +55,7 @@ const { get, post } = useApi()
 const tokens = ref([])
 const loading = ref(false)
 const addDialog = ref(false)
-const addForm = ref({ name: '', token: '' })
+const addForm = ref({ token: '' })
 const addError = ref('')
 
 const available = computed(() => tokens.value.filter(t => t.status === 'available').length)
@@ -71,12 +67,12 @@ async function load() {
   loading.value = false
 }
 
-function openAdd() { addDialog.value = true; addForm.value = { name: '', token: '' }; addError.value = '' }
+function openAdd() { addDialog.value = true; addForm.value = { token: '' }; addError.value = '' }
 
 async function doAdd() {
   addError.value = ''
   if (!addForm.value.token.trim()) { addError.value = 'Token 為必填'; return }
-  const res = await post('/api/token-pool', { token: addForm.value.token.trim(), bot_name: addForm.value.name.trim() })
+  const res = await post('/api/token-pool', { token: addForm.value.token.trim() })
   if (res?.ok) { addDialog.value = false; load() }
   else { addError.value = res?.detail || '新增失敗' }
 }
