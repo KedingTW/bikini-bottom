@@ -31,7 +31,7 @@
       <div v-if="selected">
         <div class="flex items-center gap-3 mb-2">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
-          <button @click="deleteGroup()" class="ml-auto text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️</button>
+          <button @click="deleteGroup()" class="ml-auto text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
           <button @click="saveAll()" :disabled="!dirty" class=" px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30 disabled:cursor-not-allowed">💾 儲存</button>
         </div>
         <!-- Description -->
