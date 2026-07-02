@@ -3713,7 +3713,7 @@ async def api_token_pool_delete(token_id: int, request: Request):
 
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/token-pool", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/token-pool", "/contract", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:

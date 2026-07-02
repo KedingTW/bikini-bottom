@@ -77,7 +77,7 @@ const navGroups = [
   { label: 'AI 角色管理', items: [
     { path: '/agent-config', icon: '🤖', label: '角色配置', admin: true },
     { path: '/role-groups', icon: '👥', label: '團隊管理', admin: true },
-    { path: '/token-pool', icon: '🔑', label: '帳號池', admin: true },
+    { path: '/contract', icon: '📝', label: '約聘管理', admin: true },
   ]},
   { label: '伺服器管理', items: [
     { path: '/metrics', icon: '📊', label: '資源監控', admin: false },
