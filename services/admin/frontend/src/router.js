@@ -37,7 +37,7 @@ const routes = [
   { path: '/skills', name: 'skills', component: Skills },
   { path: '/role-groups', name: 'role-groups', component: RoleGroups },
   { path: '/contract', name: 'contract', component: ContractManage },
-  { path: '/token-pool', name: 'token-pool', component: TokenPool },
+  { path: '/contract/token-pool', name: 'token-pool', component: TokenPool },
   { path: '/steering', name: 'steering', component: SteeringManage },
   { path: '/cronjobs', name: 'cronjobs', component: ComingSoon },
   { path: '/knowledge', name: 'knowledge', component: ComingSoon },

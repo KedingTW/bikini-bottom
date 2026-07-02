@@ -84,7 +84,7 @@ async function toggleStatus(t) {
 }
 
 async function deleteToken(t) {
-  if (!confirm(`確定刪除 ${t.bot_name || t.bot_id}？`)) return
+  if (!confirm(`確定刪除帳號 #${tokens.value.indexOf(t) + 1}？`)) return
   await fetch(`/api/token-pool/${t.id}`, { method: 'DELETE' })
   load()
 }

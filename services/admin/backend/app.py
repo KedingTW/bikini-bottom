@@ -3668,6 +3668,9 @@ async def api_token_pool_add(request: Request):
     if not bot_id:
         raise HTTPException(status_code=400, detail="無法從 token 解碼 bot_id")
     with get_db() as conn:
+        existing = conn.execute("SELECT id FROM bot_token_pool WHERE bot_id = ?", (bot_id,)).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="此帳號已存在")
         conn.execute("INSERT INTO bot_token_pool (token, bot_id, bot_name) VALUES (?, ?, ?)", (token, bot_id, bot_name))
     return JSONResponse({"ok": True, "bot_id": bot_id})
 
@@ -3713,7 +3716,7 @@ async def api_token_pool_delete(token_id: int, request: Request):
 
 # ─── SPA catch-all for client-side routes ───
 SPA_ROUTES = ["/login", "/messaging", "/members", "/threads", "/thread-analytics",
-              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/token-pool", "/contract", "/steering", "/cronjobs", "/knowledge",
+              "/agent-config", "/mcp", "/mcp-servers", "/skills", "/role-groups", "/token-pool", "/contract/token-pool", "/contract", "/steering", "/cronjobs", "/knowledge",
               "/system", "/logs", "/deploy", "/api-keys"]
 
 for _route in SPA_ROUTES:
