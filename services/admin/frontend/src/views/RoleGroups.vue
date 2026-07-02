@@ -29,30 +29,72 @@
       </div>
 
       <div v-if="selected">
-        <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-3 mb-2">
           <h2 class="text-lg font-semibold">{{ selected.name }}</h2>
-          <button @click="deleteGroup()" class="ml-auto text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除</button>
+          <button @click="saveAll()" :disabled="!dirty" class="ml-auto px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-30 disabled:cursor-not-allowed">💾 儲存</button>
         </div>
-
         <!-- Description -->
-        <div class="mb-4">
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
           <div class="text-xs text-white/50 mb-1">說明</div>
-          <input v-model="desc" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
-          <button @click="saveDesc()" class="mt-2 text-xs px-3 py-1 rounded bg-cyan-600 text-white">儲存說明</button>
+          <input v-model="desc" @input="markDirty()" class="w-full bg-ocean-800 border border-white/15 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50" placeholder="用途說明">
         </div>
 
         <!-- Members -->
-        <div class="text-sm text-white/60 mb-2">成員（勾選角色）</div>
-        <div v-if="agentsLoading" class="text-sm text-white/40">載入中...</div>
-        <div v-else class="space-y-1 mb-4">
-          <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
-            <input type="checkbox" :value="a.name" v-model="members" class="w-4 h-4 accent-cyan-500">
-            <img v-if="a.avatar_url" :src="a.avatar_url" class="w-6 h-6 rounded-full">
-            <span class="text-sm text-white/90">{{ a.display }}</span>
-          </label>
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">成員</div>
+          <div v-if="agentsLoading" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="space-y-1">
+            <label v-for="a in allAgents" :key="a.name" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
+              <input type="checkbox" :value="a.name" v-model="members" @change="markDirty()" class="w-4 h-4 accent-cyan-500">
+              <img v-if="a.avatar_url" :src="a.avatar_url" class="w-6 h-6 rounded-full">
+              <span class="text-sm text-white/90">{{ a.display }}</span>
+            </label>
+          </div>
         </div>
-        <button @click="saveMembers()" class="px-4 py-1.5 rounded text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white">💾 儲存成員</button>
-        <span v-if="saveMsg" class="text-xs ml-2" :class="saveMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'">{{ saveMsg }}</span>
+
+        <div class="text-xs text-white/40 my-3 px-1">— 以下為模板配置（招募臨時角色時套用）—</div>
+
+        <!-- Skills -->
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">綁定技能</div>
+          <div v-if="!allSkills.length" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+            <label v-for="s in allSkills" :key="s.name" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/5 cursor-pointer">
+              <input type="checkbox" :value="s.name" v-model="boundSkills" @change="markDirty()" class="w-4 h-4 accent-cyan-500">
+              <span class="text-sm" :class="boundSkills.includes(s.name) ? 'text-white/90' : 'text-white/40'">{{ s.display_name || s.name }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- MCP -->
+        <div class="mb-3 bg-ocean-800/50 rounded-lg border border-white/5 p-4">
+          <div class="text-sm text-white/90 mb-2">綁定 MCP Server</div>
+          <div v-if="!allMcpServers.length" class="text-xs text-white/40">載入中...</div>
+          <div v-else class="space-y-2">
+            <div v-for="s in allMcpServers" :key="s.id" class="bg-ocean-700/50 rounded-lg overflow-hidden">
+              <div class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/5" @click="toggleMcpExpand(s)">
+                <input type="checkbox" :checked="isMcpEnabled(s.id)" @click.stop="toggleMcpServer(s); markDirty()" class="w-4 h-4 accent-cyan-500">
+                <span class="text-sm flex-1" :class="isMcpEnabled(s.id) ? 'text-cyan-300' : 'text-white/40'">{{ s.name }}</span>
+                <span class="text-[10px] text-white/30">{{ getMcpToolCount(s.id) }}/{{ (s.tools || []).length }}</span>
+                <span class="text-xs text-white/30">{{ s._open ? '▼' : '▶' }}</span>
+              </div>
+              <div v-if="s._open && isMcpEnabled(s.id)" class="px-3 pb-2 border-t border-white/5">
+                <div class="flex gap-2 py-1.5 mb-1">
+                  <button @click="mcpSelectAll(s); markDirty()" type="button" class="text-[10px] px-2 py-0.5 rounded bg-cyan-600/20 text-cyan-300">全選</button>
+                  <button @click="mcpDeselectAll(s); markDirty()" type="button" class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white/60">取消</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                  <label v-for="t in (s.tools || [])" :key="t" class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 cursor-pointer text-xs">
+                    <input type="checkbox" :checked="isMcpToolEnabled(s.id, t)" @change="toggleMcpTool(s.id, t); markDirty()" class="w-3 h-3 accent-cyan-500">
+                    <span :class="isMcpToolEnabled(s.id, t) ? 'text-white/90' : 'text-white/40'">{{ t }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button @click="deleteGroup()" class="mt-4 text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10">🗑️ 刪除此角色組</button>
       </div>
     </div>
 
@@ -72,6 +114,7 @@
 
 <script setup>
 import { ref, inject, onMounted } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 
 const { get, post, put } = useApi()
@@ -87,6 +130,19 @@ const agentsLoading = ref(false)
 const addDialog = ref(false)
 const addName = ref('')
 const saveMsg = ref('')
+const dirty = ref(false)
+const ready = ref(false)
+onBeforeRouteLeave(() => {
+  if (dirty.value && !confirm('有未儲存的變更，確定要離開嗎？')) return false
+})
+window.addEventListener('beforeunload', (e) => {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+})
+
+const allSkills = ref([])
+const allMcpServers = ref([])
+const boundSkills = ref([])
+const boundMcp = ref({})  // { server_id: [enabled_tools] or 'all' }
 
 async function load() {
   loading.value = true
@@ -102,24 +158,81 @@ async function loadAgents() {
   agentsLoading.value = false
 }
 
+async function loadSkillsAndMcp() {
+  if (!allSkills.value.length) {
+    const res = await get('/api/skills')
+    allSkills.value = res?.skills || []
+  }
+  if (!allMcpServers.value.length) {
+    const res = await get('/api/mcp-servers')
+    allMcpServers.value = (res?.servers || []).map(s => ({ ...s, _open: false }))
+    // Load tools for each server
+    for (const s of allMcpServers.value) {
+      const detail = await get(`/api/mcp-servers/${s.id}`)
+      if (detail?.tools) s.tools = detail.tools.map(t => typeof t === 'string' ? t : t.name || t.tool_name)
+    }
+  }
+}
+
+function markDirty() { if (ready.value) dirty.value = true }
+
+function isMcpEnabled(sid) { return sid in boundMcp.value }
+function getMcpToolCount(sid) {
+  if (!boundMcp.value[sid]) return 0
+  return boundMcp.value[sid] === 'all' ? (allMcpServers.value.find(s => s.id === sid)?.tools || []).length : boundMcp.value[sid].length
+}
+function toggleMcpServer(s) {
+  if (isMcpEnabled(s.id)) { delete boundMcp.value[s.id] }
+  else { boundMcp.value[s.id] = 'all' }
+}
+function toggleMcpExpand(s) { s._open = !s._open }
+function isMcpToolEnabled(sid, tool) {
+  if (!boundMcp.value[sid]) return false
+  if (boundMcp.value[sid] === 'all') return true
+  return boundMcp.value[sid].includes(tool)
+}
+function toggleMcpTool(sid, tool) {
+  const server = allMcpServers.value.find(s => s.id === sid)
+  const allTools = server?.tools || []
+  if (boundMcp.value[sid] === 'all') {
+    boundMcp.value[sid] = allTools.filter(t => t !== tool)
+  } else {
+    const arr = boundMcp.value[sid] || []
+    if (arr.includes(tool)) { boundMcp.value[sid] = arr.filter(t => t !== tool) }
+    else { boundMcp.value[sid] = [...arr, tool] }
+    if (boundMcp.value[sid].length >= allTools.length) boundMcp.value[sid] = 'all'
+  }
+  if (Array.isArray(boundMcp.value[sid]) && boundMcp.value[sid].length === 0) delete boundMcp.value[sid]
+}
+function mcpSelectAll(s) { boundMcp.value[s.id] = 'all' }
+function mcpDeselectAll(s) { delete boundMcp.value[s.id] }
+
 async function selectGroup(g) {
+  if (dirty.value && !confirm('有未儲存的變更，確定要切換嗎？')) return
   selected.value = g
   desc.value = g.description || ''
   const res = await get(`/api/role-groups/${g.id}/members`)
   members.value = res?.members || []
   if (!allAgents.value.length) loadAgents()
+  loadSkillsAndMcp()
+  const skillRes = await get(`/api/role-groups/${g.id}/skills`)
+  boundSkills.value = skillRes?.skills || []
+  const mcpRes = await get(`/api/role-groups/${g.id}/mcp`)
+  // Convert to object: each enabled server = 'all' (for now)
+  boundMcp.value = {}
+  for (const sid of (mcpRes?.servers || [])) { boundMcp.value[sid] = 'all' }
+  dirty.value = false
+  ready.value = true
 }
 
-async function saveDesc() {
+async function saveAll() {
   await put(`/api/role-groups/${selected.value.id}`, { name: selected.value.name, description: desc.value })
-  selected.value.description = desc.value
-}
-
-async function saveMembers() {
-  saveMsg.value = ''
-  const res = await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
-  if (res?.ok) { saveMsg.value = '✅'; setTimeout(() => { saveMsg.value = '' }, 2000); load() }
-  else { saveMsg.value = '❌ 儲存失敗' }
+  await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
+  await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
+  await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
+  dirty.value = false
+  ready.value = false
+  load()
 }
 
 async function deleteGroup() {

@@ -313,6 +313,24 @@ def _init_db():
                 FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS role_group_skills (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id INT NOT NULL,
+                skill_name VARCHAR(100) NOT NULL,
+                UNIQUE KEY uk_group_skill (group_id, skill_name),
+                FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS role_group_mcp (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id INT NOT NULL,
+                server_id INT NOT NULL,
+                UNIQUE KEY uk_group_mcp (group_id, server_id),
+                FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE
+            )
+        """)
         cur.close()
         conn.close()
     else:
@@ -3607,6 +3625,67 @@ async def api_role_group_members_save(group_id: int, request: Request):
         conn.execute("DELETE FROM role_group_members WHERE group_id = ?", (group_id,))
         for name in members:
             conn.execute("INSERT INTO role_group_members (group_id, agent_name) VALUES (?, ?)", (group_id, name))
+    return JSONResponse({"ok": True})
+
+
+
+@app.get("/api/role-groups/{group_id}/skills")
+async def api_role_group_skills(group_id: int, request: Request):
+    """取得角色組綁定的 Skill"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        rows = conn.execute("SELECT skill_name FROM role_group_skills WHERE group_id = ?", (group_id,)).fetchall()
+    return JSONResponse({"skills": [r[0] for r in rows]})
+
+
+@app.put("/api/role-groups/{group_id}/skills")
+async def api_role_group_skills_save(group_id: int, request: Request):
+    """更新角色組綁定的 Skill"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    skills = body.get("skills", [])
+    with get_db() as conn:
+        conn.execute("DELETE FROM role_group_skills WHERE group_id = ?", (group_id,))
+        for s in skills:
+            conn.execute("INSERT INTO role_group_skills (group_id, skill_name) VALUES (?, ?)", (group_id, s))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/role-groups/{group_id}/mcp")
+async def api_role_group_mcp(group_id: int, request: Request):
+    """取得角色組綁定的 MCP Server"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        rows = conn.execute("SELECT server_id FROM role_group_mcp WHERE group_id = ?", (group_id,)).fetchall()
+    return JSONResponse({"servers": [r[0] for r in rows]})
+
+
+@app.put("/api/role-groups/{group_id}/mcp")
+async def api_role_group_mcp_save(group_id: int, request: Request):
+    """更新角色組綁定的 MCP Server"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    servers = body.get("servers", [])
+    with get_db() as conn:
+        conn.execute("DELETE FROM role_group_mcp WHERE group_id = ?", (group_id,))
+        for sid in servers:
+            conn.execute("INSERT INTO role_group_mcp (group_id, server_id) VALUES (?, ?)", (group_id, int(sid)))
     return JSONResponse({"ok": True})
 
 
