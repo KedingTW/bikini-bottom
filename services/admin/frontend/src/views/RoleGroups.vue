@@ -113,7 +113,8 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, inject, onMounted, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useApi } from '../composables/useApi.js'
 
 const { get, post, put } = useApi()
@@ -129,6 +130,14 @@ const agentsLoading = ref(false)
 const addDialog = ref(false)
 const addName = ref('')
 const saveMsg = ref('')
+const dirty = ref(false)
+onBeforeRouteLeave(() => {
+  if (dirty.value && !confirm('有未儲存的變更，確定要離開嗎？')) return false
+})
+window.addEventListener('beforeunload', (e) => {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+})
+
 const allSkills = ref([])
 const allMcpServers = ref([])
 const boundSkills = ref([])
@@ -196,6 +205,7 @@ function mcpSelectAll(s) { boundMcp.value[s.id] = 'all' }
 function mcpDeselectAll(s) { delete boundMcp.value[s.id] }
 
 async function selectGroup(g) {
+  if (dirty.value && !confirm('有未儲存的變更，確定要切換嗎？')) return
   selected.value = g
   desc.value = g.description || ''
   const res = await get(`/api/role-groups/${g.id}/members`)
@@ -208,6 +218,7 @@ async function selectGroup(g) {
   // Convert to object: each enabled server = 'all' (for now)
   boundMcp.value = {}
   for (const sid of (mcpRes?.servers || [])) { boundMcp.value[sid] = 'all' }
+  dirty.value = false
 }
 
 async function saveAll() {
@@ -215,6 +226,7 @@ async function saveAll() {
   await put(`/api/role-groups/${selected.value.id}/members`, { members: members.value })
   await put(`/api/role-groups/${selected.value.id}/skills`, { skills: boundSkills.value })
   await put(`/api/role-groups/${selected.value.id}/mcp`, { servers: Object.keys(boundMcp.value).map(Number) })
+  dirty.value = false
   load()
 }
 
@@ -232,6 +244,10 @@ async function doAdd() {
   addDialog.value = false
   load()
 }
+
+// Dirty tracking
+watch([members, boundSkills, desc], () => { dirty.value = true }, { deep: true })
+watch(boundMcp, () => { dirty.value = true }, { deep: true })
 
 onMounted(load)
 </script>
