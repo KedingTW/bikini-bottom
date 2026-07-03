@@ -1838,25 +1838,31 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
     try:
         import json as json_mod
         cache_key = f"openai_{range}_{type}"
-        conn = get_db()
+
+        # Check DB cache
         try:
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
-            if row:
-                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+            with get_db() as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+        except Exception:
+            pass
 
-            from query_openai_usage import query_costs, query_completions_usage
-            result = {}
-            if type in ("all", "cost"):
-                result["costs"] = await query_costs(range)
-            if type in ("all", "tokens"):
-                result["tokens"] = await query_completions_usage(range)
+        from query_openai_usage import query_costs, query_completions_usage
+        result = {}
+        if type in ("all", "cost"):
+            result["costs"] = await query_costs(range)
+        if type in ("all", "tokens"):
+            result["tokens"] = await query_completions_usage(range)
 
+        # Write to DB cache
+        try:
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
                 conn.commit()
-        finally:
-            conn.close()
+        except Exception:
+            pass
 
         return JSONResponse({"error": None, "data": result, "cached": False})
     except Exception as e:
