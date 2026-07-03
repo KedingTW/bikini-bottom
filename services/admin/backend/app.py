@@ -1792,46 +1792,36 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         import json as json_mod
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+
         cache_key = f"kiro_usage_{range}"
-        conn = get_db()
+
+        # Check DB cache first (sync but fast)
+        if refresh != "1":
+            try:
+                with get_db() as conn:
+                    conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                    row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                    if row:
+                        cached_data = json_mod.loads(row[0])
+                        if "daily_totals" in cached_data:
+                            return JSONResponse({"error": None, "data": cached_data, "cached": True})
+            except Exception:
+                pass
+
+        # Run boto3 queries in separate thread to avoid event loop conflicts
+        from query_usage import get_usage_data
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, get_usage_data, range)
+
+        # Write to DB cache
         try:
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            if refresh != "1":
-                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-                if row:
-                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
-
-            from query_usage import get_usage_data, query_usage, parse_range
-            data = get_usage_data(range)
-
-            # Compute daily_totals for chart (直接查 Athena)
-            if data.get("periods"):
-                from collections import defaultdict
-                from datetime import date as date_type
-                daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
-                try:
-                    r_info = parse_range(range)
-                    raw = query_usage(r_info["start"], r_info["end"])
-                    for row in raw:
-                        d = daily[row["date"]]
-                        d["credits"] += row.get("credits_used", 0)
-                        d["messages"] += row.get("total_messages", 0)
-                        d["conversations"] += row.get("chat_conversations", 0)
-                except Exception:
-                    pass
-
-                data["daily_totals"] = [
-                    {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
-                    for k, v in sorted(daily.items())
-                ]
-                # Per-user daily data for stacked chart (ensure JSON-safe)
-                data["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in raw] if raw else []
-
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
                 conn.commit()
-        finally:
-            conn.close()
+        except Exception:
+            pass
 
         return JSONResponse({"error": None, "data": data, "cached": False})
     except Exception as e:
@@ -1848,25 +1838,31 @@ async def api_openai_costs(request: Request, range: str = "1", type: str = "all"
     try:
         import json as json_mod
         cache_key = f"openai_{range}_{type}"
-        conn = get_db()
+
+        # Check DB cache
         try:
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
-            if row:
-                return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+            with get_db() as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-30 minutes')", (cache_key,)).fetchone()
+                if row:
+                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+        except Exception:
+            pass
 
-            from query_openai_usage import query_costs, query_completions_usage
-            result = {}
-            if type in ("all", "cost"):
-                result["costs"] = await query_costs(range)
-            if type in ("all", "tokens"):
-                result["tokens"] = await query_completions_usage(range)
+        from query_openai_usage import query_costs, query_completions_usage
+        result = {}
+        if type in ("all", "cost"):
+            result["costs"] = await query_costs(range)
+        if type in ("all", "tokens"):
+            result["tokens"] = await query_completions_usage(range)
 
+        # Write to DB cache
+        try:
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(result)))
                 conn.commit()
-        finally:
-            conn.close()
+        except Exception:
+            pass
 
         return JSONResponse({"error": None, "data": result, "cached": False})
     except Exception as e:

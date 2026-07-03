@@ -71,6 +71,25 @@ def parse_openai_range(range_str: str | None) -> dict:
         start = today_start - timedelta(days=days)
         return {"start": start, "end": now, "label": f"過去 {days} 天"}
 
+    # "last_month" — 完整上個月
+    if r == "last_month":
+        first_of_this_month = today_start.replace(day=1)
+        end = first_of_this_month - timedelta(seconds=1)
+        start = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return {"start": start, "end": end, "label": f"{start.strftime('%m/%d')}~{end.strftime('%m/%d')}"}
+
+    # "Nm" — 過去 N 個月
+    if r.endswith("m") and r[:-1].isdigit():
+        n = int(r[:-1])
+        y, m = today_start.year, today_start.month
+        for _ in range(n):
+            m -= 1
+            if m <= 0:
+                m += 12
+                y -= 1
+        start = datetime(y, m, min(today_start.day, 28), tzinfo=timezone.utc)
+        return {"start": start, "end": now, "label": f"近 {n} 個月"}
+
     # 純數字 — 月份
     n = int(r)
     if n == 1:

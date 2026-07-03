@@ -35,10 +35,12 @@ athena = boto3.client("athena", region_name=REGION)
 
 def _run_athena(sql: str) -> list[list[str]]:
     """執行 Athena SQL，回傳 raw rows（不含 header）"""
-    resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
+    session = boto3.Session()
+    client = session.client("athena", region_name=REGION)
+    resp = client.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
     qid = resp["QueryExecutionId"]
     while True:
-        status = athena.get_query_execution(QueryExecutionId=qid)
+        status = client.get_query_execution(QueryExecutionId=qid)
         state = status["QueryExecution"]["Status"]["State"]
         if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
             break
@@ -48,7 +50,7 @@ def _run_athena(sql: str) -> list[list[str]]:
         raise RuntimeError(f"Athena 查詢失敗: {state} - {reason}")
 
     rows = []
-    paginator = athena.get_paginator("get_query_results")
+    paginator = client.get_paginator("get_query_results")
     first_page = True
     for page in paginator.paginate(QueryExecutionId=qid):
         page_rows = page["ResultSet"]["Rows"]
@@ -67,19 +69,34 @@ def _cache_key(prefix: str) -> str:
 
 def _read_cache(prefix: str):
     try:
-        resp = s3.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
+        session = boto3.Session()
+        client = session.client("s3", region_name=REGION)
+        resp = client.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
         return json.loads(resp["Body"].read())
-    except s3.exceptions.NoSuchKey:
+    except Exception:
         return None
 
 
 def _write_cache(prefix: str, data):
-    s3.put_object(
+    global s3
+    try:
+        s3.put_object(
         Bucket=CACHE_BUCKET,
         Key=_cache_key(prefix),
         Body=json.dumps(data, ensure_ascii=False, indent=2),
         ContentType="application/json",
-    )
+        )
+    except Exception:
+        s3 = boto3.client("s3", region_name=REGION)
+        try:
+            s3.put_object(
+                Bucket=CACHE_BUCKET,
+                Key=_cache_key(prefix),
+                Body=json.dumps(data, ensure_ascii=False, indent=2),
+                ContentType="application/json",
+            )
+        except Exception:
+            pass
 
 
 def get_tier_limit(tier: str) -> int:
@@ -139,6 +156,50 @@ def parse_range(range_str: str | None) -> dict:
             "end": yesterday,
             "group_by": "week",
             "periods": periods,
+        }
+
+    # "7d" / "30d" → 今天往前推 N 天
+    if range_str.endswith("d"):
+        n = int(range_str[:-1])
+        start = today - timedelta(days=n)
+        return {
+            "type": "days",
+            "start": start,
+            "end": yesterday,
+            "group_by": None,
+            "periods": [(f"{start.strftime('%m/%d')}~{yesterday.strftime('%m/%d')}", start, yesterday)],
+        }
+
+    # "last_month" → 完整上個月
+    if range_str == "last_month":
+        # 上個月的第一天
+        first_of_this_month = today.replace(day=1)
+        end = first_of_this_month - timedelta(days=1)  # 上月最後一天
+        start = end.replace(day=1)  # 上月第一天
+        return {
+            "type": "month",
+            "start": start,
+            "end": end,
+            "group_by": None,
+            "periods": [(f"{start.strftime('%m/%d')}~{end.strftime('%m/%d')}", start, end)],
+        }
+
+    # "3m" → 今天往前推 3 個月
+    if range_str.endswith("m") and range_str[:-1].isdigit():
+        n = int(range_str[:-1])
+        y, m = today.year, today.month
+        for _ in range(n):
+            m -= 1
+            if m <= 0:
+                m += 12
+                y -= 1
+        start = datetime(y, m, today.day if today.day <= 28 else 28).date()
+        return {
+            "type": "months",
+            "start": start,
+            "end": yesterday,
+            "group_by": "month",
+            "periods": [(f"{start.strftime('%m/%d')}~{yesterday.strftime('%m/%d')}", start, yesterday)],
         }
 
     # "month:N" 或純數字 "N"
@@ -235,7 +296,7 @@ def get_usage_data(range_str: str | None = None) -> dict:
     r = parse_range(range_str)
     cache_label = f"usage_{r['start']}_{r['end']}"
     cached = _read_cache(cache_label)
-    if cached:
+    if cached and "daily_totals" in cached:
         return cached
 
     result = {"range_info": {"start": str(r["start"]), "end": str(r["end"])}, "periods": []}
@@ -245,6 +306,27 @@ def get_usage_data(range_str: str | None = None) -> dict:
         agg = _aggregate_usage(data)
         ranked = sorted(agg.values(), key=lambda x: x["credits"], reverse=True)
         result["periods"].append({"label": label, "users": ranked})
+
+    # Compute daily_totals + daily_by_user for charts
+    from collections import defaultdict as _dd
+    try:
+        all_data = query_usage(r["start"], r["end"])
+        daily = _dd(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+        for row in all_data:
+            d = daily[row["date"]]
+            d["credits"] += row.get("credits_used", 0) or 0
+            d["messages"] += row.get("total_messages", 0) or 0
+            d["conversations"] += row.get("chat_conversations", 0) or 0
+        result["daily_totals"] = [
+            {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+            for k, v in sorted(daily.items())
+        ]
+        result["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in all_data]
+    except Exception as e:
+        import logging
+        logging.error(f"daily_totals computation failed: {e}")
+        result["daily_totals"] = []
+        result["daily_by_user"] = []
 
     _write_cache(cache_label, result)
     return result
@@ -317,7 +399,7 @@ def get_activity_data(range_str: str | None = None) -> dict:
     r = parse_range(range_str)
     cache_label = f"activity_{r['start']}_{r['end']}"
     cached = _read_cache(cache_label)
-    if cached:
+    if cached and "daily_totals" in cached:
         return cached
 
     result = {"range_info": {"start": str(r["start"]), "end": str(r["end"])}, "periods": []}
@@ -325,6 +407,27 @@ def get_activity_data(range_str: str | None = None) -> dict:
     for label, p_start, p_end in r["periods"]:
         users = query_activity(p_start, p_end)
         result["periods"].append({"label": label, "users": users})
+
+    # Compute daily_totals + daily_by_user for charts
+    from collections import defaultdict as _dd
+    try:
+        all_data = query_usage(r["start"], r["end"])
+        daily = _dd(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+        for row in all_data:
+            d = daily[row["date"]]
+            d["credits"] += row.get("credits_used", 0) or 0
+            d["messages"] += row.get("total_messages", 0) or 0
+            d["conversations"] += row.get("chat_conversations", 0) or 0
+        result["daily_totals"] = [
+            {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+            for k, v in sorted(daily.items())
+        ]
+        result["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in all_data]
+    except Exception as e:
+        import logging
+        logging.error(f"daily_totals computation failed: {e}")
+        result["daily_totals"] = []
+        result["daily_by_user"] = []
 
     _write_cache(cache_label, result)
     return result
