@@ -2,6 +2,7 @@
   <div class="glass px-7 py-3 flex items-center gap-5 border-b border-white/10 text-sm flex-wrap sticky top-0 z-10">
     <span>時間範圍：</span>
     <select v-model="range" @change="loadAll()" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
+      <option value="1">本月</option>
       <option value="7d">近 7 天</option>
       <option value="30d">近 30 天</option>
       <option value="last_month">上個月</option>
@@ -26,7 +27,7 @@
 
     <!-- Kiro Usage Tab -->
     <div v-if="!loading && activeTab === 'usage'" class="space-y-6">
-      <div v-if="!usageData" class="text-center py-12 text-white/50">尚無資料，請點擊「更新」查詢</div>
+      <div v-if="!usageData" class="text-center py-12 text-white/50">本月尚無資料</div>
       <template v-else>
         <!-- Summary Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -141,7 +142,7 @@
 
     <!-- OpenAI Costs Tab -->
     <div v-if="!loading && activeTab === 'openai'" class="space-y-6">
-      <div v-if="!openaiData" class="text-center py-12 text-white/50">尚無資料，請點擊「更新」查詢</div>
+      <div v-if="!openaiData" class="text-center py-12 text-white/50">本月尚無資料</div>
       <template v-else>
         <!-- Summary Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -258,7 +259,7 @@ import { useApi } from '../composables/useApi.js'
 
 const { get } = useApi()
 
-const range = ref('30d')
+const range = ref('1')
 const activeTab = ref('openai')
 const loading = ref(false)
 const usageData = ref(null)
