@@ -1785,33 +1785,43 @@ async def costs_page(request: Request):
 
 
 @app.get("/api/costs/kiro-usage")
-def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0"):
+async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0"):
     """查詢 Kiro 額度消耗（有快取，refresh=1 強制重新查詢）"""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         import json as json_mod
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+
         cache_key = f"kiro_usage_{range}"
-        conn = get_db()
+
+        # Check DB cache first (sync but fast)
+        if refresh != "1":
+            try:
+                with get_db() as conn:
+                    conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
+                    row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
+                    if row:
+                        cached_data = json_mod.loads(row[0])
+                        if "daily_totals" in cached_data:
+                            return JSONResponse({"error": None, "data": cached_data, "cached": True})
+            except Exception:
+                pass
+
+        # Run boto3 queries in separate thread to avoid event loop conflicts
+        from query_usage import get_usage_data
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, get_usage_data, range)
+
+        # Write to DB cache
         try:
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, data TEXT, ts TEXT)")
-            if refresh != "1":
-                row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
-                if row:
-                    cached_data = json_mod.loads(row[0])
-                    if "daily_totals" in cached_data:
-                        return JSONResponse({"error": None, "data": cached_data, "cached": True})
-
-            from query_usage import get_usage_data, query_usage, parse_range
-            data = get_usage_data(range)
-            # daily_totals and daily_by_user are now computed inside get_usage_data
-
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
                 conn.commit()
-        finally:
-            conn.close()
+        except Exception:
+            pass
 
         return JSONResponse({"error": None, "data": data, "cached": False})
     except Exception as e:
