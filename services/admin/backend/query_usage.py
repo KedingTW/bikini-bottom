@@ -35,7 +35,8 @@ athena = boto3.client("athena", region_name=REGION)
 
 def _run_athena(sql: str) -> list[list[str]]:
     """執行 Athena SQL，回傳 raw rows（不含 header）"""
-    client = boto3.client("athena", region_name=REGION)
+    session = boto3.Session()
+    client = session.client("athena", region_name=REGION)
     resp = client.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
     qid = resp["QueryExecutionId"]
     while True:
@@ -68,7 +69,8 @@ def _cache_key(prefix: str) -> str:
 
 def _read_cache(prefix: str):
     try:
-        client = boto3.client("s3", region_name=REGION)
+        session = boto3.Session()
+        client = session.client("s3", region_name=REGION)
         resp = client.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
         return json.loads(resp["Body"].read())
     except Exception:
