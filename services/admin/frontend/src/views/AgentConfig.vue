@@ -904,7 +904,7 @@ const cfg = reactive({
 const mockMcp = reactive([])
 
 const mcpEnabledCount = computed(() => mockMcp.filter(s => s.enabled).length)
-function toggleMcpServer(s) { s.enabled = !s.enabled; if (!s.enabled) { s.tools.forEach(t => { t.enabled = false }) }; updateMcpCount(s) }
+function toggleMcpServer(s) { s.enabled = !s.enabled; s.tools.forEach(t => { t.enabled = s.enabled }); updateMcpCount(s) }
 function mcpSelectAll(s) { s.tools.forEach(t => { t.enabled = true }); updateMcpCount(s) }
 function mcpDeselectAll(s) { s.tools.forEach(t => { t.enabled = false }); updateMcpCount(s) }
 function updateMcpCount(s) { s.enabledTools = s.tools.filter(t => t.enabled).length; s.enabled = s.enabledTools > 0; s.partial = s.enabledTools > 0 && s.enabledTools < s.tools.length }
