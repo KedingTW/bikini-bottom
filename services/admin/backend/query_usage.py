@@ -72,20 +72,41 @@ def _cache_key(prefix: str) -> str:
 
 
 def _read_cache(prefix: str):
+    global s3
     try:
         resp = s3.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
         return json.loads(resp["Body"].read())
-    except s3.exceptions.NoSuchKey:
+    except Exception as e:
+        if "NoSuchKey" in str(type(e).__name__) or "NoSuchKey" in str(e):
+            return None
+        # Recreate s3 client if connection issue
+        try:
+            s3 = boto3.client("s3", region_name=REGION)
+        except Exception:
+            pass
         return None
 
 
 def _write_cache(prefix: str, data):
-    s3.put_object(
+    global s3
+    try:
+        s3.put_object(
         Bucket=CACHE_BUCKET,
         Key=_cache_key(prefix),
         Body=json.dumps(data, ensure_ascii=False, indent=2),
         ContentType="application/json",
-    )
+        )
+    except Exception:
+        s3 = boto3.client("s3", region_name=REGION)
+        try:
+            s3.put_object(
+                Bucket=CACHE_BUCKET,
+                Key=_cache_key(prefix),
+                Body=json.dumps(data, ensure_ascii=False, indent=2),
+                ContentType="application/json",
+            )
+        except Exception:
+            pass
 
 
 def get_tier_limit(tier: str) -> int:

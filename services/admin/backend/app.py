@@ -1799,7 +1799,9 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
             if refresh != "1":
                 row = conn.execute("SELECT data, ts FROM cache WHERE key = ? AND ts > datetime('now', '-1 hour')", (cache_key,)).fetchone()
                 if row:
-                    return JSONResponse({"error": None, "data": json_mod.loads(row[0]), "cached": True})
+                    cached_data = json_mod.loads(row[0])
+                    if "daily_totals" in cached_data:
+                        return JSONResponse({"error": None, "data": cached_data, "cached": True})
 
             from query_usage import get_usage_data, query_usage, parse_range
             data = get_usage_data(range)
