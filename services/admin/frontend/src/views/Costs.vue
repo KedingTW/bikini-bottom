@@ -3,9 +3,9 @@
     <span>時間範圍：</span>
     <select v-model="range" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm">
       <option value="7d">近 7 天</option>
-      <option value="week:2">近 14 天</option>
-      <option value="1">本月</option>
-      <option value="2">近 2 個月</option>
+      <option value="30d">近 30 天</option>
+      <option value="last_month">上個月</option>
+      <option value="3m">近三個月</option>
       <option value="3">近 3 個月</option>
     </select>
     <button @click="loadAll(true)" class="bg-ocean-800 text-white border border-white/20 rounded px-3 py-1.5 text-sm hover:border-cyan-400/50">🔄 更新</button>
@@ -259,7 +259,7 @@ import { useApi } from '../composables/useApi.js'
 
 const { get } = useApi()
 
-const range = ref('1')
+const range = ref('30d')
 const activeTab = ref('openai')
 const loading = ref(false)
 const usageData = ref(null)

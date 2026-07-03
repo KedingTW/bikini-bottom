@@ -141,6 +141,50 @@ def parse_range(range_str: str | None) -> dict:
             "periods": periods,
         }
 
+    # "7d" / "30d" → 今天往前推 N 天
+    if range_str.endswith("d"):
+        n = int(range_str[:-1])
+        start = today - timedelta(days=n)
+        return {
+            "type": "days",
+            "start": start,
+            "end": yesterday,
+            "group_by": None,
+            "periods": [(f"{start.strftime('%m/%d')}~{yesterday.strftime('%m/%d')}", start, yesterday)],
+        }
+
+    # "last_month" → 完整上個月
+    if range_str == "last_month":
+        # 上個月的第一天
+        first_of_this_month = today.replace(day=1)
+        end = first_of_this_month - timedelta(days=1)  # 上月最後一天
+        start = end.replace(day=1)  # 上月第一天
+        return {
+            "type": "month",
+            "start": start,
+            "end": end,
+            "group_by": None,
+            "periods": [(f"{start.strftime('%m/%d')}~{end.strftime('%m/%d')}", start, end)],
+        }
+
+    # "3m" → 今天往前推 3 個月
+    if range_str.endswith("m") and range_str[:-1].isdigit():
+        n = int(range_str[:-1])
+        y, m = today.year, today.month
+        for _ in range(n):
+            m -= 1
+            if m <= 0:
+                m += 12
+                y -= 1
+        start = datetime(y, m, today.day if today.day <= 28 else 28).date()
+        return {
+            "type": "months",
+            "start": start,
+            "end": yesterday,
+            "group_by": "month",
+            "periods": [(f"{start.strftime('%m/%d')}~{yesterday.strftime('%m/%d')}", start, yesterday)],
+        }
+
     # "month:N" 或純數字 "N"
     raw = range_str.replace("month:", "")
     n = int(raw)
