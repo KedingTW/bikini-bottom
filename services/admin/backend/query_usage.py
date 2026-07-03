@@ -35,7 +35,13 @@ athena = boto3.client("athena", region_name=REGION)
 
 def _run_athena(sql: str) -> list[list[str]]:
     """執行 Athena SQL，回傳 raw rows（不含 header）"""
-    resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
+    global athena
+    try:
+        resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
+    except Exception:
+        # Recreate client if closed/expired
+        athena = boto3.client("athena", region_name=REGION)
+        resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
     qid = resp["QueryExecutionId"]
     while True:
         status = athena.get_query_execution(QueryExecutionId=qid)
@@ -279,7 +285,7 @@ def get_usage_data(range_str: str | None = None) -> dict:
     r = parse_range(range_str)
     cache_label = f"usage_{r['start']}_{r['end']}"
     cached = _read_cache(cache_label)
-    if cached:
+    if cached and "daily_totals" in cached:
         return cached
 
     result = {"range_info": {"start": str(r["start"]), "end": str(r["end"])}, "periods": []}
@@ -382,7 +388,7 @@ def get_activity_data(range_str: str | None = None) -> dict:
     r = parse_range(range_str)
     cache_label = f"activity_{r['start']}_{r['end']}"
     cached = _read_cache(cache_label)
-    if cached:
+    if cached and "daily_totals" in cached:
         return cached
 
     result = {"range_info": {"start": str(r["start"]), "end": str(r["end"])}, "periods": []}
