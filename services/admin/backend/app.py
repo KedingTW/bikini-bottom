@@ -1785,7 +1785,7 @@ async def costs_page(request: Request):
 
 
 @app.get("/api/costs/kiro-usage")
-async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0"):
+def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0"):
     """查詢 Kiro 額度消耗（有快取，refresh=1 強制重新查詢）"""
     user = get_current_user(request)
     if not user:
