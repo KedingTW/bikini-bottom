@@ -290,6 +290,27 @@ def get_usage_data(range_str: str | None = None) -> dict:
         ranked = sorted(agg.values(), key=lambda x: x["credits"], reverse=True)
         result["periods"].append({"label": label, "users": ranked})
 
+    # Compute daily_totals + daily_by_user for charts
+    from collections import defaultdict as _dd
+    try:
+        all_data = query_usage(r["start"], r["end"])
+        daily = _dd(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+        for row in all_data:
+            d = daily[row["date"]]
+            d["credits"] += row.get("credits_used", 0) or 0
+            d["messages"] += row.get("total_messages", 0) or 0
+            d["conversations"] += row.get("chat_conversations", 0) or 0
+        result["daily_totals"] = [
+            {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+            for k, v in sorted(daily.items())
+        ]
+        result["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in all_data]
+    except Exception as e:
+        import logging
+        logging.error(f"daily_totals computation failed: {e}")
+        result["daily_totals"] = []
+        result["daily_by_user"] = []
+
     _write_cache(cache_label, result)
     return result
 
@@ -369,6 +390,27 @@ def get_activity_data(range_str: str | None = None) -> dict:
     for label, p_start, p_end in r["periods"]:
         users = query_activity(p_start, p_end)
         result["periods"].append({"label": label, "users": users})
+
+    # Compute daily_totals + daily_by_user for charts
+    from collections import defaultdict as _dd
+    try:
+        all_data = query_usage(r["start"], r["end"])
+        daily = _dd(lambda: {"credits": 0, "messages": 0, "conversations": 0})
+        for row in all_data:
+            d = daily[row["date"]]
+            d["credits"] += row.get("credits_used", 0) or 0
+            d["messages"] += row.get("total_messages", 0) or 0
+            d["conversations"] += row.get("chat_conversations", 0) or 0
+        result["daily_totals"] = [
+            {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
+            for k, v in sorted(daily.items())
+        ]
+        result["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in all_data]
+    except Exception as e:
+        import logging
+        logging.error(f"daily_totals computation failed: {e}")
+        result["daily_totals"] = []
+        result["daily_by_user"] = []
 
     _write_cache(cache_label, result)
     return result

@@ -1803,29 +1803,7 @@ async def api_kiro_usage(request: Request, range: str = "1", refresh: str = "0")
 
             from query_usage import get_usage_data, query_usage, parse_range
             data = get_usage_data(range)
-
-            # Compute daily_totals for chart (直接查 Athena)
-            if data.get("periods"):
-                from collections import defaultdict
-                from datetime import date as date_type
-                daily = defaultdict(lambda: {"credits": 0, "messages": 0, "conversations": 0})
-                try:
-                    r_info = parse_range(range)
-                    raw = query_usage(r_info["start"], r_info["end"])
-                    for row in raw:
-                        d = daily[row["date"]]
-                        d["credits"] += row.get("credits_used", 0)
-                        d["messages"] += row.get("total_messages", 0)
-                        d["conversations"] += row.get("chat_conversations", 0)
-                except Exception:
-                    pass
-
-                data["daily_totals"] = [
-                    {"date": k, "credits": v["credits"], "messages": v["messages"], "conversations": v["conversations"]}
-                    for k, v in sorted(daily.items())
-                ]
-                # Per-user daily data for stacked chart (ensure JSON-safe)
-                data["daily_by_user"] = [{k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in row.items()} for row in raw] if raw else []
+            # daily_totals and daily_by_user are now computed inside get_usage_data
 
             with get_db() as conn:
                 conn.execute("INSERT OR REPLACE INTO cache (key, data, ts) VALUES (?, ?, datetime('now'))", (cache_key, json_mod.dumps(data)))
