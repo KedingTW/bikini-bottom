@@ -35,16 +35,11 @@ athena = boto3.client("athena", region_name=REGION)
 
 def _run_athena(sql: str) -> list[list[str]]:
     """執行 Athena SQL，回傳 raw rows（不含 header）"""
-    global athena
-    try:
-        resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
-    except Exception:
-        # Recreate client if closed/expired
-        athena = boto3.client("athena", region_name=REGION)
-        resp = athena.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
+    client = boto3.client("athena", region_name=REGION)
+    resp = client.start_query_execution(QueryString=sql, WorkGroup=WORKGROUP)
     qid = resp["QueryExecutionId"]
     while True:
-        status = athena.get_query_execution(QueryExecutionId=qid)
+        status = client.get_query_execution(QueryExecutionId=qid)
         state = status["QueryExecution"]["Status"]["State"]
         if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
             break
@@ -54,7 +49,7 @@ def _run_athena(sql: str) -> list[list[str]]:
         raise RuntimeError(f"Athena 查詢失敗: {state} - {reason}")
 
     rows = []
-    paginator = athena.get_paginator("get_query_results")
+    paginator = client.get_paginator("get_query_results")
     first_page = True
     for page in paginator.paginate(QueryExecutionId=qid):
         page_rows = page["ResultSet"]["Rows"]
@@ -72,18 +67,11 @@ def _cache_key(prefix: str) -> str:
 
 
 def _read_cache(prefix: str):
-    global s3
     try:
-        resp = s3.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
+        client = boto3.client("s3", region_name=REGION)
+        resp = client.get_object(Bucket=CACHE_BUCKET, Key=_cache_key(prefix))
         return json.loads(resp["Body"].read())
-    except Exception as e:
-        if "NoSuchKey" in str(type(e).__name__) or "NoSuchKey" in str(e):
-            return None
-        # Recreate s3 client if connection issue
-        try:
-            s3 = boto3.client("s3", region_name=REGION)
-        except Exception:
-            pass
+    except Exception:
         return None
 
 
