@@ -33,6 +33,14 @@
     <div v-if="addDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="addDialog = false">
       <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
         <h3 class="text-lg font-semibold mb-4">新增帳號</h3>
+        <div class="mb-3 text-xs text-white/50 space-y-1">
+          <div>建立步驟：</div>
+          <div>1. 前往 Discord Developer Portal</div>
+          <div>2. 點擊「New Application」建立應用</div>
+          <div>3. 進入 Bot 頁面 → 點「Reset Token」取得 Token</div>
+          <div>4. 將 Token 貼到下方欄位</div>
+          <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mt-2 text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal</a>
+        </div>
         <div class="mb-3">
           <label class="block text-sm text-white/70 mb-1">貼上 Bot Token <span class="text-red-400">*</span></label>
           <textarea v-model="addForm.token" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="貼上 Discord Bot Token"></textarea>
