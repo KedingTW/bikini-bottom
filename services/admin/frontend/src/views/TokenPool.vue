@@ -55,24 +55,24 @@
           <div>
             <div class="mb-3">
               <label class="block text-sm text-white/70 mb-1">貼上 Bot Token <span class="text-red-400">*</span></label>
-          <textarea v-model="addForm.token" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60" placeholder="貼上 Discord Bot Token"></textarea>
+          <textarea v-model="addForm.token" rows="5" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60 min-h-[120px]" placeholder="貼上 Discord Bot Token"></textarea>
         </div>
             <div v-if="addError" class="text-sm text-red-400 mt-2">{{ addError }}</div>
           </div>
           <!-- 右：說明 -->
           <div class="text-xs text-white/50 space-y-0.5 max-h-[250px] overflow-y-auto">
             <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mb-2 text-sm text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal 建立新應用</a>
-            <div class="font-medium text-white/70 mb-1">設定步驟：</div>
-            <div>2. 進入 Bot 頁面：</div>
-            <div class="pl-3">- 點「Reset Token」取得 Token</div>
-            <div class="pl-3">- 開啟以下 Intent（全部打開）：</div>
+            <div class="font-medium text-white/70 mb-1">設置步驟：</div>
+            <div>2. 進入「機器人」頁面：</div>
+            <div class="pl-3">- 點「重設權杖」取得 Token</div>
+            <div class="pl-3">- 開啟以下 Privileged Gateway Intents（全部打開）：</div>
             <div class="pl-5">✓ Presence Intent</div>
             <div class="pl-5">✓ Server Members Intent</div>
             <div class="pl-5">✓ Message Content Intent</div>
-            <div class="mt-1">3. 進入 OAuth2 頁面：</div>
+            <div class="mt-1">3. 進入「OAuth2」頁面 → OAuth2 URL 產生器：</div>
             <div class="pl-3">- 範圍：勾選「bot」</div>
-            <div class="pl-3">- 一般權限：「檢視頻道」</div>
-            <div class="pl-3">- 文字權限：</div>
+            <div class="pl-3">- 一般權限：勾選「檢視頻道」</div>
+            <div class="pl-3">- 文字權限：勾選以下項目：</div>
             <div class="pl-5">✓ 傳送訊息</div>
             <div class="pl-5">✓ 建立公開討論串</div>
             <div class="pl-5">✓ 在討論串中傳送訊息</div>
@@ -81,7 +81,7 @@
             <div class="pl-5">✓ 讀取訊息歷史記錄</div>
             <div class="pl-5">✓ 新增反應</div>
             <div class="pl-5">✓ 使用斜線指令</div>
-            <div class="mt-1">4. 複製 URL 邀請 Bot 加入伺服器</div>
+            <div class="mt-1">4. 複製產生的 URL，在瀏覽器開啟邀請機器人加入伺服器</div>
             <div>5. 將 Token 貼到左方欄位</div>
           </div>
         </div>
