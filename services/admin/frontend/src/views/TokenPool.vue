@@ -25,7 +25,7 @@
         <span v-if="t.assigned_to" class="text-xs text-white/40">→ {{ t.assigned_to }}</span>
         <span class="text-[10px] text-white/20">{{ t.created_at?.slice(0, 10) }}</span>
         <button @click="toggleStatus(t)" :disabled="t.status === 'in-use'" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-30">{{ t.status === 'disabled' ? '啟用' : '停用' }}</button>
-        <button @click="deleteToken(t)" :disabled="t.status !== 'available'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">🗑️</button>
+        <button @click="deleteToken(t)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">🗑️</button>
       </div>
     </div>
 

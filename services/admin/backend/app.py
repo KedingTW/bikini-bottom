@@ -3708,8 +3708,8 @@ async def api_token_pool_delete(token_id: int, request: Request):
         row = conn.execute("SELECT status FROM bot_token_pool WHERE id = ?", (token_id,)).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Token 不存在")
-        if row[0] != "available":
-            raise HTTPException(status_code=400, detail="只能刪除 available 狀態的 token")
+        if row[0] != "disabled":
+            raise HTTPException(status_code=400, detail="請先停用再刪除")
         conn.execute("DELETE FROM bot_token_pool WHERE id = ?", (token_id,))
     return JSONResponse({"ok": True})
 
