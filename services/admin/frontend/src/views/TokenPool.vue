@@ -33,12 +33,29 @@
     <div v-if="addDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="addDialog = false">
       <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
         <h3 class="text-lg font-semibold mb-4">新增帳號</h3>
-        <div class="mb-3 text-xs text-white/50 space-y-1">
-          <div>建立步驟：</div>
-          <div>1. 前往 Discord Developer Portal</div>
-          <div>2. 點擊「New Application」建立應用</div>
-          <div>3. 進入 Bot 頁面 → 點「Reset Token」取得 Token</div>
-          <div>4. 將 Token 貼到下方欄位</div>
+        <div class="mb-3 text-xs text-white/50 space-y-0.5 max-h-[200px] overflow-y-auto">
+          <div class="font-medium text-white/70 mb-1">建立步驟：</div>
+          <div>1. 前往 Discord Developer Portal → 點擊「New Application」</div>
+          <div>2. 進入 Bot 頁面：</div>
+          <div class="pl-3">- 點「Reset Token」取得 Token</div>
+          <div class="pl-3">- 開啟以下 Intent（全部打開）：</div>
+          <div class="pl-5">✓ Presence Intent</div>
+          <div class="pl-5">✓ Server Members Intent</div>
+          <div class="pl-5">✓ Message Content Intent</div>
+          <div>3. 進入 OAuth2 頁面：</div>
+          <div class="pl-3">- 範圍：勾選「bot」</div>
+          <div class="pl-3">- 一般權限：勾選「檢視頻道」</div>
+          <div class="pl-3">- 文字權限：勾選以下項目：</div>
+          <div class="pl-5">✓ 傳送訊息</div>
+          <div class="pl-5">✓ 建立公開討論串</div>
+          <div class="pl-5">✓ 在討論串中傳送訊息</div>
+          <div class="pl-5">✓ 嵌入連結</div>
+          <div class="pl-5">✓ 附加檔案</div>
+          <div class="pl-5">✓ 讀取訊息歷史記錄</div>
+          <div class="pl-5">✓ 新增反應</div>
+          <div class="pl-5">✓ 使用斜線指令</div>
+          <div>4. 複製產生的 URL，在瀏覽器開啟邀請 Bot 加入伺服器</div>
+          <div>5. 將 Token 貼到下方欄位</div>
           <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mt-2 text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal</a>
         </div>
         <div class="mb-3">
