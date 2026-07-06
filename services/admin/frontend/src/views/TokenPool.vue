@@ -33,8 +33,7 @@
     <div v-if="addDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="addDialog = false">
       <div class="bg-ocean-700 rounded-xl w-full max-w-2xl p-6 shadow-2xl border border-white/10">
         <h3 class="text-lg font-semibold mb-3">新增帳號</h3>
-        <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mb-4 text-sm text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal 建立新應用</a>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <!-- 左：Token 輸入 -->
           <div>
             <div class="mb-3">
@@ -45,6 +44,7 @@
           </div>
           <!-- 右：說明 -->
           <div class="text-xs text-white/50 space-y-0.5 max-h-[250px] overflow-y-auto">
+            <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mb-2 text-sm text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal 建立新應用</a>
             <div class="font-medium text-white/70 mb-1">設定步驟：</div>
             <div>2. 進入 Bot 頁面：</div>
             <div class="pl-3">- 點「Reset Token」取得 Token</div>
