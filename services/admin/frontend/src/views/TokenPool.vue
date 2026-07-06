@@ -23,25 +23,24 @@
           'bg-white/10 text-white/40': t.status === 'disabled'
         }">{{ t.status === 'available' ? '可用' : t.status === 'in-use' ? '使用中' : '停用' }}</span>
         <span v-if="t.assigned_to" class="text-xs text-white/40">→ {{ t.assigned_to }}</span>
-        <span class="text-[10px] text-white/20">{{ t.created_at?.slice(0, 10) }}</span>
-        <button @click="openUpdate(t)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">更新</button>
+        <button @click="openUpdate(t, i)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">更新</button>
         <button @click="toggleStatus(t)" :disabled="t.status === 'in-use'" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-30">{{ t.status === 'disabled' ? '啟用' : '停用' }}</button>
-        <button @click="deleteToken(t)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">🗑️</button>
+        <button @click="deleteToken(t, i)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">刪除</button>
       </div>
     </div>
 
     <!-- Update Token Dialog -->
     <div v-if="updateDialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="updateDialog = null">
       <div class="bg-ocean-700 rounded-xl w-full max-w-md p-6 shadow-2xl border border-white/10">
-        <h3 class="text-lg font-semibold mb-4">æ´æ° Token â #{{ updateDialog.index }}</h3>
+        <h3 class="text-lg font-semibold mb-4">更新 Token — #{{ updateDialog.index }}</h3>
         <div class="mb-3">
-          <label class="block text-sm text-white/70 mb-1">è²¼ä¸æ°ç Bot Token</label>
-          <textarea v-model="updateDialog.token" rows="3" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60"></textarea>
+          <label class="block text-sm text-white/70 mb-1">貼上新的 Bot Token</label>
+          <textarea v-model="updateDialog.token" rows="4" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60"></textarea>
         </div>
         <div v-if="updateDialog.error" class="mb-3 text-sm text-red-400">{{ updateDialog.error }}</div>
         <div class="flex gap-3 justify-end">
-          <button @click="updateDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">åæ¶</button>
-          <button @click="doUpdate()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">è¦è</button>
+          <button @click="updateDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
+          <button @click="doUpdate()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">覆蓋</button>
         </div>
       </div>
     </div>
@@ -55,20 +54,21 @@
           <div>
             <div class="mb-3">
               <label class="block text-sm text-white/70 mb-1">貼上 Bot Token <span class="text-red-400">*</span></label>
-          <textarea v-model="addForm.token" rows="5" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60 min-h-[120px]" placeholder="貼上 Discord Bot Token"></textarea>
-        </div>
-            <div v-if="addError" class="text-sm text-red-400 mt-2">{{ addError }}</div>
-            <div class="flex gap-3 mt-3">
+              <textarea v-model="addForm.token" rows="5" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60 min-h-[120px]" placeholder="貼上 Discord Bot Token"></textarea>
+            </div>
+            <div v-if="addError" class="text-sm text-red-400 mb-2">{{ addError }}</div>
+            <div class="flex gap-3">
               <button @click="doAdd()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
               <button @click="addDialog = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
             </div>
           </div>
           <!-- 右：說明 -->
           <div class="text-xs text-white/50 space-y-0.5 max-h-[250px] overflow-y-auto">
-            <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mb-2 text-sm text-cyan-400 hover:underline">↗ 前往 Discord Developer Portal 建立新應用</a>
+            <a href="https://discord.com/developers/applications" target="_blank" class="inline-block mb-2 text-sm text-cyan-400 hover:underline">前往 Discord Developer Portal 建立新應用</a>
             <div class="font-medium text-white/70 mb-1">設置步驟：</div>
             <div>2. 進入「機器人」頁面：</div>
             <div class="pl-3">- 點「重設權杖」取得 Token</div>
+            <div class="pl-3">- 將 Token 貼到左方欄位</div>
             <div class="pl-3">- 開啟以下 Privileged Gateway Intents（全部打開）：</div>
             <div class="pl-5">✓ Presence Intent</div>
             <div class="pl-5">✓ Server Members Intent</div>
@@ -86,10 +86,8 @@
             <div class="pl-5">✓ 新增反應</div>
             <div class="pl-5">✓ 使用斜線指令</div>
             <div class="mt-1">4. 複製產生的 URL，在瀏覽器開啟邀請機器人加入伺服器</div>
-            <div>5. 將 Token 貼到左方欄位</div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -126,12 +124,12 @@ async function doAdd() {
   else { addError.value = res?.detail || '新增失敗' }
 }
 
-function openUpdate(t) {
-  updateDialog.value = { id: t.id, index: tokens.value.indexOf(t) + 1, token: '', error: '' }
+function openUpdate(t, i) {
+  updateDialog.value = { id: t.id, index: i + 1, token: '', error: '' }
 }
 
 async function doUpdate() {
-  if (!updateDialog.value.token.trim()) { updateDialog.value.error = 'Token çºå¿å¡«'; return }
+  if (!updateDialog.value.token.trim()) { updateDialog.value.error = 'Token 為必填'; return }
   const res = await fetch('/api/token-pool/' + updateDialog.value.id + '/token', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -139,18 +137,18 @@ async function doUpdate() {
   })
   const data = await res.json()
   if (res.ok) { updateDialog.value = null; load() }
-  else { updateDialog.value.error = data?.detail || 'æ´æ°å¤±æ' }
+  else { updateDialog.value.error = data?.detail || '更新失敗' }
 }
 
 async function toggleStatus(t) {
   const newStatus = t.status === 'disabled' ? 'available' : 'disabled'
-  await fetch(`/api/token-pool/${t.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) })
+  await fetch('/api/token-pool/' + t.id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) })
   load()
 }
 
-async function deleteToken(t) {
-  if (!confirm(`確定刪除帳號 #${tokens.value.indexOf(t) + 1}？`)) return
-  await fetch(`/api/token-pool/${t.id}`, { method: 'DELETE' })
+async function deleteToken(t, i) {
+  if (!confirm('確定刪除帳號 #' + (i + 1) + '？')) return
+  await fetch('/api/token-pool/' + t.id, { method: 'DELETE' })
   load()
 }
 
