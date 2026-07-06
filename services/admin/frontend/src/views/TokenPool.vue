@@ -23,9 +23,9 @@
           'bg-white/10 text-white/40': t.status === 'disabled'
         }">{{ t.status === 'available' ? '可用' : t.status === 'in-use' ? '使用中' : '停用' }}</span>
         <span v-if="t.assigned_to" class="text-xs text-white/40">→ {{ t.assigned_to }}</span>
-        <button @click="openUpdate(t, i)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">更新</button>
-        <button @click="toggleStatus(t)" :disabled="t.status === 'in-use'" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-30">{{ t.status === 'disabled' ? '啟用' : '停用' }}</button>
-        <button @click="deleteToken(t, i)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">刪除</button>
+        <button @click="openUpdate(t, i)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">🔄 更新</button>
+        <button @click="toggleStatus(t)" :disabled="t.status === 'in-use'" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-30">{{ t.status === 'disabled' ? '▶ 啟用' : '⏸ 停用' }}</button>
+        <button @click="deleteToken(t, i)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">🗑️ 刪除</button>
       </div>
     </div>
 
@@ -39,8 +39,8 @@
         </div>
         <div v-if="updateDialog.error" class="mb-3 text-sm text-red-400">{{ updateDialog.error }}</div>
         <div class="flex gap-3 justify-end">
-          <button @click="updateDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
-          <button @click="doUpdate()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">覆蓋</button>
+          <button @click="updateDialog = null" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">✕ 取消</button>
+          <button @click="doUpdate()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">✓ 覆蓋</button>
         </div>
       </div>
     </div>
@@ -58,8 +58,8 @@
             </div>
             <div v-if="addError" class="text-sm text-red-400 mb-2">{{ addError }}</div>
             <div class="flex gap-3">
-              <button @click="doAdd()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
-              <button @click="addDialog = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
+              <button @click="doAdd()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">✓ 新增</button>
+              <button @click="addDialog = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">✕ 取消</button>
             </div>
           </div>
           <!-- 右：說明 -->
