@@ -3694,6 +3694,34 @@ async def api_token_pool_status(token_id: int, request: Request):
     return JSONResponse({"ok": True})
 
 
+@app.patch("/api/token-pool/{token_id}/token")
+async def api_token_pool_update_token(token_id: int, request: Request):
+    """更新 token（覆蓋舊 token + 重新解析 bot_id）"""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_db() as conn:
+        _r = conn.execute("SELECT role FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not _r or _r[0] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    token = body.get("token", "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="token 為必填")
+    import base64
+    try:
+        first_part = token.split(".")[0]
+        padded = first_part + "=" * (4 - len(first_part) % 4)
+        bot_id = base64.b64decode(padded).decode("utf-8")
+    except Exception:
+        bot_id = ""
+    if not bot_id:
+        raise HTTPException(status_code=400, detail="無法從 token 解碼 bot_id")
+    with get_db() as conn:
+        conn.execute("UPDATE bot_token_pool SET token = ?, bot_id = ? WHERE id = ?", (token, bot_id, token_id))
+    return JSONResponse({"ok": True, "bot_id": bot_id})
+
+
 @app.delete("/api/token-pool/{token_id}")
 async def api_token_pool_delete(token_id: int, request: Request):
     """刪除 token（只能刪 available）"""
