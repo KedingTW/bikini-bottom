@@ -24,7 +24,7 @@
         }">{{ t.status === 'available' ? '可用' : t.status === 'in-use' ? '使用中' : '停用' }}</span>
         <span v-if="t.assigned_to" class="text-xs text-white/40">→ {{ t.assigned_to }}</span>
         <span class="text-[10px] text-white/20">{{ t.created_at?.slice(0, 10) }}</span>
-        <button @click="openUpdate(t)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">ð æ´æ°</button>
+        <button @click="openUpdate(t)" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10">更新</button>
         <button @click="toggleStatus(t)" :disabled="t.status === 'in-use'" class="text-xs px-2 py-1 rounded border border-white/15 hover:bg-white/10 disabled:opacity-30">{{ t.status === 'disabled' ? '啟用' : '停用' }}</button>
         <button @click="deleteToken(t)" :disabled="t.status !== 'disabled'" class="text-xs px-2 py-1 rounded border border-red-400/30 text-red-300 hover:bg-red-400/10 disabled:opacity-30">🗑️</button>
       </div>
@@ -58,6 +58,10 @@
           <textarea v-model="addForm.token" rows="5" class="w-full px-3 py-2 rounded-lg bg-ocean-800 border border-white/20 text-white text-xs font-mono focus:outline-none focus:border-cyan-400/60 min-h-[120px]" placeholder="貼上 Discord Bot Token"></textarea>
         </div>
             <div v-if="addError" class="text-sm text-red-400 mt-2">{{ addError }}</div>
+            <div class="flex gap-3 mt-3">
+              <button @click="doAdd()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
+              <button @click="addDialog = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
+            </div>
           </div>
           <!-- 右：說明 -->
           <div class="text-xs text-white/50 space-y-0.5 max-h-[250px] overflow-y-auto">
@@ -85,10 +89,7 @@
             <div>5. 將 Token 貼到左方欄位</div>
           </div>
         </div>
-        <div class="flex gap-3 justify-end mt-4">
-          <button @click="addDialog = false" class="px-4 py-2 text-sm rounded-lg border border-white/20 text-white/70">取消</button>
-          <button @click="doAdd()" class="px-4 py-2 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">新增</button>
-        </div>
+
       </div>
     </div>
   </div>
