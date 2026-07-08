@@ -32,6 +32,22 @@ inclusion: manual
 | mcp-server (Docker) | 1601 (HTTP), 1602 (HTTPS) |
 | mcp-redis (Docker) | 1603 |
 
+## NAS 掛載規則
+
+Host 上有三個 NAS 掛載點，不要搞混：
+
+| 掛載點 | 用途 | 對應 NAS 路徑 |
+|--------|------|---------------|
+| `/mnt/kd-dev` | 比奇堡 (bikini-bottom) 專用 | 88.BikiniBottom |
+| `/mnt/kd-dc` | keding-dc 專用 | keding-dc 對應目錄 |
+| `/mnt/kd-share` | 頂層公司共用目錄 | kd共用 根目錄 |
+
+規則：
+- **`/mnt/nas` 已廢棄**，不再使用。不要在任何配置中引用它。
+- 比奇堡角色統一用 hostPath 掛載 `/mnt/kd-dev` 下的子目錄，不使用 PVC。
+- 比奇堡角色不需要掛 `/mnt/kd-share`。
+- keding-dc 角色用 `/mnt/kd-dc` 和 `/mnt/kd-share`。
+
 ## 注意事項
 
 - 這是正式環境，任何可能中斷服務的操作都要先告知用戶
