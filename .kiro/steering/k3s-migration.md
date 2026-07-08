@@ -20,7 +20,7 @@ inclusion: manual
 ### 目標架構（新）
 - 執行在 Ubuntu Desktop 24.04（16GB RAM，之後升 32GB）
 - K3s 單節點 cluster
-- NAS 掛載用 systemd automount（`/mnt/nas`）
+- NAS 掛載用 systemd automount（`/mnt/kd-dev`）
 - 機密值放在 K8s Secret，設定放在 ConfigMap
 - 所有 Deployment YAML 在 `k3s/` 目錄
 
@@ -51,7 +51,7 @@ inclusion: manual
 3. 設定 kubectl 權限
 4. 安裝 cifs-utils
 5. 建立 NAS credential 檔案（需使用者輸入帳密）
-6. 設定 `/mnt/nas` 的 fstab + systemd automount
+6. 設定 `/mnt/kd-dev` 的 fstab + systemd automount
 7. 掛載 NAS 並驗證
 
 ### Phase 2：Build Image + 匯入 K3s

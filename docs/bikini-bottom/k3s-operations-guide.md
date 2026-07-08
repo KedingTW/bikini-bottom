@@ -118,10 +118,10 @@ Ubuntu Desktop 24.04 (16GB RAM)
 │       │   └── common-env         (GIT_EMAIL 等共用設定)
 │       │
 │       └── PersistentVolumes
-│           ├── nas-shared         (/mnt/nas → NAS CIFS)
+│           ├── kd-dev-shared         (/mnt/kd-dev → NAS CIFS)
 │           └── agent-home-*       (各角色 home 目錄)
 │
-└── /mnt/nas (systemd automount → NAS Samba)
+└── /mnt/kd-dev (systemd automount → NAS Samba)
 ```
 
 ### 網路架構
@@ -141,7 +141,7 @@ Ubuntu Desktop 24.04 (16GB RAM)
                 │                     │
          [MCP Server]                 │
                                       │
-         /mnt/nas ←──── NAS (CIFS) ───┘
+         /mnt/kd-dev ←──── NAS (CIFS) ───┘
 ```
 
 每個 Pod 用 `hostNetwork: true` 或 K3s 的 host DNS 直接連到 MCP Server，不需要 `extra_hosts`。
@@ -394,7 +394,7 @@ kubectl rollout restart deployment/bob -n bikini-bottom
 ```bash
 # Step 1: 檢查 host 上 NAS 掛載
 mount | grep nas
-ls /mnt/nas/shared/
+ls /mnt/kd-dev/shared/
 
 # Step 2: 如果沒掛載，手動重掛
 sudo mount -a
@@ -458,15 +458,15 @@ cat ~/.kube/config | head -5
 
 K3s 環境下 NAS 掛載分兩層：
 
-1. **Host 層**：Ubuntu 用 systemd automount 把 NAS 掛到 `/mnt/nas`
-2. **Pod 層**：Deployment YAML 用 `hostPath` 把 `/mnt/nas` 掛進 Pod
+1. **Host 層**：Ubuntu 用 systemd automount 把 NAS 掛到 `/mnt/kd-dev`
+2. **Pod 層**：Deployment YAML 用 `hostPath` 把 `/mnt/kd-dev` 掛進 Pod
 
 ### 日常檢查
 
 ```bash
 # 確認 NAS 掛載正常
 df -h | grep nas
-# //192.168.1.218/...  4.0T  2.1T  1.9T  53% /mnt/nas
+# //192.168.1.218/...  4.0T  2.1T  1.9T  53% /mnt/kd-dev
 
 # 確認 Pod 裡能讀到
 kubectl exec deployment/bob -n bikini-bottom -- ls /nas/shared/
@@ -477,7 +477,7 @@ kubectl exec deployment/bob -n bikini-bottom -- ls /nas/shared/
 ```bash
 # 如果 NAS 斷線後恢復了，通常 systemd automount 會自動重連
 # 但如果卡住：
-sudo umount -l /mnt/nas
+sudo umount -l /mnt/kd-dev
 sudo mount -a
 
 # 然後重啟所有 agent Pod
@@ -487,7 +487,7 @@ kubectl rollout restart deployment -n bikini-bottom -l type=agent
 ### fstab 設定（參考）
 
 ```
-//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom /mnt/nas cifs credentials=/etc/nas-credentials,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0
+//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom /mnt/kd-dev cifs credentials=/etc/nas-credentials,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0
 ```
 
 重點參數：

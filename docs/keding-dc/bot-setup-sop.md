@@ -242,7 +242,7 @@ mkdir -p /mnt/kd-share/agents/<new-bot-name>
 | 項目 | 比奇堡 | 科定DC |
 |------|--------|--------|
 | Entrypoint | `entrypoint-wrapper.sh` | `entrypoint-keding-dc.sh` |
-| NAS mount | `/mnt/nas`（88.BikiniBottom） | `/mnt/kd-share`（89.KedingDC） |
+| NAS mount | `/mnt/kd-dev`（88.BikiniBottom） | `/mnt/kd-share`（頂層共用） |
 | Shared steering | 需要（/opt/steering） | 不需要 |
 | Shared skills | 需要（/opt/skills） | 不需要 |
 | working_dir | `/home/agent/projects`（NAS） | `/home/agent` |

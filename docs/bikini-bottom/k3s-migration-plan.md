@@ -99,7 +99,7 @@
 │  │                                           │  │
 │  └───────────────────────────────────────────┘  │
 │                                                 │
-│  /mnt/nas ← mount -t cifs (systemd mount)       │
+│  /mnt/kd-dev ← mount -t cifs (systemd mount)       │
 │                                                 │
 └─────────────────────────────────────────────────┘
 ```
@@ -138,16 +138,16 @@ EOF
 sudo chmod 600 /etc/nas-credentials
 
 # 建立掛載點
-sudo mkdir -p /mnt/nas
+sudo mkdir -p /mnt/kd-dev
 
 # 寫入 fstab（開機自動掛載）
-echo '//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom /mnt/nas cifs credentials=/etc/nas-credentials,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
+echo '//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom /mnt/kd-dev cifs credentials=/etc/nas-credentials,file_mode=0777,dir_mode=0777,vers=3.0,iocharset=utf8,echo_interval=10,_netdev,x-systemd.automount 0 0' | sudo tee -a /etc/fstab
 
 # 掛載
 sudo mount -a
 
 # 驗證
-ls /mnt/nas/shared/
+ls /mnt/kd-dev/shared/
 ```
 
 重點：用 `x-systemd.automount` 讓 systemd 管理掛載，斷線時自動重試。
@@ -180,8 +180,8 @@ k3s/
 │   ├── channel-ids.yaml
 │   └── agent-env.yaml
 ├── volumes/
-│   ├── nas-pv.yaml
-│   └── nas-pvc.yaml
+│   ├── # (已移除 nas-pv.yaml)
+│   └── # (已移除 nas-pvc.yaml)
 ├── deployments/
 │   ├── bob.yaml
 │   ├── patrick.yaml

@@ -65,7 +65,7 @@ scripts/backup-agents.sh
 ### 3.2 備份位置
 
 ```
-/mnt/nas/backups/agents/
+/mnt/kd-dev/backups/agents/
 ├── bikini-bottom/
 │   ├── bob/
 │   │   ├── 20260616_1400.tar.gz         ← 每小時（不含 models）
@@ -115,7 +115,7 @@ sudo bash scripts/backup-agents.sh --mode full
 
 ### 3.6 NAS 斷線 Fallback
 
-若 `/mnt/nas` 不可寫入，自動切換到本機 `/opt/backups/agents/`。
+若 `/mnt/kd-dev` 不可寫入，自動切換到本機 `/opt/backups/agents/`。
 NAS 恢復後下一輪備份自動寫回 NAS。
 
 ---
@@ -153,7 +153,7 @@ sudo bash scripts/restore-agent.sh bob
 ```
 
 **內部流程：**
-1. 找到最新備份 (`/mnt/nas/backups/agents/bikini-bottom/bob/`)
+1. 找到最新備份 (`/mnt/kd-dev/backups/agents/bikini-bottom/bob/`)
 2. 驗證 tar 完整性
 3. 解壓到暫存目錄
 4. rsync 到 agent 目錄（不刪除其他檔案）
