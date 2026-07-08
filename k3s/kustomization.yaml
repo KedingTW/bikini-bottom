@@ -7,7 +7,6 @@ resources:
   - namespace.yaml
   - configmaps/channel-ids.yaml
   - configmaps/common-env.yaml
-  - volumes/nas-pv.yaml
   # ─── 共用服務 ───
   - deployments/admin.yaml
   # ─── 比奇堡 ───
