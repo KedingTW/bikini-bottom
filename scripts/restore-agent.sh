@@ -14,7 +14,7 @@
 set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-/home/kdprogramer/Projects/bikini-bottom}"
-NAS_BACKUP_BASE="/mnt/nas/backups/agents"
+NAS_BACKUP_BASE="/mnt/kd-dev/backups/agents"
 NAMESPACE="bikini-bottom"
 
 # ─── 函數 ───────────────────────────────────────────────────

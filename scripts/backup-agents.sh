@@ -10,7 +10,7 @@ set -euo pipefail
 
 # ─── 設定 ───────────────────────────────────────────────────
 REPO_ROOT="${REPO_ROOT:-/home/kdprogramer/Projects/bikini-bottom}"
-NAS_BACKUP_BASE="/mnt/nas/backups/agents"
+NAS_BACKUP_BASE="/mnt/kd-dev/backups/agents"
 FALLBACK_BASE="/opt/backups/agents"
 DATE=$(date +%Y%m%d_%H%M)
 RETENTION_DAYS=7
@@ -78,7 +78,7 @@ log() {
 
 # 確認備份目錄可用（NAS 或 fallback）
 resolve_backup_dir() {
-    if mountpoint -q /mnt/nas 2>/dev/null && [ -d "$NAS_BACKUP_BASE" ]; then
+    if mountpoint -q /mnt/kd-dev 2>/dev/null && [ -d "$NAS_BACKUP_BASE" ]; then
         # 寫入測試
         if touch "$NAS_BACKUP_BASE/.write-test" 2>/dev/null; then
             rm -f "$NAS_BACKUP_BASE/.write-test"
@@ -98,7 +98,7 @@ get_agent_dir() {
     local agent=$(basename "$group_agent")
 
     if [ "$group" = "bikini-bottom" ]; then
-        echo "$REPO_ROOT/agents/$agent"
+        echo "$REPO_ROOT/agents/bikini-bottom/$agent"
     else
         echo "$REPO_ROOT/agents/$group/$agent"
     fi
