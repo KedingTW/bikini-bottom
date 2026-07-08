@@ -72,7 +72,7 @@ echo ""
 echo "🗄️  Step 4: 設定 NAS 掛載..."
 
 NAS_CRED_FILE="/etc/nas-credentials"
-NAS_MOUNT="/mnt/nas"
+NAS_MOUNT="/mnt/kd-dev"
 NAS_DEVICE="//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom"
 
 # 89.KedingDC NAS（下單小幫手 correction-log 等）
