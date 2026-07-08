@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: squidward
+  name: karen
   namespace: bikini-bottom
   labels:
-    app: squidward
+    app: karen
     type: agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: squidward
+      app: karen
   template:
     metadata:
       labels:
-        app: squidward
+        app: karen
         type: agent
     spec:
       hostNetwork: true
@@ -31,21 +31,21 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: discord-tokens
-                  key: SQUIDWARD
+                  key: KAREN
             - name: KIRO_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: kiro-api-keys
-                  key: SQUIDWARD
+                  key: KAREN
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: github-token
                   key: GH_TOKEN
             - name: GIT_AUTHOR_NAME
-              value: "章魚哥 (Squidward)"
+              value: "凱倫 (Karen)"
             - name: GIT_COMMITTER_NAME
-              value: "章魚哥 (Squidward)"
+              value: "凱倫 (Karen)"
             - name: GIT_AUTHOR_EMAIL
               valueFrom:
                 configMapKeyRef:
@@ -57,9 +57,9 @@ spec:
                   name: common-env
                   key: GIT_EMAIL
             - name: AGENT_NAME
-              value: "squidward"
+              value: "karen"
             - name: AGENT_SKILLS
-              value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
+              value: "xlsx"
           resources:
             requests:
               memory: "256Mi"
@@ -85,15 +85,15 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/squidward/config.toml
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/karen/config.toml
             type: File
         - name: agent-home
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/squidward
+            path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/karen
             type: Directory
         - name: workspace
           hostPath:
-            path: /mnt/kd-dev/agents/squidward
+            path: /mnt/kd-dev/agents/karen
             type: Directory
         - name: shared-workspace
           hostPath:

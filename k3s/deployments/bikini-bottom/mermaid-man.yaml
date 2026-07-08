@@ -70,8 +70,12 @@ spec:
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: nas
-              mountPath: /nas
+            - name: workspace
+              mountPath: /home/agent/workspace
+            - name: shared-workspace
+              mountPath: /shared/workspace
+            - name: shared-drop
+              mountPath: /shared/drop
             - name: shared-steering
               mountPath: /opt/steering
               readOnly: true
@@ -87,14 +91,23 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/mermaid-man
             type: Directory
-        - name: nas
-          persistentVolumeClaim:
-            claimName: nas-pvc
+        - name: workspace
+          hostPath:
+            path: /mnt/kd-dev/agents/mermaid-man
+            type: Directory
+        - name: shared-workspace
+          hostPath:
+            path: /mnt/kd-dev/shared/workspace
+            type: Directory
+        - name: shared-drop
+          hostPath:
+            path: /mnt/kd-dev/shared/drop
+            type: Directory
         - name: shared-steering
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
+            path: /mnt/kd-dev/shared/steering
             type: Directory
         - name: shared-skills
           hostPath:
-            path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+            path: /mnt/kd-dev/shared/skills
             type: Directory
