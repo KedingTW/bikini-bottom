@@ -50,18 +50,10 @@ def pick_key() -> tuple:
             body = json.loads(resp.read())
             return body["key_name"], body["key_value"]
     except urllib.error.HTTPError as e:
-        # 503 = 全耗盡，回傳 fallback
+        # 503 = 全耗盡，走本地 fallback
         if e.code == 503:
-            try:
-                body = json.loads(e.read())
-                detail = body.get("detail", {})
-                fb_name = detail.get("fallback_key_name", "FALLBACK")
-                fb_value = detail.get("fallback_key_value", "")
-                if fb_value:
-                    _log(f"All keys exhausted, using fallback: {fb_name}")
-                    return fb_name, fb_value
-            except Exception:
-                pass
+            _log("All keys exhausted (503), will use local fallback")
+            return "", ""
         _log(f"pick HTTP error: {e.code}")
         return "", ""
     except Exception as e:
@@ -117,9 +109,10 @@ def main():
             _log("ERROR: no key available (pool empty + no fallback)")
             sys.exit(1)
 
-    # Cache successful key
+    # Cache successful key (restricted permissions)
     try:
         CACHE_FILE.write_text(key_value)
+        os.chmod(CACHE_FILE, 0o600)
     except Exception:
         pass  # /tmp 寫入失敗不影響主流程
 
@@ -147,6 +140,10 @@ def main():
         nonlocal marked, ring
         try:
             for line in proc.stderr:
+                # 轉發到 stderr（讓 pod log 能看到 kiro-cli 輸出）
+                sys.stderr.buffer.write(line)
+                sys.stderr.buffer.flush()
+
                 # 存入 ring buffer
                 ring.extend(line)
                 if len(ring) > RING_MAX:

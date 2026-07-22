@@ -117,6 +117,7 @@ class MarkRequest(BaseModel):
     key_name: str
     reason: Optional[str] = None
     agent: Optional[str] = None
+    exhausted_until: Optional[str] = None  # ISO format, caller 可覆寫 reset 時間
 
 
 # ─── API Routes ───────────────────────────────────────────
@@ -128,6 +129,9 @@ async def pick_key(req: PickRequest):
         cur = conn.cursor()
 
         # 找可用 key（未耗盡 or 已過恢復時間）
+        # Sequential drain：找優先序最高的可用 key。
+        # 多個 agent 併發 pick 會拿到同一把 key — 這是 by design。
+        # 策略是「同一把用到滿再換下一把」，不做 round-robin。
         cur.execute("""
             SELECT id, key_name, key_value, priority
             FROM key_pool
@@ -159,7 +163,7 @@ async def pick_key(req: PickRequest):
 
         # 全耗盡：回傳最接近 reset 的那把作為 fallback
         cur.execute("""
-            SELECT key_name, key_value, priority, exhausted_until
+            SELECT key_name, priority, exhausted_until
             FROM key_pool
             WHERE enabled = 1
             ORDER BY exhausted_until ASC
@@ -168,14 +172,12 @@ async def pick_key(req: PickRequest):
         fallback = cur.fetchone()
 
         if fallback:
-            fb_name, fb_value, fb_priority, fb_until = fallback
+            fb_name, fb_priority, fb_until = fallback
             raise HTTPException(
                 status_code=503,
                 detail={
                     "error": "all_exhausted",
-                    "message": "所有 key 都已耗盡",
-                    "fallback_key_name": fb_name,
-                    "fallback_key_value": fb_value,
+                    "message": "所有 key 都已耗盡，wrap 應使用本地 fallback",
                 },
             )
 
@@ -188,7 +190,7 @@ async def pick_key(req: PickRequest):
 
 @router.post("/mark")
 async def mark_key(req: MarkRequest):
-    """標記 key 為耗盡，設定 exhausted_until 為下個月 1 號。"""
+    """標記 key 為耗盡。exhausted_until 可由 caller 指定，否則預設下個月 1 號。"""
     conn = _db()
     try:
         cur = conn.cursor()
@@ -198,12 +200,19 @@ async def mark_key(req: MarkRequest):
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail={"error": "not_found", "message": f"key {req.key_name} 不存在"})
 
-        # 計算下個月 1 號 00:00 UTC+8
-        now = datetime.now(TZ_TAIPEI)
-        if now.month == 12:
-            reset_time = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        # 決定 reset 時間：caller 指定 > 預設下個月 1 號
+        if req.exhausted_until:
+            try:
+                reset_time = datetime.fromisoformat(req.exhausted_until)
+            except ValueError:
+                raise HTTPException(status_code=400, detail={"error": "invalid_date", "message": "exhausted_until 格式不正確，請用 ISO format"})
         else:
-            reset_time = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            # 預設：下個月 1 號 00:00 UTC+8
+            now = datetime.now(TZ_TAIPEI)
+            if now.month == 12:
+                reset_time = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                reset_time = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
         # 更新 key_pool
         cur.execute("""
@@ -336,9 +345,14 @@ def check_all_key_usage():
 
         for key_name, key_value in keys:
             try:
+                # 建構 subprocess env：注入 key，移除 KEY_POOL_URL 避免意外觸發 wrap 遞迴
+                check_env = {**os.environ, "KIRO_API_KEY": key_value}
+                check_env.pop("KEY_POOL_URL", None)
+                check_env.pop("FALLBACK_KIRO_KEY", None)
+
                 result = subprocess.run(
                     ["kiro-cli", "chat", "--no-interactive", "/usage"],
-                    env={**os.environ, "KIRO_API_KEY": key_value},
+                    env=check_env,
                     capture_output=True,
                     text=True,
                     timeout=30,
@@ -449,6 +463,12 @@ _usage_timer = None
 
 def start_usage_scheduler():
     """啟動定期 usage check 排程。"""
+    import shutil
+
+    if not shutil.which("kiro-cli"):
+        logger.warning("[key_pool] kiro-cli not found in PATH, usage check will be disabled")
+        return
+
     global _usage_timer
     interval = USAGE_CHECK_INTERVAL_HOURS * 3600
 
