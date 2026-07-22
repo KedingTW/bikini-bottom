@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip \
     && curl --proto '=https' --tlsv1.2 -sSf \
        'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
        -o /tmp/kirocli.zip \
-    && unzip /tmp/kirocli.zip -d /tmp/kirocli \
+    && unzip /tmp/kirocli.zip -d /tmp \
     && /tmp/kirocli/install.sh \
     && rm -rf /tmp/kirocli /tmp/kirocli.zip \
     && rm -rf /var/lib/apt/lists/*
