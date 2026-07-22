@@ -316,6 +316,70 @@ async def pool_state():
         conn.close()
 
 
+@router.post("/check-usage")
+async def check_usage_now():
+    """手動觸發用量查詢（同步執行，等結果回傳）。"""
+    import shutil
+
+    if not shutil.which("kiro-cli"):
+        raise HTTPException(status_code=503, detail={"error": "kiro_cli_not_found", "message": "kiro-cli 未安裝"})
+
+    conn = _db()
+    results = []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT key_name, key_value FROM key_pool WHERE enabled = 1")
+        keys = cur.fetchall()
+
+        for key_name, key_value in keys:
+            used_percent = None
+            try:
+                check_env = {**os.environ, "KIRO_API_KEY": key_value}
+                check_env.pop("KEY_POOL_URL", None)
+                check_env.pop("FALLBACK_KIRO_KEY", None)
+
+                result = subprocess.run(
+                    ["kiro-cli", "chat", "--no-interactive", "/usage"],
+                    env=check_env,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                output = result.stdout + result.stderr
+                used_percent = _parse_usage_output(output)
+
+                # 存入歷史
+                cur.execute("""
+                    INSERT INTO key_usage_history (key_name, used_percent, raw_response, checked_at)
+                    VALUES (%s, %s, %s, NOW())
+                """, (key_name, used_percent, output[:2000]))
+
+                # 更新 key_pool 快取欄位
+                if used_percent is not None:
+                    cur.execute("""
+                        UPDATE key_pool
+                        SET last_usage_percent = %s, last_usage_checked_at = NOW()
+                        WHERE key_name = %s
+                    """, (used_percent, key_name))
+
+            except subprocess.TimeoutExpired:
+                logger.warning(f"[key_pool] check-usage: {key_name} timeout")
+            except Exception as e:
+                logger.error(f"[key_pool] check-usage: {key_name} error: {e}")
+
+            results.append({"key_name": key_name, "used_percent": used_percent})
+
+        conn.commit()
+    finally:
+        conn.close()
+
+    # 告警判斷
+    _check_and_alert()
+
+    now = datetime.now(TZ_TAIPEI)
+    return {"results": results, "checked_at": now.isoformat()}
+
+
 # ─── Usage Check (排程) ───────────────────────────────────
 def _parse_usage_output(output: str) -> Optional[float]:
     """解析 kiro-cli /usage 的輸出，取得用量百分比。"""
