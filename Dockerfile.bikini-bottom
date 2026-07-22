@@ -26,6 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         markitdown \
     && rm -rf /var/lib/apt/lists/*
 
+# kiro-key-wrap — Key Pool aware wrapper for kiro-cli
+COPY scripts/bikini-bottom/kiro-key-wrap /usr/local/bin/kiro-key-wrap
+RUN chmod +x /usr/local/bin/kiro-key-wrap
+
 # Entrypoint scripts
 COPY scripts/bikini-bottom/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
 COPY scripts/bikini-bottom/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh

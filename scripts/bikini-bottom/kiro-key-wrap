@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""kiro-key-wrap: Key Pool aware wrapper for kiro-cli.
+
+每次 agent session 啟動時：
+1. 向 admin backend 請求一把可用 key (sequential drain)
+2. 注入 KIRO_API_KEY 環境變數
+3. Spawn kiro-cli 子行程
+4. 監聽 stderr 偵測 rate-limit 訊息
+5. 偵測到耗盡時即時通知 admin 標記該 key
+"""
+import os
+import re
+import sys
+import json
+import subprocess
+import threading
+import urllib.request
+import urllib.error
+from pathlib import Path
+
+# ─── Config ───────────────────────────────────────────────
+POOL_URL = os.environ.get("KEY_POOL_URL", "http://admin:8501/api/key-pool")
+AGENT_NAME = os.environ.get("AGENT_NAME", "unknown")
+FALLBACK_KEY = os.environ.get("FALLBACK_KIRO_KEY", "")
+TIMEOUT = int(os.environ.get("KEY_POOL_TIMEOUT", "5"))
+CACHE_FILE = Path("/tmp/.last-kiro-key")
+
+# Rate-limit 偵測 regex
+EXHAUST_REGEX = re.compile(
+    r'(?i)(concurrent|too many|retry in \d+\s?(?:min|minutes?|s|sec|seconds?)'
+    r'|throttl|rate[\s-]?limit|try again later|quota|exceeded)'
+)
+
+
+def _log(msg: str):
+    """寫 log 到 stderr。"""
+    print(f"[kiro-key-wrap] {msg}", file=sys.stderr, flush=True)
+
+
+def pick_key() -> tuple:
+    """向 admin 請求 key，回傳 (key_name, key_value)。"""
+    try:
+        req = urllib.request.Request(
+            f"{POOL_URL}/pick",
+            data=json.dumps({"agent": AGENT_NAME}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            body = json.loads(resp.read())
+            return body["key_name"], body["key_value"]
+    except urllib.error.HTTPError as e:
+        # 503 = 全耗盡，回傳 fallback
+        if e.code == 503:
+            try:
+                body = json.loads(e.read())
+                detail = body.get("detail", {})
+                fb_name = detail.get("fallback_key_name", "FALLBACK")
+                fb_value = detail.get("fallback_key_value", "")
+                if fb_value:
+                    _log(f"All keys exhausted, using fallback: {fb_name}")
+                    return fb_name, fb_value
+            except Exception:
+                pass
+        _log(f"pick HTTP error: {e.code}")
+        return "", ""
+    except Exception as e:
+        _log(f"pick failed: {e}")
+        return "", ""
+
+
+def mark_exhausted(key_name: str):
+    """通知 admin 該 key 已耗盡（冪等）。"""
+    try:
+        req = urllib.request.Request(
+            f"{POOL_URL}/mark",
+            data=json.dumps({
+                "key_name": key_name,
+                "reason": "rate-limit",
+                "agent": AGENT_NAME,
+            }).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=TIMEOUT)
+        _log(f"Marked {key_name} as exhausted")
+    except Exception as e:
+        _log(f"mark failed: {e}")
+
+
+def get_fallback_key() -> str:
+    """Fail-open: 依優先序取 fallback key。"""
+    # 1. 上次成功 pick 的快取
+    if CACHE_FILE.exists():
+        cached = CACHE_FILE.read_text().strip()
+        if cached:
+            _log("Using cached key from last successful pick")
+            return cached
+    # 2. 環境變數 fallback
+    if FALLBACK_KEY:
+        _log("Using FALLBACK_KIRO_KEY env")
+        return FALLBACK_KEY
+    # 3. 都沒有
+    return ""
+
+
+def main():
+    args = sys.argv[1:]  # 原封不動轉給 kiro-cli
+
+    # ─── 1. Pick ──────────────────────────────────────────
+    key_name, key_value = pick_key()
+
+    if not key_value:
+        key_value = get_fallback_key()
+        key_name = "FALLBACK"
+        if not key_value:
+            _log("ERROR: no key available (pool empty + no fallback)")
+            sys.exit(1)
+
+    # Cache successful key
+    try:
+        CACHE_FILE.write_text(key_value)
+    except Exception:
+        pass  # /tmp 寫入失敗不影響主流程
+
+    # ─── 2. Spawn ─────────────────────────────────────────
+    env = {**os.environ, "KIRO_API_KEY": key_value}
+    # 移除 wrap 自己的 env，避免子行程混淆
+    env.pop("KEY_POOL_URL", None)
+    env.pop("FALLBACK_KIRO_KEY", None)
+    env.pop("KEY_POOL_TIMEOUT", None)
+
+    proc = subprocess.Popen(
+        ["kiro-cli"] + args,
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+
+    # ─── 3. Monitor stderr ────────────────────────────────
+    marked = False
+    ring = bytearray()
+    RING_MAX = 65536
+
+    def reader():
+        nonlocal marked, ring
+        try:
+            for line in proc.stderr:
+                # 存入 ring buffer
+                ring.extend(line)
+                if len(ring) > RING_MAX:
+                    ring[:] = ring[-RING_MAX:]
+
+                # 即時偵測 rate-limit
+                if not marked:
+                    decoded = line.decode(errors="replace")
+                    if EXHAUST_REGEX.search(decoded):
+                        marked = True
+                        # 即時 mark（不等 exit），用 thread 避免阻塞讀取
+                        threading.Thread(
+                            target=mark_exhausted,
+                            args=(key_name,),
+                            daemon=True,
+                        ).start()
+        except Exception:
+            pass
+
+    t = threading.Thread(target=reader, daemon=True)
+    t.start()
+
+    # ─── 4. Wait ──────────────────────────────────────────
+    rc = proc.wait()
+    t.join(timeout=2)
+
+    # ─── 5. Exit-time check（保險）────────────────────────
+    if not marked and rc != 0:
+        tail = ring[-4096:].decode(errors="replace")
+        if EXHAUST_REGEX.search(tail):
+            mark_exhausted(key_name)
+
+    # ─── 6. Exit ──────────────────────────────────────────
+    sys.exit(rc)
+
+
+if __name__ == "__main__":
+    main()

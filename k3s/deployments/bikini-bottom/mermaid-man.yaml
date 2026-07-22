@@ -32,11 +32,6 @@ spec:
                 secretKeyRef:
                   name: discord-tokens
                   key: MERMAID_MAN
-            - name: KIRO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kiro-api-keys
-                  key: MERMAID_MAN
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -58,6 +53,14 @@ spec:
                   key: GIT_EMAIL
             - name: AGENT_NAME
               value: "mermaid-man"
+            - name: KEY_POOL_URL
+              value: "http://admin:8501/api/key-pool"
+            - name: FALLBACK_KIRO_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kiro-api-keys
+                  key: FALLBACK
+                  optional: true
             - name: AGENT_SKILLS
               value: "company-kb"
           resources:

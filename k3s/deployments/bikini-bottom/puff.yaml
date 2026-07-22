@@ -32,11 +32,6 @@ spec:
                 secretKeyRef:
                   name: discord-tokens
                   key: PUFF
-            - name: KIRO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kiro-api-keys
-                  key: PUFF
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -52,6 +47,14 @@ spec:
               value: "keding-bikini-bottom@users.noreply.github.com"
             - name: AGENT_NAME
               value: "puff"
+            - name: KEY_POOL_URL
+              value: "http://admin:8501/api/key-pool"
+            - name: FALLBACK_KIRO_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kiro-api-keys
+                  key: FALLBACK
+                  optional: true
             - name: AGENT_SKILLS
               value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
           resources:
