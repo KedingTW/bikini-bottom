@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip \
        'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
        -o /tmp/kirocli.zip \
     && unzip /tmp/kirocli.zip -d /tmp \
-    && /tmp/kirocli/install.sh \
+    && Q_INSTALL_GLOBAL=1 Q_SKIP_SETUP=1 /tmp/kirocli/install.sh \
     && rm -rf /tmp/kirocli /tmp/kirocli.zip \
     && rm -rf /var/lib/apt/lists/*
 
