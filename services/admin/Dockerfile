@@ -26,6 +26,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && git config --system --add safe.directory /data/repo
 
+# kiro-cli — Key Pool usage 排程需要用它查詢各 key 的用量
+RUN curl -fsSL https://get.kiro.dev | sh
+
 WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
