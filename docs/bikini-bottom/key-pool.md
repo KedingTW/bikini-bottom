@@ -128,10 +128,35 @@ curl -X POST http://admin:8501/api/key-pool/check-usage | jq
 
 | 變數 | 說明 | 預設 |
 |------|------|------|
-| `KEY_POOL_ALERT_CHANNEL` | 告警 Discord 頻道 | `1493802266296188988` |
+| `KEY_POOL_ALERT_CHANNEL` | 告警 Discord 頻道 | `1518525376488411217` |
 | `KEY_POOL_ALERT_THRESHOLD` | 用量告警百分比 | `80` |
-| `KEY_POOL_ALERT_REMAINING` | 剩餘 key 數告警閾值 | `1` |
+| `KEY_POOL_ALERT_REMAINING` | 剩餘 key 數告警閾值 | `0` |
 | `KEY_POOL_USAGE_INTERVAL` | 用量查詢間隔（小時） | `1` |
+
+---
+
+## config.toml 範例
+
+```toml
+[agent]
+command = "kiro-key-wrap"
+args = ["acp", "--trust-all-tools"]
+working_dir = "/home/agent"
+env = {}
+inherit_env = ["GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL", "KEY_POOL_URL", "AGENT_NAME"]
+```
+
+---
+
+## Fail-open 行為
+
+| 情境 | 行為 |
+|------|------|
+| Admin 正常，key 可用 | pick 成功，正常啟動 |
+| Admin 正常，全耗盡 | 503，wrap exit(1)，session 起不來 |
+| Admin 掛了 | pick timeout，wrap exit(1)，session 起不來 |
+
+**設計決策**：不做本地 fallback。Admin 掛了 = 需要人工介入修復，不讓 agent 帶著可能過期的 key 繼續跑。
 
 ---
 
