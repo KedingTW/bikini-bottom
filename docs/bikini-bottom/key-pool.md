@@ -128,7 +128,7 @@ curl -X POST http://admin:8501/api/key-pool/check-usage | jq
 
 | 變數 | 說明 | 預設 |
 |------|------|------|
-| `KEY_POOL_ALERT_CHANNEL` | 告警 Discord 頻道 | `1518525376488411217` |
+| `KEY_POOL_ALERT_CHANNEL` | 告警 Discord 頻道 | `1493802266296188988` |
 | `KEY_POOL_ALERT_THRESHOLD` | 用量告警百分比 | `80` |
 | `KEY_POOL_ALERT_REMAINING` | 剩餘 key 數告警閾值 | `0` |
 | `KEY_POOL_USAGE_INTERVAL` | 用量查詢間隔（小時） | `1` |

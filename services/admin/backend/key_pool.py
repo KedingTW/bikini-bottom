@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 TZ_TAIPEI = timezone(timedelta(hours=8))
 ALERT_THRESHOLD_PERCENT = int(os.environ.get("KEY_POOL_ALERT_THRESHOLD", "80"))
 ALERT_REMAINING_KEYS = int(os.environ.get("KEY_POOL_ALERT_REMAINING", "0"))
-ALERT_CHANNEL_ID = os.environ.get("KEY_POOL_ALERT_CHANNEL", "1518525376488411217")
+ALERT_CHANNEL_ID = os.environ.get("KEY_POOL_ALERT_CHANNEL", "1493802266296188988")
 USAGE_CHECK_INTERVAL_HOURS = int(os.environ.get("KEY_POOL_USAGE_INTERVAL", "1"))
 
 router = APIRouter()
