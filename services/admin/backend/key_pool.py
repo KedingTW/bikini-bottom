@@ -519,11 +519,6 @@ def _should_send_alert() -> bool:
 
     return False
 
-    except Exception as e:
-        logger.error(f"[key_pool] alert check error: {e}")
-    finally:
-        conn.close()
-
 
 def _send_discord_alert(message: str):
     """發送告警到 Discord 頻道。"""
