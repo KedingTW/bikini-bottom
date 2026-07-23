@@ -411,7 +411,7 @@ def _parse_usage_output(output: str) -> Optional[float]:
         m = re.search(pat, output, re.IGNORECASE)
         if m:
             val = float(m.group(1))
-            if val <= 100:
+            if val >= 0:
                 return val
     return None
 
