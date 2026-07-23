@@ -19,7 +19,6 @@ ALERT_THRESHOLD_PERCENT = int(os.environ.get("KEY_POOL_ALERT_THRESHOLD", "80"))
 ALERT_REMAINING_KEYS = int(os.environ.get("KEY_POOL_ALERT_REMAINING", "1"))
 ALERT_CHANNEL_ID = os.environ.get("KEY_POOL_ALERT_CHANNEL", "1493802266296188988")
 USAGE_CHECK_INTERVAL_HOURS = int(os.environ.get("KEY_POOL_USAGE_INTERVAL", "1"))
-ALERT_WINDOWS = [8, 12, 17]  # 允許重複通知的整點時段（台灣時間）
 
 router = APIRouter()
 
@@ -363,6 +362,24 @@ async def check_usage_now():
                         WHERE key_name = %s
                     """, (used_percent, key_name))
 
+                    # 自動 mark：usage ≥ 100% 視為耗盡
+                    if used_percent >= 100:
+                        now_tp = datetime.now(TZ_TAIPEI)
+                        if now_tp.month == 12:
+                            reset_time = now_tp.replace(year=now_tp.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                        else:
+                            reset_time = now_tp.replace(month=now_tp.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                        cur.execute("""
+                            UPDATE key_pool
+                            SET exhausted_until = %s, exhausted_reason = %s, updated_at = NOW()
+                            WHERE key_name = %s AND (exhausted_until IS NULL OR exhausted_until < NOW())
+                        """, (reset_time.strftime("%Y-%m-%d %H:%M:%S"), "usage-100-auto", key_name))
+                        cur.execute("""
+                            INSERT INTO exhausted_log (key_name, reason, agent, marked_at, exhausted_until)
+                            VALUES (%s, %s, %s, NOW(), %s)
+                        """, (key_name, "usage-100-auto", "manual-check", reset_time.strftime("%Y-%m-%d %H:%M:%S")))
+                        logger.info(f"[key_pool] check-usage: {key_name} auto-marked exhausted")
+
             except subprocess.TimeoutExpired:
                 logger.warning(f"[key_pool] check-usage: {key_name} timeout")
             except Exception as e:
@@ -439,6 +456,24 @@ def check_all_key_usage():
                         WHERE key_name = %s
                     """, (used_percent, key_name))
 
+                    # 自動 mark：usage ≥ 100% 視為耗盡
+                    if used_percent >= 100:
+                        now = datetime.now(TZ_TAIPEI)
+                        if now.month == 12:
+                            reset_time = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                        else:
+                            reset_time = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                        cur.execute("""
+                            UPDATE key_pool
+                            SET exhausted_until = %s, exhausted_reason = %s, updated_at = NOW()
+                            WHERE key_name = %s AND (exhausted_until IS NULL OR exhausted_until < NOW())
+                        """, (reset_time.strftime("%Y-%m-%d %H:%M:%S"), "usage-100-auto", key_name))
+                        cur.execute("""
+                            INSERT INTO exhausted_log (key_name, reason, agent, marked_at, exhausted_until)
+                            VALUES (%s, %s, %s, NOW(), %s)
+                        """, (key_name, "usage-100-auto", "scheduler", reset_time.strftime("%Y-%m-%d %H:%M:%S")))
+                        logger.info(f"[key_pool] {key_name}: auto-marked exhausted (usage {used_percent}%)")
+
                 logger.info(f"[key_pool] {key_name}: {used_percent}%")
 
             except subprocess.TimeoutExpired:
@@ -457,12 +492,12 @@ def check_all_key_usage():
 
 
 def _check_and_alert():
-    """檢查告警條件並發送 Discord 通知（含去重邏輯）。"""
+    """檢查告警條件並發送 Discord 通知。"""
     conn = _db()
     try:
         cur = conn.cursor()
 
-        # 計算可用 key 數
+        # 計算可用 key 數（未耗盡的）
         cur.execute("""
             SELECT COUNT(*) FROM key_pool
             WHERE enabled = 1
@@ -470,7 +505,7 @@ def _check_and_alert():
         """)
         available_count = cur.fetchone()[0]
 
-        # 取得當前 key
+        # 取得當前 key（優先序最高的可用 key）
         cur.execute("""
             SELECT key_name, last_usage_percent FROM key_pool
             WHERE enabled = 1
@@ -482,13 +517,16 @@ def _check_and_alert():
 
         alerts = []
 
-        if current and current[1] is not None and float(current[1]) >= ALERT_THRESHOLD_PERCENT:
-            alerts.append(f"⚠️ 當前 key `{current[0]}` 用量已達 {current[1]}%")
+        if current and current[1] is not None:
+            usage = float(current[1])
+            # 告警 1：current key ≥ 80% 且剩餘可用 = 0（扣除自己就沒了）
+            if usage >= ALERT_THRESHOLD_PERCENT and available_count <= 1:
+                alerts.append(f"⚠️ 最後一把 key `{current[0]}` 用量已達 {current[1]}%，無備援 key")
+            # 告警 2：current key ≥ 100%（已超額）
+            if usage >= 100:
+                alerts.append(f"🚨 Key `{current[0]}` 已超額使用中（{current[1]}%）")
 
-        if available_count <= ALERT_REMAINING_KEYS:
-            alerts.append(f"🚨 Key Pool 僅剩 {available_count} 把可用 key！")
-
-        if alerts and _should_send_alert():
+        if alerts:
             _send_discord_alert("\n".join(alerts))
 
     except Exception as e:
@@ -497,32 +535,8 @@ def _check_and_alert():
         conn.close()
 
 
-# ─── 告警去重 ─────────────────────────────────────────────
-_last_alert_sent_at = None  # datetime（記憶體內，重啟後重置）
-
-
-def _should_send_alert() -> bool:
-    """判斷是否該發送告警。首次立即發，後續只在 08/12/17 時段各發一次。"""
-    global _last_alert_sent_at
-    now = datetime.now(TZ_TAIPEI)
-
-    # 首次：立即發
-    if _last_alert_sent_at is None:
-        return True
-
-    # 後續：只在指定時段發，且該時段還沒發過
-    current_hour = now.hour
-    if current_hour in ALERT_WINDOWS:
-        last = _last_alert_sent_at
-        if last.date() != now.date() or last.hour != current_hour:
-            return True
-
-    return False
-
-
 def _send_discord_alert(message: str):
     """發送告警到 Discord 頻道。"""
-    global _last_alert_sent_at
     try:
         import httpx
 
@@ -538,7 +552,6 @@ def _send_discord_alert(message: str):
             timeout=10,
         )
         if resp.status_code == 200:
-            _last_alert_sent_at = datetime.now(TZ_TAIPEI)
             logger.info(f"[key_pool] Alert sent: {message}")
         else:
             logger.warning(f"[key_pool] Alert send failed: {resp.status_code}")

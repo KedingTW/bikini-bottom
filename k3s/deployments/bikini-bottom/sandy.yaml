@@ -57,12 +57,6 @@ spec:
               value: "sandy"
             - name: KEY_POOL_URL
               value: "http://admin:8501/api/key-pool"
-            - name: FALLBACK_KIRO_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kiro-api-keys
-                  key: FALLBACK
-                  optional: true
             - name: AGENT_SKILLS
               value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
           resources:

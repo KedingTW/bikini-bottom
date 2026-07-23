@@ -12,7 +12,7 @@ command = "kiro-key-wrap"
 args = ["acp", "--trust-all-tools"]
 working_dir = "/home/agent"
 env = {}
-inherit_env = ["KEY_POOL_URL", "AGENT_NAME", "FALLBACK_KIRO_KEY"]
+inherit_env = ["KEY_POOL_URL", "AGENT_NAME"]
 
 [pool]
 max_sessions = 15
