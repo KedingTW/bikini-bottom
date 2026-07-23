@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 TZ_TAIPEI = timezone(timedelta(hours=8))
 ALERT_THRESHOLD_PERCENT = int(os.environ.get("KEY_POOL_ALERT_THRESHOLD", "80"))
 ALERT_REMAINING_KEYS = int(os.environ.get("KEY_POOL_ALERT_REMAINING", "1"))
-ALERT_CHANNEL_ID = os.environ.get("KEY_POOL_ALERT_CHANNEL", "1492090122257170526")  # 蟹堡王
-USAGE_CHECK_INTERVAL_HOURS = int(os.environ.get("KEY_POOL_USAGE_INTERVAL", "6"))
+ALERT_CHANNEL_ID = os.environ.get("KEY_POOL_ALERT_CHANNEL", "1493802266296188988")
+USAGE_CHECK_INTERVAL_HOURS = int(os.environ.get("KEY_POOL_USAGE_INTERVAL", "1"))
+ALERT_WINDOWS = [8, 12, 17]  # 允許重複通知的整點時段（台灣時間）
 
 router = APIRouter()
 
@@ -456,7 +457,7 @@ def check_all_key_usage():
 
 
 def _check_and_alert():
-    """檢查告警條件並發送 Discord 通知。"""
+    """檢查告警條件並發送 Discord 通知（含去重邏輯）。"""
     conn = _db()
     try:
         cur = conn.cursor()
@@ -487,8 +488,36 @@ def _check_and_alert():
         if available_count <= ALERT_REMAINING_KEYS:
             alerts.append(f"🚨 Key Pool 僅剩 {available_count} 把可用 key！")
 
-        if alerts:
+        if alerts and _should_send_alert():
             _send_discord_alert("\n".join(alerts))
+
+    except Exception as e:
+        logger.error(f"[key_pool] alert check error: {e}")
+    finally:
+        conn.close()
+
+
+# ─── 告警去重 ─────────────────────────────────────────────
+_last_alert_sent_at = None  # datetime（記憶體內，重啟後重置）
+
+
+def _should_send_alert() -> bool:
+    """判斷是否該發送告警。首次立即發，後續只在 08/12/17 時段各發一次。"""
+    global _last_alert_sent_at
+    now = datetime.now(TZ_TAIPEI)
+
+    # 首次：立即發
+    if _last_alert_sent_at is None:
+        return True
+
+    # 後續：只在指定時段發，且該時段還沒發過
+    current_hour = now.hour
+    if current_hour in ALERT_WINDOWS:
+        last = _last_alert_sent_at
+        if last.date() != now.date() or last.hour != current_hour:
+            return True
+
+    return False
 
     except Exception as e:
         logger.error(f"[key_pool] alert check error: {e}")
@@ -498,6 +527,7 @@ def _check_and_alert():
 
 def _send_discord_alert(message: str):
     """發送告警到 Discord 頻道。"""
+    global _last_alert_sent_at
     try:
         import httpx
 
@@ -513,6 +543,7 @@ def _send_discord_alert(message: str):
             timeout=10,
         )
         if resp.status_code == 200:
+            _last_alert_sent_at = datetime.now(TZ_TAIPEI)
             logger.info(f"[key_pool] Alert sent: {message}")
         else:
             logger.warning(f"[key_pool] Alert send failed: {resp.status_code}")
