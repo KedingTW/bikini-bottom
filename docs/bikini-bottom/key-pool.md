@@ -166,3 +166,9 @@ inherit_env = ["GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME", "GIT_AUTHOR_EMAIL", "GIT
 1. Agent config.toml 改回 `command = "kiro-cli"`
 2. Deployment YAML 恢復 `KIRO_API_KEY` env
 3. Rollout restart agent pod
+
+---
+
+## 相關文件
+
+- [正式環境部署指南](key-pool-deploy.md)
