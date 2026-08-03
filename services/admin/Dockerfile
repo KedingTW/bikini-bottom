@@ -26,6 +26,16 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && git config --system --add safe.directory /data/repo
 
+# kiro-cli — Key Pool usage 排程需要用它查詢各 key 的用量
+RUN apt-get update && apt-get install -y --no-install-recommends unzip \
+    && curl --proto '=https' --tlsv1.2 -sSf \
+       'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
+       -o /tmp/kirocli.zip \
+    && unzip /tmp/kirocli.zip -d /tmp \
+    && Q_INSTALL_GLOBAL=1 Q_SKIP_SETUP=1 /tmp/kirocli/install.sh \
+    && rm -rf /tmp/kirocli /tmp/kirocli.zip \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

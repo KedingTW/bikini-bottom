@@ -32,11 +32,6 @@ spec:
                 secretKeyRef:
                   name: keding-dc-secrets
                   key: ORDER_TEACHER_BOT_TOKEN
-            - name: KIRO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: keding-dc-secrets
-                  key: ORDER_TRANSFORM_KIRO_KEY
             - name: GIT_AUTHOR_NAME
               value: "Order Teacher Bot"
             - name: GIT_COMMITTER_NAME
@@ -53,6 +48,8 @@ spec:
                   key: GIT_EMAIL
             - name: AGENT_NAME
               value: "keding-dc-order-teacher"
+            - name: KEY_POOL_URL
+              value: "http://admin:8501/api/key-pool"
           resources:
             requests:
               memory: "256Mi"

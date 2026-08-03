@@ -22,6 +22,7 @@
 |------|------|
 | [新增 Bot SOP（索引）](docs/shared/bot-setup-sop-index.md) | 決定加哪組、照哪份 SOP |
 | [比奇堡總覽](docs/bikini-bottom/overview.md) | 比奇堡架構、角色、頻道 |
+| [Key Pool 自動換 Key](docs/bikini-bottom/key-pool.md) | Kiro API Key 自動輪替機制 |
 | [科定DC 設定](docs/keding-dc/setup.md) | 伺服器 / 頻道 / Bot 配置 |
 | [科定WeCom 部署](docs/keding-wecom/setup.md) | Zeabur gateway 部署（暫停） |
 | [.env 遷移 SOP](docs/shared/env-rename-migration-sop.md) | 環境變數改名流程 |

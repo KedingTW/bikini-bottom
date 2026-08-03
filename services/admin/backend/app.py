@@ -639,10 +639,16 @@ _start_metrics_collector()
 app = FastAPI(title="比奇堡 Dashboard", docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+# ─── Key Pool Coordinator ─────────────────────────────────
+from key_pool import router as key_pool_router, _init_module as _init_key_pool, start_usage_scheduler
+_init_key_pool(get_db)
+app.include_router(key_pool_router, prefix="/api/key-pool")
+
 
 @app.on_event("startup")
 async def _on_startup():
     _seed_skills()
+    start_usage_scheduler()
 
 
 BASE_DIR = Path(__file__).resolve().parent

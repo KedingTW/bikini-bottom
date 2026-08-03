@@ -8,11 +8,11 @@ allow_user_messages = "mentions"
 max_bot_turns = 100
 
 [agent]
-command = "kiro-cli"
+command = "kiro-key-wrap"
 args = ["acp", "--trust-all-tools"]
 working_dir = "/home/agent"
-env = { KIRO_API_KEY = "${KIRO_API_KEY}" }
-inherit_env = ["KIRO_API_KEY"]
+env = {}
+inherit_env = ["KEY_POOL_URL", "AGENT_NAME"]
 
 [pool]
 max_sessions = 15

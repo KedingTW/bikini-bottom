@@ -32,11 +32,6 @@ spec:
                 secretKeyRef:
                   name: discord-tokens
                   key: PEARL
-            - name: KIRO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kiro-api-keys
-                  key: PEARL
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -52,6 +47,8 @@ spec:
               value: "keding-bikini-bottom@users.noreply.github.com"
             - name: AGENT_NAME
               value: "pearl"
+            - name: KEY_POOL_URL
+              value: "http://admin:8501/api/key-pool"
             - name: AGENT_SKILLS
               value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
           resources:
