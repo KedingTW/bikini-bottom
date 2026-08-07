@@ -221,11 +221,14 @@ docker compose logs krabs --tail 20
 - [ ] Message Content Intent 已開啟
 - [ ] Bot 已邀請到 server
 - [ ] `agents/krabs/config.toml` 已建立
+- [ ] **`allowed_channels` 已確認該角色可允許的頻道**（依角色職責決定，參考 `channel-ids` ConfigMap 取得 ID）
 - [ ] `agents/krabs/.kiro/steering/personality.md` 已建立
 - [ ] `agents/krabs/.kiro/steering/workflow.md` 已建立
 - [ ] `agents/krabs/.kiro/steering/memory.md` 已建立
 - [ ] `.env` 已新增 token
-- [ ] `docker-compose.yml` 已新增 service
+- [ ] `docker-compose.yml` 已新增 service（或 K8s deployment yaml）
 - [ ] NAS 上已建立 `agents/<alias>/projects/` 目錄且 owner 為 agent
 - [ ] `kiro-api-keys` secret 中已有該角色的 key
+- [ ] `trusted_bot_ids` 已互相更新（新角色加入其他 agent，其他 agent 加入新角色）
+- [ ] `services/admin/backend/app.py` 的 `AGENT_GROUPS` 已加入新角色
 - [ ] Discord 測試 `@` 有回應

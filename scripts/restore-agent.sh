@@ -14,7 +14,7 @@
 set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-/home/kdprogramer/Projects/bikini-bottom}"
-NAS_BACKUP_BASE="/mnt/nas/backups/agents"
+NAS_BACKUP_BASE="/mnt/kd-dev/backups/agents"
 NAMESPACE="bikini-bottom"
 
 # ─── 函數 ───────────────────────────────────────────────────
@@ -56,7 +56,7 @@ parse_agent() {
     else
         group="bikini-bottom"
         agent="$input"
-        agent_dir="$REPO_ROOT/agents/$agent"
+        agent_dir="$REPO_ROOT/agents/bikini-bottom/$agent"
         deploy_name="$agent"
     fi
 

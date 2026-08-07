@@ -300,7 +300,7 @@ def _init_db():
             CREATE TABLE IF NOT EXISTS role_groups (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
-                description TEXT DEFAULT '',
+                description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)

@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: '2026-06-15T09:43:04Z'
+  generation: 28
+  labels:
+    app: keding-dc-ironman
+    group: keding-dc
+    type: agent
+  name: keding-dc-ironman
+  namespace: bikini-bottom
+  resourceVersion: '584652'
+  uid: 0fc161be-acd7-4ab4-a3ad-151d1eec57d1
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: keding-dc-ironman
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: '2026-06-25T22:03:39+08:00'
+      labels:
+        app: keding-dc-ironman
+        group: keding-dc
+        type: agent
+    spec:
+      containers:
+      - command:
+        - /usr/local/bin/entrypoint-keding-dc.sh
+        env:
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: IRONMAN_BOT_TOKEN
+              name: keding-dc-secrets
+        - name: KIRO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: IRONMAN_KIRO_KEY
+              name: keding-dc-secrets
+        - name: GIT_AUTHOR_NAME
+          value: Iron Man Bot
+        - name: GIT_COMMITTER_NAME
+          value: Iron Man Bot
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: GIT_EMAIL
+              name: common-env
+        - name: GIT_COMMITTER_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: GIT_EMAIL
+              name: common-env
+        - name: AGENT_NAME
+          value: keding-dc-ironman
+        image: keding-dc/agent:latest
+        imagePullPolicy: Never
+        name: agent
+        resources:
+          limits:
+            cpu: '1'
+            memory: 768Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/openab/config.toml
+          name: config
+          readOnly: true
+        - mountPath: /home/agent
+          name: home
+        - mountPath: /home/agent/workspace
+          name: workspace
+        - mountPath: /shared/workspace
+          name: shared-workspace
+        - mountPath: /opt/steering
+          name: shared-steering
+          readOnly: true
+        - mountPath: /opt/skills
+          name: shared-skills
+          readOnly: true
+        - mountPath: /mnt/kd-share
+          name: kd-share
+          readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        supplementalGroups:
+        - 1002
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman/config.toml
+          type: File
+        name: config
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/ironman
+          type: Directory
+        name: home
+      - hostPath:
+          path: /mnt/kd-dc/agents/ironman
+          type: Directory
+        name: workspace
+      - hostPath:
+          path: /mnt/kd-dc/shared/workspace
+          type: Directory
+        name: shared-workspace
+      - hostPath:
+          path: /mnt/kd-dc/shared/steering
+          type: Directory
+        name: shared-steering
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+          type: Directory
+        name: shared-skills
+      - hostPath:
+          path: /mnt/kd-share
+          type: Directory
+        name: kd-share
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: '2026-06-18T02:43:45Z'
+    lastUpdateTime: '2026-06-18T02:43:45Z'
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: 'True'
+    type: Available
+  - lastTransitionTime: '2026-06-15T09:43:04Z'
+    lastUpdateTime: '2026-06-25T14:03:40Z'
+    message: ReplicaSet "keding-dc-ironman-6d958c9b4" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: 'True'
+    type: Progressing
+  observedGeneration: 28
+  readyReplicas: 1
+  replicas: 1
+  terminatingReplicas: 0
+  updatedReplicas: 1
+

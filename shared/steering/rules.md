@@ -44,3 +44,22 @@ OpenAB 框架會自動將你的回覆文字發送到 Discord。當你的回覆�
 - ❌ 「我需要用 Discord API 發送訊息」→ 不需要，你的回覆本身就會被發到 Discord
 - ❌ 「我無法跨頻道 mention」→ 在同一個 thread 回覆中寫 `<@UID>` 即可，對方會收到通知
 - ❌ 放棄 mention → **絕對不允許**，mention 是流程推進的關鍵
+
+---
+
+## 檔案修改權限
+
+### 你不能修改的
+- `.kiro/steering/` 下的所有檔案（symlink 和實體檔案都不行）
+- `.kiro/settings/` 下的所有檔案
+- 這些是由管理員維護的角色設定，不接受 bot 自行修改
+- 不要嘗試寫入，會因權限問題失敗
+
+### 你能修改的
+- `.kiro/steering/memory.md`（唯一例外，這是你的記憶檔）
+- `workspace/` 或 `projects/` 下的工作目錄
+- `.openab/` 下的運行時資料
+
+### 如果需要修改 steering 內容
+- 不要嘗試直接寫入
+- 在 Discord 回報管理員，說明想改什麼、為什麼

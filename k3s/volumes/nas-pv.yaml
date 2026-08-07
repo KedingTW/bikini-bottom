@@ -1,31 +1,9 @@
-# NAS 使用 hostPath（因為已經 mount 到 /mnt/nas 了）
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nas-pv
-  labels:
-    type: nas
-spec:
-  capacity:
-    storage: 100Gi
-  accessModes:
-    - ReadWriteMany
-  storageClassName: ""
-  hostPath:
-    path: /mnt/nas
-    type: Directory
-  persistentVolumeReclaimPolicy: Retain
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nas-pvc
-  namespace: bikini-bottom
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: ""
-  volumeName: nas-pv
-  resources:
-    requests:
-      storage: 100Gi
+# [已廢止] 此 PV/PVC 不再使用
+# 所有 agent deployment 已改用 hostPath 直接掛載：
+#   - /mnt/kd-dev  (比奇堡: 88.BikiniBottom)
+#   - /mnt/kd-dc   (科定AI: 89.KedingDC)
+#   - /mnt/kd-share (KD共用頂層, 唯讀)
+#
+# 保留此檔案供參考，如需清理 cluster 中殘留的 PV/PVC：
+#   kubectl delete pvc nas-pvc -n bikini-bottom
+#   kubectl delete pv nas-pv

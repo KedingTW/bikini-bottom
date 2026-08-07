@@ -1,54 +1,106 @@
-# NAS 掛載與斷線防護指南
+# KD共用 掛載與斷線防護指南
 
 **作成：章魚哥（PM）+ 珊迪（技術審查）**
-**日期：2026-06-04**
-**狀態：✅ 覆核通過，可執行**
+**最後更新：2026-08-03**
+**狀態：✅ 覆核通過**
 **目標讀者：Kiro**
 
 ---
 
 ## 背景
 
-原架構（Windows + WSL2 + Docker Compose）使用 Docker CIFS volume 掛載 NAS，瞬斷後容器 hang 死需手動重啟。遷移到 Ubuntu 24.04 + K3s 後，改為 host level mount + hostPath，搭配多層防護確保斷線自動恢復。
+原架構使用單一 `/mnt/nas` 掛載 `88.BikiniBottom`。現已改為三組獨立掛載，分離比奇堡、科定AI、以及 KD共用 頂層瀏覽需求。
+
+## 掛載總覽
+
+| 掛載點 | 來源路徑 | 權限 | systemd unit |
+|--------|----------|------|-------------|
+| `/mnt/kd-share` | `//192.168.1.218/KD共用` | ro（唯讀） | `mnt-kd\\x2dshare.mount` |
+| `/mnt/kd-dev` | `//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom` | rw | `mnt-kd\\x2ddev.mount` |
+| `/mnt/kd-dc` | `//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/89.KedingDC` | rw | `mnt-kd\\x2ddc.mount` |
+
+共用 mount options：`vers=3.0,soft,echo_interval=10,iocharset=utf8,_netdev,x-systemd.automount`
 
 ## 關鍵決策
 
 | 項目 | 決策 | 原因 |
 |------|------|------|
-| 協議 | SMB 3.0（mount.cifs vers=3.0） | 公司 NAS 僅開 Samba，全 Windows 用 net use，無需改 NAS 設定 |
-| 認證 | AD 帳號 credentials file | 入域後用 AD 帳密，不用 Kerberos（簡單優先） |
-| 掛載路徑 | `/mnt/nas` | 與本目錄 yaml 一致（nas-pv.yaml 已指向此路徑） |
-| 容器存取方式 | hostPath / PV+PVC | Kiro 已有的 deployment yaml 不需修改 |
+| 協議 | SMB 3.0（mount.cifs vers=3.0） | 公司僅開 Samba |
+| 認證 | AD 帳號 credentials file | 入域後用 AD 帳密 |
+| 容器存取方式 | hostPath（不再用 PV/PVC） | 簡化管理，與 keding-dc 一致 |
+| kd-share 唯讀 | ro | 僅供查閱，避免誤寫 |
 
 ---
 
 ## 一、Credentials File
 
 ```bash
-sudo tee /etc/nas-credentials << 'EOF'
+sudo tee /etc/kd-credentials << 'EOF'
 username=AD帳號
 password=AD密碼
 domain=公司AD_Domain
 EOF
-sudo chmod 600 /etc/nas-credentials
+sudo chmod 600 /etc/kd-credentials
 ```
 
 ---
 
-## 二、Systemd Mount Unit
+## 二、Systemd Mount Units
+
+### /mnt/kd-share（KD共用頂層，唯讀）
 
 ```ini
-# /etc/systemd/system/mnt-nas.mount
+# /etc/systemd/system/mnt-kd\x2dshare.mount
 [Unit]
-Description=KD NAS Share (BikiniBottom)
+Description=KD Share (Top Level, Read-Only)
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=//192.168.1.218/KD共用
+Where=/mnt/kd-share
+Type=cifs
+Options=credentials=/etc/kd-credentials,ro,soft,echo_interval=10,vers=3.0,iocharset=utf8,file_mode=0755,dir_mode=0755,_netdev
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /mnt/kd-dev（比奇堡，讀寫）
+
+```ini
+# /etc/systemd/system/mnt-kd\x2ddev.mount
+[Unit]
+Description=KD Dev (BikiniBottom)
 After=network-online.target
 Wants=network-online.target
 
 [Mount]
 What=//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom
-Where=/mnt/nas
+Where=/mnt/kd-dev
 Type=cifs
-Options=credentials=/etc/nas-credentials,soft,echo_interval=10,vers=3.0,iocharset=utf8,file_mode=0777,dir_mode=0777,_netdev
+Options=credentials=/etc/kd-credentials,soft,echo_interval=10,vers=3.0,iocharset=utf8,file_mode=0777,dir_mode=0777,_netdev
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /mnt/kd-dc（科定AI，讀寫）
+
+```ini
+# /etc/systemd/system/mnt-kd\x2ddc.mount
+[Unit]
+Description=KD DC (KedingDC)
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/89.KedingDC
+Where=/mnt/kd-dc
+Type=cifs
+Options=credentials=/etc/kd-credentials,soft,echo_interval=10,vers=3.0,iocharset=utf8,file_mode=0777,dir_mode=0777,_netdev
 TimeoutSec=30
 
 [Install]
@@ -57,15 +109,43 @@ WantedBy=multi-user.target
 
 ---
 
-## 三、Systemd Automount Unit
+## 三、Systemd Automount Units
+
+每個 mount 對應一個 automount：
 
 ```ini
-# /etc/systemd/system/mnt-nas.automount
+# /etc/systemd/system/mnt-kd\x2dshare.automount
 [Unit]
-Description=Automount KD NAS Share
+Description=Automount KD Share
 
 [Automount]
-Where=/mnt/nas
+Where=/mnt/kd-share
+TimeoutIdleSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini
+# /etc/systemd/system/mnt-kd\x2ddev.automount
+[Unit]
+Description=Automount KD Dev
+
+[Automount]
+Where=/mnt/kd-dev
+TimeoutIdleSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini
+# /etc/systemd/system/mnt-kd\x2ddc.automount
+[Unit]
+Description=Automount KD DC
+
+[Automount]
+Where=/mnt/kd-dc
 TimeoutIdleSec=0
 
 [Install]
@@ -77,57 +157,62 @@ WantedBy=multi-user.target
 ## 四、啟用掛載
 
 ```bash
-sudo mkdir -p /mnt/nas
+sudo mkdir -p /mnt/kd-share /mnt/kd-dev /mnt/kd-dc
 sudo systemctl daemon-reload
-sudo systemctl enable mnt-nas.automount
-sudo systemctl start mnt-nas.automount
+sudo systemctl enable mnt-kd\\x2dshare.automount
+sudo systemctl enable mnt-kd\\x2ddev.automount
+sudo systemctl enable mnt-kd\\x2ddc.automount
+sudo systemctl start mnt-kd\\x2dshare.automount
+sudo systemctl start mnt-kd\\x2ddev.automount
+sudo systemctl start mnt-kd\\x2ddc.automount
 ```
 
-⚠️ **不要 enable `mnt-nas.mount`**，只 enable automount。Mount 由 automount 按需觸發。
+⚠️ **不要 enable `.mount`**，只 enable automount。
 
 ---
 
-## 五、NAS Watchdog
+## 五、Watchdog
 
 ### 5.1 腳本
 
 ```bash
-sudo tee /usr/local/bin/nas-watchdog.sh << 'EOF'
+sudo tee /usr/local/bin/kd-mount-watchdog.sh << 'EOF'
 #!/bin/bash
-MOUNT_POINT="/mnt/nas"
-SYSTEMD_UNIT="mnt-nas.mount"
+MOUNTS=("/mnt/kd-share" "/mnt/kd-dev" "/mnt/kd-dc")
+UNITS=("mnt-kd\\x2dshare.mount" "mnt-kd\\x2ddev.mount" "mnt-kd\\x2ddc.mount")
 
-# stat 產生 I/O，讓 kernel 有機會觸發 reconnect
-if ! stat "$MOUNT_POINT/." &>/dev/null; then
-    logger -t nas-watchdog "NAS unreachable, attempting remount"
-    systemctl restart "$SYSTEMD_UNIT"
-    sleep 5
-    if stat "$MOUNT_POINT/." &>/dev/null; then
-        logger -t nas-watchdog "NAS remount successful"
-    else
-        logger -t nas-watchdog "NAS remount FAILED - will retry next cycle"
+for i in "${!MOUNTS[@]}"; do
+    if ! stat "${MOUNTS[$i]}/." &>/dev/null; then
+        logger -t kd-watchdog "${MOUNTS[$i]} unreachable, attempting remount"
+        systemctl restart "${UNITS[$i]}"
+        sleep 5
+        if stat "${MOUNTS[$i]}/." &>/dev/null; then
+            logger -t kd-watchdog "${MOUNTS[$i]} remount successful"
+        else
+            logger -t kd-watchdog "${MOUNTS[$i]} remount FAILED - will retry next cycle"
+        fi
     fi
-fi
+done
 EOF
-sudo chmod +x /usr/local/bin/nas-watchdog.sh
+sudo chmod +x /usr/local/bin/kd-mount-watchdog.sh
 ```
 
 ### 5.2 Timer
 
 ```ini
-# /etc/systemd/system/nas-watchdog.service
+# /etc/systemd/system/kd-mount-watchdog.service
 [Unit]
-Description=NAS Health Check
+Description=KD Mount Health Check
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/nas-watchdog.sh
+ExecStart=/usr/local/bin/kd-mount-watchdog.sh
 ```
 
 ```ini
-# /etc/systemd/system/nas-watchdog.timer
+# /etc/systemd/system/kd-mount-watchdog.timer
 [Unit]
-Description=NAS Health Check Timer
+Description=KD Mount Health Check Timer
 
 [Timer]
 OnBootSec=60
@@ -139,7 +224,7 @@ WantedBy=timers.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now nas-watchdog.timer
+sudo systemctl enable --now kd-mount-watchdog.timer
 ```
 
 ---
@@ -153,7 +238,7 @@ livenessProbe:
   exec:
     command:
       - stat
-      - /nas/.
+      - /mnt/kd-dev/.
   initialDelaySeconds: 30
   periodSeconds: 15
   failureThreshold: 3
@@ -161,24 +246,24 @@ readinessProbe:
   exec:
     command:
       - stat
-      - /nas/.
+      - /mnt/kd-dev/.
   periodSeconds: 10
   failureThreshold: 2
 ```
 
-Pod 內 NAS mount 路徑為 `/nas`（由 PVC 掛入），所以 probe 偵測 `/nas/.`。
+keding-dc 組改偵測 `/mnt/kd-share/.`。
 
 ---
 
 ## 七、防護鏈
 
 ```
-NAS 瞬斷
+KD共用 瞬斷
   │
-  ├─ soft mount（預設）→ I/O 返回錯誤不 hang → 容器不卡死
+  ├─ soft mount → I/O 返回錯誤不 hang → 容器不卡死
   │
   ├─ echo_interval=10 → 30 秒後 kernel 偵測斷線
-  │   └─ nas-watchdog stat → 觸發 I/O → kernel 嘗試 reconnect
+  │   └─ kd-mount-watchdog stat → 觸發 I/O → kernel 嘗試 reconnect
   │       ├─ 成功 → 透明恢復
   │       └─ 失敗 → watchdog systemctl restart → 強制重掛
   │
@@ -189,40 +274,8 @@ NAS 瞬斷
 
 ---
 
-## 八、Mount Options 核實
+## 八、注意事項
 
-| 參數 | 說明 | 核實來源 |
-|------|------|---------|
-| `soft` | I/O 失敗返回錯誤不 hang（CIFS 預設值，顯式寫明） | mount.cifs(8) man page |
-| `echo_interval=10` | keep-alive 間隔，reconnect = 3×10 = 30 秒 | mount.cifs(8) man page |
-| `vers=3.0` | SMB 3.0 協議（非古老的 SMB1/CIFS） | mount.cifs(8) man page |
-| `_netdev` | 等網路就緒後掛載 | systemd/fstab 標準做法 |
-
-**注意：`retry` 不是 mount.cifs 的有效選項（那是 NFS 的），不要使用。**
-
----
-
-## 九、Checklist
-
-| # | 項目 | 確認指令 |
-|---|------|---------|
-| 1 | Ubuntu 24.04 就緒 | `lsb_release -a` |
-| 2 | AD 入域成功 | `realm list` |
-| 3 | credentials file | `ls -la /etc/nas-credentials` → 600 |
-| 4 | 手動 mount 測試 | `sudo mount -t cifs -o credentials=/etc/nas-credentials,vers=3.0 "//192.168.1.218/KD共用/18_各部門共享區/21_系統開發課/88.BikiniBottom" /mnt/nas && ls /mnt/nas` |
-| 5 | automount 啟用 | `systemctl status mnt-nas.automount` → active |
-| 6 | automount 測試 | `sudo umount /mnt/nas && ls /mnt/nas`（應自動掛回） |
-| 7 | watchdog 運作 | `systemctl status nas-watchdog.timer` → active |
-| 8 | K3s ready | `sudo kubectl get nodes` → Ready |
-| 9 | Pods running | `sudo kubectl get pods -n bikini-bottom` |
-| 10 | **斷線模擬** | `sudo iptables -A OUTPUT -d 192.168.1.218 -j DROP` |
-| 11 | **恢復確認** | `sudo iptables -D OUTPUT -d 192.168.1.218 -j DROP` → Pod 自動恢復 |
-
----
-
-## 十、注意事項
-
-- Unit 檔名必須對應路徑：`/mnt/nas` → `mnt-nas.mount` / `mnt-nas.automount`
-- AD 密碼變更時更新 `/etc/nas-credentials`，然後 `systemctl restart mnt-nas.mount`
-- NAS IP 變更時修改 mount unit 的 `What=`，`systemctl daemon-reload`
-- 本目錄的 deployment yaml 已用 PVC 指向 `/mnt/nas`，無需修改
+- Unit 檔名必須對應路徑：`/mnt/kd-dev` → `mnt-kd\x2ddev.mount`（`-` 需 escape 為 `\x2d`）
+- AD 密碼變更時更新 `/etc/kd-credentials`，然後 restart 三個 mount unit
+- 所有 deployment yaml 已改用 hostPath 直接指向 `/mnt/kd-dev` 或 `/mnt/kd-dc`，不再使用 PV/PVC
