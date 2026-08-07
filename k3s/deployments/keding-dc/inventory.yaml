@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: keding-dc-inventory
+    group: keding-dc
+    type: agent
+  name: keding-dc-inventory
+  namespace: bikini-bottom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keding-dc-inventory
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: keding-dc-inventory
+        group: keding-dc
+        type: agent
+    spec:
+      containers:
+      - command:
+        - /usr/local/bin/entrypoint-keding-dc.sh
+        env:
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: INVENTORY_BOT_TOKEN
+              name: keding-dc-secrets
+        - name: KIRO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: INVENTORY_KIRO_KEY
+              name: keding-dc-secrets
+        - name: GIT_AUTHOR_NAME
+          value: Inventory Bot
+        - name: GIT_COMMITTER_NAME
+          value: Inventory Bot
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: GIT_EMAIL
+              name: common-env
+        - name: GIT_COMMITTER_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: GIT_EMAIL
+              name: common-env
+        - name: AGENT_NAME
+          value: keding-dc-inventory
+        image: keding-dc/agent:latest
+        imagePullPolicy: Never
+        name: agent
+        resources:
+          limits:
+            cpu: '1'
+            memory: 768Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /etc/openab/config.toml
+          name: config
+          readOnly: true
+        - mountPath: /home/agent
+          name: home
+        - mountPath: /home/agent/workspace
+          name: workspace
+        - mountPath: /shared/workspace
+          name: shared-workspace
+        - mountPath: /opt/steering
+          name: shared-steering
+          readOnly: true
+        - mountPath: /opt/skills
+          name: shared-skills
+          readOnly: true
+        - mountPath: /mnt/kd-share
+          name: kd-share
+          readOnly: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      restartPolicy: Always
+      securityContext:
+        supplementalGroups:
+        - 1002
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/inventory/config.toml
+          type: File
+        name: config
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/agents/keding-dc/inventory
+          type: Directory
+        name: home
+      - hostPath:
+          path: /mnt/kd-dc/agents/inventory
+          type: Directory
+        name: workspace
+      - hostPath:
+          path: /mnt/kd-dc/shared/workspace
+          type: Directory
+        name: shared-workspace
+      - hostPath:
+          path: /mnt/kd-dc/shared/steering
+          type: Directory
+        name: shared-steering
+      - hostPath:
+          path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
+          type: Directory
+        name: shared-skills
+      - hostPath:
+          path: /mnt/kd-share
+          type: Directory
+        name: kd-share
