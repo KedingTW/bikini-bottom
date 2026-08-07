@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "wms-mcp": {
+      "url": "http://mcp.twkd.com:1601/mcp/wms",
+      "headers": {
+        "Authorization": "Bearer Jld6Oyw4LVNaYT8le1hGRnVAYihdRj5kVCkqZ3hRNVI="
+      }
+    }
+  }
+}
