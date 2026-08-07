@@ -6,6 +6,12 @@
       "branch": "main",
       "path": ".kiro/skills",
       "skills": ["company-kb"]
+    },
+    {
+      "repo": "https://github.com/obeskay/lottie-animator-skill.git",
+      "branch": "main",
+      "path": "skills",
+      "skills": ["lottie-animator"]
     }
   ]
 }
