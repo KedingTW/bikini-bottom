@@ -54,7 +54,7 @@ spec:
             - name: AGENT_NAME
               value: "gary"
             - name: KEY_POOL_URL
-              value: "http://admin:8501/api/key-pool"
+              value: "http://10.43.183.246:8501/api/key-pool"
             - name: AGENT_SKILLS
               value: "xlsx,pdf,pptx,docx,doc-coauthoring,company-kb"
           resources:
@@ -67,8 +67,8 @@ spec:
               readOnly: true
             - name: agent-home
               mountPath: /home/agent
-            - name: nas
-              mountPath: /nas
+            - name: kd-dev
+              mountPath: /mnt/kd-dev
             - name: shared-steering
               mountPath: /opt/steering
               readOnly: true
@@ -84,9 +84,11 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/agents/bikini-bottom/gary
             type: Directory
-        - name: nas
-          persistentVolumeClaim:
-            claimName: nas-pvc
+        - name: kd-dev
+          hostPath:
+            path: /mnt/kd-dev
+            type: Directory
+            type: Directory
         - name: shared-steering
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/shared/steering
