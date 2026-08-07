@@ -75,6 +75,8 @@ spec:
             - name: shared-skills
               mountPath: /opt/skills
               readOnly: true
+            - name: shared-drop
+              mountPath: /shared/drop
       volumes:
         - name: config
           hostPath:
@@ -97,3 +99,7 @@ spec:
           hostPath:
             path: /home/kdprogramer/Projects/bikini-bottom/shared/skills
             type: Directory
+        - name: shared-drop
+          hostPath:
+            path: /mnt/kd-dev/shared/drop
+            type: DirectoryOrCreate
