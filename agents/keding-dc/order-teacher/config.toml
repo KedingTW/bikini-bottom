@@ -1,11 +1,15 @@
 [discord]
 bot_token = "${DISCORD_BOT_TOKEN}"
 allowed_channels = ["1513867725242503168"]
-trusted_bot_ids = ["1514058459585445888"]
+trusted_bot_ids = ["1514058459585445888", "1523987509783167016"]
 allow_bot_messages = "mentions"
-allowed_role_ids = ["1516346270132736074"]
+allowed_role_ids = ["1516346270132736074", "1516031769516969995"]
 allow_user_messages = "mentions"
 max_bot_turns = 100
+allowed_users = []
+allow_all_channels = false
+allow_all_users = true
+allow_dm = false
 
 [agent]
 command = "kiro-key-wrap"
@@ -21,15 +25,19 @@ session_ttl_hours = 24
 [reactions]
 enabled = true
 remove_after_reply = false
+tool_display = "full"
 
 [reactions.emojis]
-queued = "👀"
 thinking = "🤔"
+tool_use = "🔧"
+responding = "✍️"
+done = "🆗"
+error = "😱"
+queued = "👀"
+cancelled = "🚫"
 tool = "🔥"
 coding = "📋"
 web = "⚡"
-done = "🆗"
-error = "😱"
 
 [reactions.timing]
 debounce_ms = 700
@@ -37,3 +45,5 @@ stall_soft_ms = 10000
 stall_hard_ms = 30000
 done_hold_ms = 1500
 error_hold_ms = 2500
+
+[reactions.mapping]

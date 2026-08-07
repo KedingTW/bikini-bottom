@@ -26,20 +26,25 @@
 
 ## 考題目錄結構
 
+所有考試相關檔案都在 `/shared/workspace/order-transform-exam/` 下：
+
 ```
-/mnt/kd-share/shared/workspace/order-transform-exam/
-├── questions/          ← 考題
+/shared/workspace/order-transform-exam/
+├── questions/          ← 考題（可讀取）
 │   ├── exam_text_tagged.jsonl  (370題，含 noise_tags)
 │   ├── exam_image.jsonl        (153題)
 │   └── images/                 (圖片題對應圖檔)
-├── results/            ← 考試結果
+├── results/            ← 考試結果（可寫入）
 │   └── YYYYMMDD_NN.json
 ├── archive/            ← 原始檔備份
 ├── scripts/            ← 工具腳本
 └── order-rules.md      ← 轉換規則
 ```
 
-圖片路徑對應：JSON 中 `/nas/...` → 實際 `/mnt/kd-share/...`
+⚠️ **重要路徑規則：**
+- 統一使用 `/shared/workspace/order-transform-exam/` 路徑（可讀可寫）
+- **不要使用** `/mnt/kd-share/...` 路徑寫入檔案（唯讀，會失敗）
+- 圖片路徑對應：JSON 中 `/nas/...` → 容器內 `/mnt/kd-share/...`（唯讀參考）
 
 ## 出題機制
 
@@ -83,7 +88,7 @@
 
 ## 考試記錄
 
-每次考試結束後，存檔至 `results/` 目錄。
+每次考試結束後，存檔至 `/shared/workspace/order-transform-exam/results/` 目錄。
 
 **檔名格式：** `YYYYMMDD_NN.json`（日期_場次，如 `20260616_01.json`）
 
