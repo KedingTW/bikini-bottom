@@ -5,7 +5,11 @@
 FROM ghcr.io/openabdev/openab:0.8.4
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git python3 && rm -rf /var/lib/apt/lists/*
+
+# kiro-key-wrap — Key Pool aware wrapper for kiro-cli
+COPY scripts/bikini-bottom/kiro-key-wrap /usr/local/bin/kiro-key-wrap
+RUN chmod +x /usr/local/bin/kiro-key-wrap
 
 COPY scripts/keding-dc/entrypoint.sh /usr/local/bin/entrypoint-keding-dc.sh
 RUN chmod +x /usr/local/bin/entrypoint-keding-dc.sh
