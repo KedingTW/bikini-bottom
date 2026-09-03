@@ -27,17 +27,18 @@ spec:
       containers:
       - command:
         - /usr/local/bin/entrypoint-keding-dc.sh
+        args:
+        - run
+        - -c
+        - /etc/openab/config.toml
         env:
         - name: DISCORD_BOT_TOKEN
           valueFrom:
             secretKeyRef:
               key: INVENTORY_BOT_TOKEN
               name: keding-dc-secrets
-        - name: KIRO_API_KEY
-          valueFrom:
-            secretKeyRef:
-              key: INVENTORY_KIRO_KEY
-              name: keding-dc-secrets
+        - name: KEY_POOL_URL
+          value: http://admin:8501/api/key-pool
         - name: GIT_AUTHOR_NAME
           value: Inventory Bot
         - name: GIT_COMMITTER_NAME
@@ -54,7 +55,7 @@ spec:
               name: common-env
         - name: AGENT_NAME
           value: keding-dc-inventory
-        image: keding-dc/agent:latest
+        image: keding-dc/agent:v0.10.0
         imagePullPolicy: Never
         name: agent
         resources:

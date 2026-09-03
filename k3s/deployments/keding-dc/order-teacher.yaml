@@ -23,9 +23,10 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          image: keding-dc/agent:latest
+          image: keding-dc/agent:v0.10.0
           imagePullPolicy: Never
           command: ["/usr/local/bin/entrypoint-keding-dc.sh"]
+          args: ["run", "-c", "/etc/openab/config.toml"]
           env:
             - name: DISCORD_BOT_TOKEN
               valueFrom:
