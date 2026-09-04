@@ -1,0 +1,40 @@
+# 比奇堡團隊 — Agent Image (v0.10.0 升級試驗版)
+# 基於 OpenAB v0.10.0 (d64c678-kiro)，kiro-cli 2.13.0
+#
+# 用途：sandy 升級試驗用，其他 bot 仍用 Dockerfile.bikini-bottom (v0.8.4)
+# 驗證通過後可推廣為全團隊標準 image
+#
+# 與 Dockerfile.bikini-bottom (v0.8.4) 的差異：
+#   - base image: 0.8.4 → d64c678-kiro (v0.10.0 / kiro-cli 2.13.0)
+#   - 移除重複的 git/gh 安裝（base image 已內含）
+#   - 新增 CMD 指定 config 路徑（v0.10.0 需要明確指定）
+# 與 Dockerfile.conch-browser-poc 的差異：
+#   - 不含 browser PoC 專屬的 MCP facade 設定（那是 config.toml 層級，image 不需處理）
+
+FROM ghcr.io/openabdev/openab:d64c678-kiro
+USER root
+
+# 文件生成用 Python 套件（xlsx, pdf, pptx, docx skills）
+# base image 不含 python3/pandoc，需自行安裝
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 python3-pip pandoc \
+    && pip3 install --no-cache-dir --break-system-packages \
+        openpyxl pandas xlsxwriter \
+        pypdf reportlab \
+        python-pptx \
+        python-docx \
+        markitdown \
+    && rm -rf /var/lib/apt/lists/*
+
+# kiro-key-wrap — Key Pool aware wrapper for kiro-cli
+COPY scripts/bikini-bottom/kiro-key-wrap /usr/local/bin/kiro-key-wrap
+RUN chmod +x /usr/local/bin/kiro-key-wrap
+
+# Entrypoint scripts
+COPY scripts/bikini-bottom/link-shared-steering.sh /usr/local/bin/link-shared-steering.sh
+COPY scripts/bikini-bottom/link-shared-skills.sh /usr/local/bin/link-shared-skills.sh
+COPY scripts/bikini-bottom/entrypoint.sh /usr/local/bin/entrypoint-bikini-bottom.sh
+RUN chmod +x /usr/local/bin/link-shared-steering.sh /usr/local/bin/link-shared-skills.sh /usr/local/bin/entrypoint-bikini-bottom.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-bikini-bottom.sh"]
+CMD ["run", "-c", "/etc/openab/config.toml"]

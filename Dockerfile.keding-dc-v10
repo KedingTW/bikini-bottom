@@ -1,0 +1,28 @@
+# 科定AI服務 (DC) — Agent Image (v0.10.0 升級版)
+# 基於 OpenAB v0.10.0 (d64c678-kiro)，kiro-cli 2.13.0
+#
+# 用途：keding-dc 組升級試驗用（先用 order-transform 驗證）
+# 精簡版：只含 git + python3，不含 gh CLI / pandoc / 文件套件
+#
+# 與 Dockerfile.keding-dc (v0.8.4) 的差異：
+#   - base image: 0.8.4 → d64c678-kiro (v0.10.0 / kiro-cli 2.13.0)
+#   - 新增 CMD 指定 config 路徑（v0.10.0 需要明確指定）
+# 與 Dockerfile.bikini-bottom-v10 的差異：
+#   - 不含 gh / pandoc / 文件生成套件（keding-dc 不需要）
+#   - 使用 keding-dc 專屬 entrypoint（不掛 shared steering/skills）
+
+FROM ghcr.io/openabdev/openab:d64c678-kiro
+USER root
+
+# base image 已含 git，但仍確保 python3 存在（keding-dc 部分工具需要）
+RUN apt-get update && apt-get install -y --no-install-recommends git python3 && rm -rf /var/lib/apt/lists/*
+
+# kiro-key-wrap — Key Pool aware wrapper for kiro-cli
+COPY scripts/bikini-bottom/kiro-key-wrap /usr/local/bin/kiro-key-wrap
+RUN chmod +x /usr/local/bin/kiro-key-wrap
+
+COPY scripts/keding-dc/entrypoint.sh /usr/local/bin/entrypoint-keding-dc.sh
+RUN chmod +x /usr/local/bin/entrypoint-keding-dc.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-keding-dc.sh"]
+CMD ["run", "-c", "/etc/openab/config.toml"]

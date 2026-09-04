@@ -21,7 +21,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          image: bikini-bottom/agent:latest
+          image: bikini-bottom/agent:v0.10.0
           imagePullPolicy: Never
           envFrom:
             - configMapRef:
